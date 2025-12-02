@@ -20,7 +20,7 @@ pnpm logs:test   # 预览/测试账号
 pnpm logs:prod   # 生产账号
 ```
 
-脚本会自动切换 Wrangler 配置并调用 `wrangler pages deployment tail`，默认 `--project-name` 为 `cf-nuxt-pages-kit`，记得替换成你自己的 Pages 项目名称。
+脚本会自动切换 Wrangler 配置并调用 `wrangler pages deployment tail`，默认 `--project-name` 为 `cloudflare-sso`。
 
 ## 常见问题
 - **找不到数据库**：确认 `wrangler.account-*.toml` 内的 `database_id` 指向当前账号下存在的 D1。

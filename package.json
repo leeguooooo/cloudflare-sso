@@ -1,5 +1,5 @@
 {
-  "name": "cf-nuxt-pages-kit-app",
+  "name": "cloudflare-sso",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -16,8 +16,8 @@
     "deploy": "pnpm deploy:test",
     "deploy:test": "pnpm wrangler:config:test && pnpm build && wrangler pages deploy .output/public",
     "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy .output/public",
-    "logs:test": "pnpm wrangler:config:test && wrangler pages deployment tail --project-name cf-nuxt-pages-kit --environment preview --format pretty",
-    "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cf-nuxt-pages-kit --environment production --format pretty"
+    "logs:test": "pnpm wrangler:config:test && wrangler pages deployment tail --project-name cloudflare-sso --environment preview --format pretty",
+    "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cloudflare-sso --environment production --format pretty"
   },
   "dependencies": {
     "@nuxtjs/i18n": "^9.0.0",

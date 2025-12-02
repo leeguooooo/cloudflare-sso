@@ -21,13 +21,13 @@
 
 敏感信息应该在 Cloudflare Dashboard 中设置，而不是提交到 Git：
 
-1. 访问 Cloudflare Dashboard → Pages → `cf-nuxt-pages-kit`
+1. 访问 Cloudflare Dashboard → Pages → `cloudflare-sso`
 2. 进入 "Settings" → "Environment variables"
 3. 添加以下变量（Production 和 Preview 环境都需要）：
    - `JWT_PRIVATE_KEY`: 你的 JWT 私钥（PKCS8 格式，多行）
    - `PASSWORD_PEPPER`: 密码加密盐值
    - `RECORDING_JWT_SECRET`: 录制 JWT 密钥
-   - `JWT_ISSUER`: `https://cf-nuxt-pages-kit.pages.dev`
+   - `JWT_ISSUER`: `https://cloudflare-sso.pages.dev`
    - `JWT_KID`: `primary`
    - `CDN_BASE_URL`: CDN 基础 URL
    - `ACCESS_TOKEN_TTL_SECONDS`: `600`
@@ -60,7 +60,7 @@ database_id = "你的数据库ID"
 ## 5. 验证部署
 
 部署完成后，访问：
-- 测试环境: https://cf-nuxt-pages-kit.pages.dev
+- 测试环境: https://cloudflare-sso.pages.dev
 - 查看部署日志: GitHub Actions → 对应的工作流运行
 
 ## 安全建议

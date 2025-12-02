@@ -13,7 +13,7 @@
 
 ## 配置模板
 ```toml
-name = "cf-nuxt-pages-kit"
+name = "cloudflare-sso"
 compatibility_date = "2024-12-01"
 pages_build_output_dir = ".output/public"
 
