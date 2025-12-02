@@ -115,7 +115,8 @@ const pemToArrayBuffer = (pem: string) => {
 
 const stripPrivate = (jwk: JsonWebKey) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { d, p, q, dp, dq, qi, oth, ...rest } = jwk
+  const { d, p, q, dp, dq, qi, oth, key_ops, ...rest } = jwk
+  // Return public key without key_ops, let importKey set it based on usage
   return rest
 }
 

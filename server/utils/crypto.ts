@@ -1,6 +1,6 @@
 const textEncoder = new TextEncoder()
 
-const DEFAULT_PBKDF2_ITERATIONS = 120_000
+const DEFAULT_PBKDF2_ITERATIONS = 100_000
 const PBKDF2_HASH_BYTE_LENGTH = 32
 
 export const nowInSeconds = () => Math.floor(Date.now() / 1000)

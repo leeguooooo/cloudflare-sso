@@ -3,10 +3,10 @@ INSERT INTO tenants (id, name, domain) VALUES
   ('tenant-demo', 'Demo Tenant', 'demo.local');
 
 INSERT INTO users (id, tenant_id, email, password_hash, locale, mfa_enforced, status)
-VALUES ('user-demo', 'tenant-demo', 'demo@example.com', 'pbkdf2$120000$tRhzCnboEyWytzgFPXREJA$5hsynP4Tw_38-x_TmMwCPvPipkkHDlDivElJyasH__8', 'en', 0, 'active');
+VALUES ('user-demo', 'tenant-demo', 'demo@example.com', 'pbkdf2$100000$tRhzCnboEyWytzgFPXREJA$F6zQnlgmC_q3EVIAKTSGYpE8VlN2fDljnMQ85z5i6RI', 'en', 0, 'active');
 
 INSERT INTO credentials (id, user_id, type, secret, meta_json)
-VALUES ('cred-demo-password', 'user-demo', 'password', 'pbkdf2$120000$tRhzCnboEyWytzgFPXREJA$5hsynP4Tw_38-x_TmMwCPvPipkkHDlDivElJyasH__8', '{}');
+VALUES ('cred-demo-password', 'user-demo', 'password', 'pbkdf2$100000$tRhzCnboEyWytzgFPXREJA$F6zQnlgmC_q3EVIAKTSGYpE8VlN2fDljnMQ85z5i6RI', '{}');
 
 INSERT INTO clients (id, tenant_id, client_id, client_secret, name, redirect_uris, grant_types, scope, first_party)
 VALUES (
