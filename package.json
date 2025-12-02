@@ -14,8 +14,8 @@
     "wrangler:config:test": "node scripts/use-wrangler-config.mjs test",
     "wrangler:config:prod": "node scripts/use-wrangler-config.mjs prod",
     "deploy": "pnpm deploy:test",
-    "deploy:test": "pnpm wrangler:config:test && pnpm build && wrangler pages deploy .output/public",
-    "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy .output/public",
+    "deploy:test": "pnpm wrangler:config:test && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso",
+    "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso",
     "logs:test": "pnpm wrangler:config:test && wrangler pages deployment tail --project-name cloudflare-sso --environment preview --format pretty",
     "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cloudflare-sso --environment production --format pretty"
   },
