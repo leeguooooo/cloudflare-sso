@@ -4,6 +4,7 @@ const i18nConfigPath = fileURLToPath(new URL('./i18n.config.ts', import.meta.url
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-12-01',
+  css: ['~/assets/css/main.css'],
   ssr: false,
   pages: true,
   devtools: { enabled: true },

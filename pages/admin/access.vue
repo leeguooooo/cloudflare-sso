@@ -1,86 +1,113 @@
 <template>
-  <div class="page">
-    <div class="header">
-      <div>
-        <p class="eyebrow">{{ t('landing.eyebrow') }}</p>
-        <h1>{{ t('access.title') }}</h1>
-        <p class="subtext">{{ t('access.subtitle') }}</p>
-      </div>
-      <div class="inputs">
-        <input v-model="tenantId" :placeholder="t('access.tenant')" />
-        <input v-model="clientId" :placeholder="t('access.client')" />
-        <input v-model="userId" :placeholder="t('access.user')" />
-        <button class="btn" @click="loadSnapshot" :disabled="loading">{{ loading ? t('common.loading') : t('access.load') }}</button>
-      </div>
-    </div>
-
-    <div class="grid">
-      <section class="card">
-        <div class="card-header">
-          <h2>{{ t('access.roles') }}</h2>
-          <span class="badge">{{ roles.length }}</span>
+  <NuxtLayout name="default">
+    <div class="dashboard-page">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">{{ t('access.title') }}</h2>
+          <p class="page-subtitle">{{ t('access.subtitle') }}</p>
         </div>
-        <div class="role-list">
-          <div v-for="role in roles" :key="role.id" class="role-item">
-            <div>
-              <strong>{{ role.name }}</strong>
-              <p>{{ role.description }}</p>
+        <div class="header-controls">
+          <UiInput v-model="tenantId" :placeholder="t('access.tenant')" class="control-input" />
+          <UiInput v-model="clientId" :placeholder="t('access.client')" class="control-input" />
+          <UiInput v-model="userId" :placeholder="t('access.user')" class="control-input" />
+          <UiButton @click="loadSnapshot" :loading="loading">
+            {{ t('access.load') }}
+          </UiButton>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Roles Section -->
+        <section class="card">
+          <div class="card-header">
+            <h3>{{ t('access.roles') }}</h3>
+            <span class="badge">{{ roles.length }}</span>
+          </div>
+          <div class="card-body">
+            <div v-if="roles.length === 0" class="empty-state">
+              No roles found.
             </div>
-            <div class="tags">
-              <span v-for="perm in role.permissions" :key="perm" class="tag">{{ perm }}</span>
+            <div v-else class="role-list">
+              <div v-for="role in roles" :key="role.id" class="role-item">
+                <div class="role-content">
+                  <div class="role-header">
+                    <strong>{{ role.name }}</strong>
+                    <span class="role-id">ID: {{ role.id }}</span>
+                  </div>
+                  <p class="role-desc">{{ role.description }}</p>
+                </div>
+                <div class="role-perms">
+                  <span v-for="perm in role.permissions" :key="perm" class="perm-tag">{{ perm }}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="card">
-        <div class="card-header">
-          <h2>{{ t('access.permissions') }}</h2>
-          <span class="badge">{{ permissions.length }}</span>
-        </div>
-        <div class="tags">
-          <span v-for="perm in permissions" :key="perm" class="tag ghost">{{ perm }}</span>
-        </div>
-      </section>
+        <!-- Permissions Section -->
+        <section class="card">
+          <div class="card-header">
+            <h3>{{ t('access.permissions') }}</h3>
+            <span class="badge">{{ permissions.length }}</span>
+          </div>
+          <div class="card-body">
+            <div class="perm-cloud">
+              <span v-for="perm in permissions" :key="perm" class="perm-tag ghost">{{ perm }}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Create Role -->
+        <section class="card">
+          <div class="card-header">
+            <h3>{{ t('access.createRole') }}</h3>
+          </div>
+          <div class="card-body">
+            <form @submit.prevent="createRole" class="action-form">
+              <UiInput v-model="roleForm.name" :label="t('access.roleName')" required />
+              <UiInput v-model="roleForm.description" :label="t('access.roleDesc')" />
+              <div class="form-group">
+                <label class="form-label">{{ t('access.rolePerms') }}</label>
+                <textarea v-model="roleForm.permissions" class="form-textarea" rows="3" placeholder="read:users, write:users"></textarea>
+              </div>
+              <UiInput v-model="roleForm.clientIds" :label="t('access.client') + ' (comma separated IDs)'" />
+              <UiButton type="submit" :loading="loading" block>{{ t('access.saveRole') }}</UiButton>
+            </form>
+          </div>
+        </section>
+
+        <!-- Assignments -->
+        <section class="card">
+          <div class="card-header">
+            <h3>{{ t('access.assign') }}</h3>
+          </div>
+          <div class="card-body">
+            <form @submit.prevent="assignRole" class="action-form">
+              <UiInput v-model="assign.userId" :label="t('access.user')" required />
+              <UiInput v-model="assign.roleId" :label="t('access.roleName')" required />
+              <UiInput v-model="assign.clientId" :label="t('access.client') + ' (optional)'" />
+              <UiButton type="submit" :loading="loading" block>{{ t('access.assign') }}</UiButton>
+            </form>
+            
+            <div class="divider"></div>
+
+            <h4 class="sub-header">{{ t('access.bindRole') }}</h4>
+            <form @submit.prevent="bindRole" class="action-form">
+              <UiInput v-model="bind.clientId" :label="t('access.client')" required />
+              <UiInput v-model="bind.roleId" :label="t('access.roleName')" required />
+              <UiButton type="submit" :loading="loading" block>{{ t('access.bindRole') }}</UiButton>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="message" class="toast" :class="{ error: message.includes('Failed') }">
+        {{ message }}
+      </div>
     </div>
-
-    <div class="grid">
-      <section class="card">
-        <div class="card-header">
-          <h2>{{ t('access.createRole') }}</h2>
-        </div>
-        <form class="form" @submit.prevent="createRole">
-          <input v-model="roleForm.name" :placeholder="t('access.roleName')" required />
-          <input v-model="roleForm.description" :placeholder="t('access.roleDesc')" />
-          <textarea v-model="roleForm.permissions" :placeholder="t('access.rolePerms')" rows="3" />
-          <input v-model="roleForm.clientIds" :placeholder="t('access.client') + ' (comma separated IDs)'" />
-          <button class="btn" type="submit" :disabled="loading">{{ loading ? t('common.loading') : t('access.saveRole') }}</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <div class="card-header">
-          <h2>{{ t('access.assign') }}</h2>
-        </div>
-        <form class="form" @submit.prevent="assignRole">
-          <input v-model="assign.userId" :placeholder="t('access.user')" required />
-          <input v-model="assign.roleId" :placeholder="t('access.roleName')" required />
-          <input v-model="assign.clientId" :placeholder="t('access.client') + ' (optional)'" />
-          <button class="btn" type="submit" :disabled="loading">{{ loading ? t('common.loading') : t('access.assign') }}</button>
-        </form>
-        <div class="card-header mt">
-          <h2>{{ t('access.bindRole') }}</h2>
-        </div>
-        <form class="form" @submit.prevent="bindRole">
-          <input v-model="bind.clientId" :placeholder="t('access.client')" required />
-          <input v-model="bind.roleId" :placeholder="t('access.roleName')" required />
-          <button class="btn" type="submit" :disabled="loading">{{ loading ? t('common.loading') : t('access.bindRole') }}</button>
-        </form>
-      </section>
-    </div>
-
-    <div v-if="message" class="toast">{{ message }}</div>
-  </div>
+  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
@@ -112,6 +139,7 @@ const assign = reactive({
 const bind = reactive({
   clientId: '',
   roleId: '',
+  roleName: '', // Added to match template usage if needed, though not used in original
 })
 
 const loadSnapshot = async () => {
@@ -220,182 +248,220 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page {
-  min-height: 100vh;
-  padding: clamp(1.5rem, 3vw, 3rem);
-  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.18), transparent 30%),
-    radial-gradient(circle at 80% 10%, rgba(14, 165, 233, 0.15), transparent 30%),
-    linear-gradient(135deg, #05060a, #0a1020 60%, #05070d);
-  color: #e5e7eb;
-  display: grid;
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 1.5rem;
 }
 
-.header {
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.page-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.header-controls {
   display: flex;
-  flex-direction: column;
   gap: 0.75rem;
-}
-
-.eyebrow {
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-size: 0.82rem;
-  color: #c7d2fe;
-}
-
-h1 {
-  margin: 0.1rem 0;
-  font-size: clamp(1.9rem, 3vw, 2.6rem);
-}
-
-.subtext {
-  margin: 0;
-  color: #cbd5e1;
-  line-height: 1.6;
-}
-
-.inputs {
-  display: flex;
+  align-items: flex-start;
   flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
-.inputs input {
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e5e7eb;
-  min-width: 180px;
+.control-input {
+  width: 160px;
 }
 
-.btn {
-  padding: 0.95rem 1.2rem;
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(120deg, #6366f1, #0ea5e9);
-  color: #0b1020;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.grid {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 1.25rem;
-  display: grid;
-  gap: 0.75rem;
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.25);
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  align-items: center;
 }
 
-.card-header h2 {
+.card-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
   margin: 0;
 }
 
 .badge {
-  padding: 0.35rem 0.65rem;
-  border-radius: 10px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.5);
-  color: #c7d2fe;
-  font-weight: 700;
+  background-color: var(--color-primary-50);
+  color: var(--color-primary-700);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 1.25rem;
+  flex: 1;
 }
 
 .role-list {
-  display: grid;
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .role-item {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background-color: var(--color-neutral-50);
 }
 
-.role-item p {
-  margin: 0.15rem 0 0;
-  color: #cbd5e1;
+.role-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
 }
 
-.tags {
+.role-id {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  font-family: monospace;
+}
+
+.role-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.role-perms {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
+  gap: 0.5rem;
 }
 
-.tag {
-  padding: 0.35rem 0.65rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e5e7eb;
-  font-size: 0.9rem;
+.perm-tag {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  background-color: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
 }
 
-.tag.ghost {
-  background: rgba(255, 255, 255, 0.04);
+.perm-tag.ghost {
+  background-color: var(--color-neutral-100);
 }
 
-.form {
-  display: grid;
-  gap: 0.75rem;
+.perm-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.form input,
-.form textarea {
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e5e7eb;
+.action-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: var(--font-size-sm);
+  line-height: 1.25rem;
+  color: var(--color-text-primary);
+  background-color: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.form-textarea:focus {
   outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: 1.5rem 0;
+}
+
+.sub-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
 }
 
 .toast {
   position: fixed;
-  bottom: 16px;
-  right: 16px;
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(52, 211, 153, 0.4);
-  color: #bbf7d0;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  bottom: 2rem;
+  right: 2rem;
+  padding: 1rem;
+  background-color: var(--color-neutral-900);
+  color: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.875rem;
+  z-index: 50;
+  animation: slide-up 0.3s ease;
 }
 
-.mt {
-  margin-top: 0.5rem;
+.toast.error {
+  background-color: #ef4444;
 }
 
-@media (max-width: 720px) {
-  .inputs {
-    flex-direction: column;
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .header-controls {
+    width: 100%;
   }
-  .inputs input,
-  .inputs .btn {
+  .control-input {
     width: 100%;
   }
 }

@@ -1,46 +1,71 @@
 <template>
-  <div class="page">
-    <div class="card">
+  <NuxtLayout name="auth">
+    <div class="register-container">
       <div class="header">
-        <p class="eyebrow">{{ t('landing.eyebrow') }}</p>
+        <div class="logo">CF</div>
         <h1>{{ t('auth.registerTitle') }}</h1>
-        <p class="subtext">{{ t('auth.subtitle') }}</p>
+        <p class="subtitle">{{ t('auth.subtitle') }}</p>
       </div>
 
-      <form class="form" @submit.prevent="handleSubmit">
-        <label>
-          <span>{{ t('auth.email') }}</span>
-          <input v-model="form.email" type="email" autocomplete="email" required />
-        </label>
-        <label>
-          <span>{{ t('auth.password') }}</span>
-          <input v-model="form.password" type="password" autocomplete="new-password" required />
-        </label>
-        <label>
-          <span>{{ t('auth.tenant') }}</span>
-          <input v-model="form.tenantId" autocomplete="organization" />
-        </label>
-        <label>
-          <span>{{ t('auth.locale') }}</span>
-          <select v-model="form.locale">
-            <option value="en">English</option>
-            <option value="zh">简体中文</option>
-          </select>
-        </label>
+      <form @submit.prevent="handleSubmit" class="register-form">
+        <UiInput
+          v-model="form.email"
+          type="email"
+          :label="t('auth.email')"
+          autocomplete="email"
+          required
+          :disabled="loading"
+        />
+        
+        <UiInput
+          v-model="form.password"
+          type="password"
+          :label="t('auth.password')"
+          autocomplete="new-password"
+          required
+          :disabled="loading"
+        />
 
-        <button class="btn" type="submit" :disabled="loading">
-          {{ loading ? t('common.loading') : t('auth.submitRegister') }}
-        </button>
-        <NuxtLink class="muted" to="/login">{{ t('auth.toLogin') }}</NuxtLink>
+        <div class="form-row">
+          <UiInput
+            v-model="form.tenantId"
+            :label="t('auth.tenant')"
+            autocomplete="organization"
+            :disabled="loading"
+          />
+          
+          <div class="form-group">
+            <label class="form-label">{{ t('auth.locale') }}</label>
+            <div class="select-wrapper">
+              <select v-model="form.locale" class="form-select" :disabled="loading">
+                <option value="en">English</option>
+                <option value="zh">简体中文</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="message" class="alert" :class="{ 'alert-success': success, 'alert-error': !success }">
+          {{ message }}
+        </div>
+
+        <UiButton type="submit" :loading="loading" block>
+          {{ t('auth.submitRegister') }}
+        </UiButton>
+
+        <div class="form-footer">
+          <p>
+            Already have an account? 
+            <NuxtLink to="/login" class="link">{{ t('auth.toLogin') }}</NuxtLink>
+          </p>
+        </div>
       </form>
 
-      <div v-if="message" class="message" :class="{ success: success }">
-        {{ message }}
+      <div v-if="output" class="debug-tokens">
+        <pre>{{ JSON.stringify(output, null, 2) }}</pre>
       </div>
-
-      <pre v-if="output" class="token-box">{{ JSON.stringify(output, null, 2) }}</pre>
     </div>
-  </div>
+  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
@@ -86,159 +111,131 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background-color: #f1f5f9; /* Slate 100 */
-  color: #334155; /* Slate 700 */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-.card {
+.register-container {
   width: 100%;
-  max-width: 500px;
-  background: #ffffff; /* White */
-  border: 1px solid #e2e8f0; /* Slate 200 */
-  border-radius: 8px;
-  padding: 2.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .header {
-  margin-bottom: 2rem;
   text-align: center;
+  margin-bottom: 2rem;
 }
 
-.header h1 {
-  margin: 0.5rem 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #0f172a; /* Slate 900 */
-}
-
-.subtext {
-  color: #64748b; /* Slate 500 */
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.eyebrow {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #2563eb; /* Blue 600 */
-  font-weight: 600;
-  margin: 0;
-}
-
-.form {
+.logo {
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-primary-600);
+  color: white;
+  border-radius: var(--radius-lg);
   display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  margin: 0 auto 1.5rem;
+}
+
+h1 {
+  font-size: 1.875rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
   gap: 1.25rem;
 }
 
-label {
-  display: block;
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
-label span {
-  display: block;
-  font-size: 0.875rem;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label {
+  font-size: var(--font-size-sm);
   font-weight: 500;
-  color: #475569; /* Slate 600 */
+  color: var(--color-text-secondary);
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: var(--font-size-sm);
+  line-height: 1.25rem;
+  color: var(--color-text-primary);
+  background-color: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.form-footer {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.link {
+  color: var(--color-primary-600);
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.alert {
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   margin-bottom: 0.5rem;
 }
 
-input,
-select {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1; /* Slate 300 */
-  background: #ffffff;
-  color: #0f172a;
-  font-size: 0.95rem;
-  transition: border-color 0.15s ease;
-  box-sizing: border-box;
+.alert-error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fee2e2;
 }
 
-input:focus,
-select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px #2563eb;
+.alert-success {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #dcfce7;
 }
 
-.btn {
-  width: 100%;
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: none;
-  background: #2563eb; /* Blue 600 */
-  color: white;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.btn:hover:not(:disabled) {
-  background: #1d4ed8; /* Blue 700 */
-}
-
-.btn:disabled {
-  background: #e2e8f0;
-  color: #94a3b8;
-  cursor: not-allowed;
-}
-
-.muted {
-  display: inline-block;
-  text-align: center;
-  margin-top: 0.5rem;
-  color: #64748b;
-  font-size: 0.875rem;
-  text-decoration: none;
-}
-
-.muted:hover {
-  color: #475569;
-}
-
-.message {
-  margin-top: 1.5rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background: #fef2f2; /* Red 50 */
-  border: 1px solid #fee2e2; /* Red 200 */
-  color: #b91c1c; /* Red 700 */
-  font-size: 0.875rem;
-  text-align: center;
-}
-
-.message.success {
-  background: #f0fdf4; /* Green 50 */
-  border-color: #dcfce7; /* Green 200 */
-  color: #15803d; /* Green 700 */
-}
-
-.token-box {
-  margin-top: 1.5rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+.debug-tokens {
+  margin-top: 2rem;
   padding: 1rem;
-  color: #334155;
-  font-size: 0.8rem;
+  background-color: var(--color-neutral-100);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
   overflow-x: auto;
-}
-
-@media (max-width: 640px) {
-  .card {
-    padding: 1.5rem;
-  }
 }
 </style>
