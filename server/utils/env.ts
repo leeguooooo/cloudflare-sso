@@ -11,11 +11,16 @@ type EnvBindings = {
 }
 
 export const getEnv = (event: H3Event): EnvBindings => {
-  const env = (event.context.cloudflare?.env || process.env) as EnvBindings | undefined
-  if (!env) {
-    throw createError({ statusCode: 500, statusMessage: 'Missing Cloudflare env bindings' })
+  // Cloudflare Pages/Workers environment
+  const cloudflareEnv = event.context?.cloudflare?.env || (event as any).context?.env
+  if (cloudflareEnv) {
+    return cloudflareEnv as EnvBindings
   }
-  return env
+  // Fallback to process.env for local development
+  if (process.env) {
+    return process.env as EnvBindings
+  }
+  throw createError({ statusCode: 500, statusMessage: 'Missing Cloudflare env bindings' })
 }
 
 export const getDb = (event: H3Event) => {
