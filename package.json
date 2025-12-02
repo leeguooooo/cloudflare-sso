@@ -17,7 +17,9 @@
     "deploy:test": "pnpm wrangler:config:test && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso",
     "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso",
     "logs:test": "pnpm wrangler:config:test && wrangler pages deployment tail --project-name cloudflare-sso --environment preview --format pretty",
-    "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cloudflare-sso --environment production --format pretty"
+    "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cloudflare-sso --environment production --format pretty",
+    "setup:pages": "node scripts/setup-pages-config.mjs",
+    "setup:pages:sh": "./scripts/setup-pages.sh"
   },
   "dependencies": {
     "@nuxtjs/i18n": "^9.0.0",
