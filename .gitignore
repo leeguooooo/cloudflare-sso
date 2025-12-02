@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.output/
+.nuxt/
+.nitro/
+.cache/
+
+# Wrangler generated config (should not be committed)
+wrangler.toml
+
+# Wrangler account configs with sensitive data (use .example files instead)
+wrangler.account-test.toml
+wrangler.account-prod.toml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Wrangler state
+.wrangler/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

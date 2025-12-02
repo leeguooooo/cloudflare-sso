@@ -1,0 +1,13 @@
+DELETE FROM audit_logs;
+DELETE FROM email_tokens;
+DELETE FROM sessions;
+DELETE FROM auth_codes;
+DELETE FROM user_roles;
+DELETE FROM client_roles;
+DELETE FROM role_permissions;
+DELETE FROM permissions;
+DELETE FROM roles;
+DELETE FROM credentials;
+DELETE FROM users;
+DELETE FROM clients;
+DELETE FROM tenants;

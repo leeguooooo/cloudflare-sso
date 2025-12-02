@@ -1,0 +1,22 @@
+name = "cf-nuxt-pages-kit"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = ".output/public"
+
+[vars]
+CDN_BASE_URL = "https://cdn.example.com"
+RECORDING_JWT_SECRET = "test-secret-change-me"
+JWT_KID = "primary"
+JWT_ISSUER = "https://cf-nuxt-pages-kit.pages.dev"
+PASSWORD_PEPPER = "change-me"
+ACCESS_TOKEN_TTL_SECONDS = "600"
+REFRESH_TOKEN_TTL_SECONDS = "1209600"
+JWT_PRIVATE_KEY = """
+-----BEGIN PRIVATE KEY-----
+<replace-with-pkcs8-private-key>
+-----END PRIVATE KEY-----
+"""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cf-nuxt-pages-db"
+database_id = "00000000-0000-0000-0000-000000000000"
