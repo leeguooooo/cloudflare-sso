@@ -2,39 +2,42 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="logo">CF</div>
-        <span class="brand-name">SSO Admin</span>
+        <div class="logo">ID</div>
+        <span class="brand-name">Identity Hub</span>
       </div>
       <nav class="sidebar-nav">
-        <NuxtLink to="/" class="nav-item" active-class="active">
-          Dashboard
+        <NuxtLink to="/portal" class="nav-item" active-class="active">
+          Portal
         </NuxtLink>
-        <NuxtLink to="/apps" class="nav-item" active-class="active">
+        <NuxtLink to="/admin" class="nav-item" active-class="active">
+          Admin Home
+        </NuxtLink>
+        <NuxtLink to="/admin/access" class="nav-item" active-class="active">
+          Access Control
+        </NuxtLink>
+        <NuxtLink to="/admin/apps" class="nav-item" active-class="active">
           Applications
         </NuxtLink>
-        <NuxtLink to="/users" class="nav-item" active-class="active">
-          Users
-        </NuxtLink>
-        <NuxtLink to="/settings" class="nav-item" active-class="active">
-          Settings
+        <NuxtLink to="/admin/billing" class="nav-item" active-class="active">
+          Billing
         </NuxtLink>
       </nav>
       <div class="sidebar-footer">
         <div class="user-profile">
           <div class="avatar">U</div>
           <div class="user-info">
-            <span class="name">Admin User</span>
-            <span class="role">Administrator</span>
+            <span class="name">Workspace</span>
+            <span class="role">SSO Platform</span>
           </div>
         </div>
       </div>
     </aside>
     <main class="main-content">
       <header class="top-header">
-        <h1 class="page-title">Dashboard</h1>
+        <h1 class="page-title">{{ pageTitle }}</h1>
         <div class="header-actions">
-          <button class="btn-ghost">Help</button>
-          <button class="btn-ghost">Logout</button>
+          <NuxtLink to="/login" class="btn-ghost">Login</NuxtLink>
+          <NuxtLink to="/" class="btn-ghost">Home</NuxtLink>
         </div>
       </header>
       <div class="content-area">
@@ -43,6 +46,19 @@
     </main>
   </div>
 </template>
+
+<script setup lang="ts">
+const route = useRoute()
+
+const pageTitle = computed(() => {
+  if (route.path.startsWith('/admin/access')) return 'Admin - Access Control'
+  if (route.path.startsWith('/admin/apps')) return 'Admin - Applications'
+  if (route.path.startsWith('/admin/billing')) return 'Admin - Billing'
+  if (route.path.startsWith('/admin')) return 'Admin Console'
+  if (route.path.startsWith('/portal')) return 'User Portal'
+  return 'Identity Platform'
+})
+</script>
 
 <style scoped>
 .app-layout {
@@ -182,11 +198,10 @@
 }
 
 .btn-ghost {
-  background: none;
-  border: none;
+  border: 1px solid var(--color-border);
+  background: white;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
-  cursor: pointer;
   padding: 0.5rem;
   border-radius: var(--radius-md);
 }

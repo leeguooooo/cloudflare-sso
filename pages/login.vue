@@ -97,7 +97,7 @@ const handleSubmit = async () => {
     tokens.value = data as Record<string, unknown>
     message.value = t('auth.success')
     success.value = true
-    await navigateTo('/admin/access')
+    await navigateTo('/portal')
   } catch (err: any) {
     const detail = err?.data?.message || err?.message || 'Login failed'
     message.value = detail
