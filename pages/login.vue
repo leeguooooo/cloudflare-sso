@@ -62,20 +62,6 @@
               required
               :disabled="loading"
             />
-            <div class="inline-fields">
-              <UiInput
-                v-model="form.tenantId"
-                label="Tenant"
-                autocomplete="organization"
-                :disabled="loading"
-              />
-              <UiInput
-                v-model="form.clientId"
-                label="Client"
-                autocomplete="off"
-                :disabled="loading"
-              />
-            </div>
 
             <p v-if="message" class="message" :class="{ success }">{{ message }}</p>
 
@@ -133,8 +119,6 @@ const rememberedEmail = ref('')
 const form = reactive({
   email: 'demo@example.com',
   password: 'Passw0rd!',
-  tenantId: 'tenant-demo',
-  clientId: 'demo-web',
 })
 
 const rememberedName = computed(() => {
@@ -155,6 +139,21 @@ const resolveContinuePath = () => {
   if (!raw.startsWith('/')) return ''
   if (raw.startsWith('//')) return ''
   return raw
+}
+
+const resolveClientId = () => {
+  const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
+  if (queryClientId) return queryClientId
+
+  const continuePath = resolveContinuePath()
+  if (continuePath.startsWith('/authorize?')) {
+    const params = new URLSearchParams(continuePath.split('?')[1] || '')
+    const continueClientId = params.get('client_id') || ''
+    if (continueClientId) return continueClientId
+  }
+
+  const configuredDefault = typeof config.public.defaultClientId === 'string' ? config.public.defaultClientId.trim() : ''
+  return configuredDefault || 'demo-web'
 }
 
 const toggleForm = (open: boolean) => {
@@ -181,13 +180,17 @@ const handleSubmit = async () => {
   message.value = ''
   success.value = false
   try {
+    const clientId = resolveClientId()
+    if (!clientId) {
+      throw new Error('Missing client_id')
+    }
+
     const data = await $fetch(`${config.public.apiBase}/auth/login`, {
       method: 'POST',
       body: {
         email: form.email,
         password: form.password,
-        tenant_id: form.tenantId,
-        client_id: form.clientId,
+        client_id: clientId,
       },
     })
 
@@ -214,24 +217,6 @@ const handleSubmit = async () => {
 onMounted(() => {
   if (!process.client) return
   rememberedEmail.value = localStorage.getItem('sso_last_email') || ''
-
-  const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
-  if (queryClientId) {
-    form.clientId = queryClientId
-  }
-  const queryTenantId = typeof route.query.tenant_id === 'string' ? route.query.tenant_id.trim() : ''
-  if (queryTenantId) {
-    form.tenantId = queryTenantId
-  }
-
-  const continuePath = resolveContinuePath()
-  if (continuePath.startsWith('/authorize?')) {
-    const params = new URLSearchParams(continuePath.split('?')[1] || '')
-    const continueClientId = params.get('client_id') || ''
-    if (continueClientId) {
-      form.clientId = continueClientId
-    }
-  }
 
   if (!rememberedEmail.value) {
     showForm.value = true
@@ -384,12 +369,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.inline-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
 }
 
 .form-actions {

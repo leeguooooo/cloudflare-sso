@@ -24,26 +24,17 @@
         :disabled="loading"
       />
 
-      <div class="form-row">
-        <UiInput
-          v-model="form.tenantId"
-          label="Tenant ID"
-          autocomplete="organization"
-          :disabled="loading"
-        />
-
-        <div class="form-group">
-          <label class="form-label">Language</label>
-          <div class="select-wrapper">
-            <select v-model="form.locale" class="form-select" :disabled="loading">
-              <option value="en">English (US)</option>
-              <option value="zh">简体中文</option>
-            </select>
-            <div class="select-icon">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7 10l5 5 5-5z" />
-              </svg>
-            </div>
+      <div class="form-group">
+        <label class="form-label">Language</label>
+        <div class="select-wrapper">
+          <select v-model="form.locale" class="form-select" :disabled="loading">
+            <option value="en">English (US)</option>
+            <option value="zh">简体中文</option>
+          </select>
+          <div class="select-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
           </div>
         </div>
       </div>
@@ -74,6 +65,7 @@ definePageMeta({
 })
 
 const config = useRuntimeConfig()
+const route = useRoute()
 const loading = ref(false)
 const message = ref('')
 const success = ref(false)
@@ -82,21 +74,40 @@ const output = ref<Record<string, unknown> | null>(null)
 const form = reactive({
   email: 'demo@example.com',
   password: 'Passw0rd!',
-  tenantId: 'tenant-demo',
   locale: 'en',
 })
+
+const resolveClientId = () => {
+  const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
+  if (queryClientId) return queryClientId
+
+  const continuePath = typeof route.query.continue === 'string' ? route.query.continue : ''
+  if (continuePath.startsWith('/authorize?')) {
+    const params = new URLSearchParams(continuePath.split('?')[1] || '')
+    const continueClientId = params.get('client_id') || ''
+    if (continueClientId) return continueClientId
+  }
+
+  const configuredDefault = typeof config.public.defaultClientId === 'string' ? config.public.defaultClientId.trim() : ''
+  return configuredDefault || 'demo-web'
+}
 
 const handleSubmit = async () => {
   loading.value = true
   message.value = ''
   success.value = false
   try {
+    const clientId = resolveClientId()
+    if (!clientId) {
+      throw new Error('Missing client_id')
+    }
+
     const data = await $fetch(`${config.public.apiBase}/auth/register`, {
       method: 'POST',
       body: {
         email: form.email,
         password: form.password,
-        tenant_id: form.tenantId,
+        client_id: clientId,
         locale: form.locale,
       },
     })
@@ -144,12 +155,6 @@ const handleSubmit = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
 }
 
 .form-group {

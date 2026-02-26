@@ -38,6 +38,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: '/api',
+      defaultClientId: 'demo-web',
       oidcIssuer: '',
       turnstileSiteKey: '',
     },
