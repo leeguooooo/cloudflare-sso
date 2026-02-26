@@ -1,25 +1,17 @@
 <template>
   <div class="auth-layout">
     <div class="auth-container">
-      <UiCard
-        class="auth-card"
-        :style="{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          minHeight: '500px',
-          overflow: 'hidden',
-          padding: '0',
-          gap: '0',
-        }"
-      >
-        <div class="auth-card-content">
-          <slot />
-        </div>
-        <div class="auth-visual">
-          <div class="visual-content">
-            <UiLogo size="lg" mode="icon" />
-            <h2>One account. All of leeguoo Identity working for you.</h2>
-            <p>Securely access all your applications with a single identity.</p>
+      <UiCard class="auth-card">
+        <div class="auth-card-grid">
+          <div class="auth-card-content">
+            <slot />
+          </div>
+          <div class="auth-visual">
+            <div class="visual-content">
+              <UiLogo size="lg" mode="icon" />
+              <h2>One account. All of leeguoo Identity working for you.</h2>
+              <p>Securely access all your applications with a single identity.</p>
+            </div>
           </div>
         </div>
       </UiCard>
@@ -54,6 +46,13 @@
 
 .auth-card {
   border-radius: 28px;
+  overflow: hidden;
+}
+
+.auth-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 500px;
   overflow: hidden;
 }
 
@@ -123,7 +122,7 @@
 }
 
 @media (max-width: 900px) {
-  .auth-card {
+  .auth-card-grid {
     grid-template-columns: 1fr;
     min-height: auto;
   }
