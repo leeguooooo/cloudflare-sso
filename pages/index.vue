@@ -1,45 +1,49 @@
 <template>
-  <NuxtLayout name="auth">
-    <div class="landing">
-      <div class="hero">
-        <UiLogo size="lg" mode="full" />
-        <p>One account. All of leeguoo Identity working for you.</p>
-      </div>
-
-      <div class="actions">
-        <NuxtLink class="action-card" to="/account">
-          <div class="card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21a8 8 0 1 0-16 0" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </div>
-          <div class="card-content">
-            <h2>Account Center</h2>
-            <p>Manage your login, security, and personal info in one place.</p>
-          </div>
-        </NuxtLink>
-        <NuxtLink class="action-card" to="/admin">
-          <div class="card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <path d="M12 8v8M8 12h8" />
-            </svg>
-          </div>
-          <div class="card-content">
-            <h2>Admin Console</h2>
-            <p>Configure clients, roles, and manage billing entitlements.</p>
-          </div>
-        </NuxtLink>
-      </div>
-
-      <div class="auth-cta">
-        <UiButton variant="primary" to="/login">Sign in</UiButton>
-        <UiButton variant="ghost" to="/register">Create account</UiButton>
-      </div>
+  <div class="landing">
+    <div class="hero">
+      <UiLogo size="lg" mode="full" />
+      <p>One account. All of leeguoo Identity working for you.</p>
     </div>
-  </NuxtLayout>
+
+    <div class="actions">
+      <NuxtLink class="action-card" to="/account">
+        <div class="card-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21a8 8 0 1 0-16 0" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+        <div class="card-content">
+          <h2>Account Center</h2>
+          <p>Manage your login, security, and personal info in one place.</p>
+        </div>
+      </NuxtLink>
+      <NuxtLink class="action-card" to="/admin">
+        <div class="card-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
+        </div>
+        <div class="card-content">
+          <h2>Admin Console</h2>
+          <p>Configure clients, roles, and manage billing entitlements.</p>
+        </div>
+      </NuxtLink>
+    </div>
+
+    <div class="auth-cta">
+      <UiButton variant="primary" to="/login">Sign in</UiButton>
+      <UiButton variant="ghost" to="/register">Create account</UiButton>
+    </div>
+  </div>
 </template>
+
+<script setup lang="ts">
+definePageMeta({
+  layout: 'auth',
+})
+</script>
 
 <style scoped>
 .landing {

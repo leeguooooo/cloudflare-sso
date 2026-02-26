@@ -1,74 +1,119 @@
 <template>
-  <NuxtLayout name="auth">
-    <div class="register-container">
-      <div class="header">
-        <h1>Create an Identity Account</h1>
-        <p class="subtitle">Enter your details to get started</p>
-      </div>
+  <div class="register-container">
+    <div class="header">
+      <h1>Create an Identity Account</h1>
+      <p class="subtitle">Enter your details to get started</p>
+    </div>
 
-      <form @submit.prevent="handleSubmit" class="register-form">
+    <form @submit.prevent="handleSubmit" class="register-form">
+      <UiInput
+        v-model="form.email"
+        type="email"
+        label="Email address"
+        autocomplete="email"
+        required
+        :disabled="loading"
+      />
+
+      <UiInput
+        v-model="form.password"
+        type="password"
+        label="Password"
+        autocomplete="new-password"
+        required
+        :disabled="loading"
+      />
+
+      <div class="form-row">
         <UiInput
-          v-model="form.email"
-          type="email"
-          label="Email address"
-          autocomplete="email"
-          required
+          v-model="form.tenantId"
+          label="Tenant ID"
+          autocomplete="organization"
           :disabled="loading"
         />
-        
-        <UiInput
-          v-model="form.password"
-          type="password"
-          label="Password"
-          autocomplete="new-password"
-          required
-          :disabled="loading"
-        />
 
-        <div class="form-row">
-          <UiInput
-            v-model="form.tenantId"
-            label="Tenant ID"
-            autocomplete="organization"
-            :disabled="loading"
-          />
-          
-          <div class="form-group">
-            <label class="form-label">Language</label>
-            <div class="select-wrapper">
-              <select v-model="form.locale" class="form-select" :disabled="loading">
-                <option value="en">English (US)</option>
-                <option value="zh">简体中文</option>
-              </select>
-              <div class="select-icon">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M7 10l5 5 5-5z" />
-                </svg>
-              </div>
+        <div class="form-group">
+          <label class="form-label">Language</label>
+          <div class="select-wrapper">
+            <select v-model="form.locale" class="form-select" :disabled="loading">
+              <option value="en">English (US)</option>
+              <option value="zh">简体中文</option>
+            </select>
+            <div class="select-icon">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 10l5 5 5-5z" />
+              </svg>
             </div>
           </div>
         </div>
-
-        <div v-if="message" class="alert" :class="{ 'alert-success': success, 'alert-error': !success }">
-          {{ message }}
-        </div>
-
-        <div class="form-actions">
-          <NuxtLink to="/login" class="btn-link">
-            Sign in instead
-          </NuxtLink>
-          <UiButton type="submit" variant="primary" :loading="loading">
-            Next
-          </UiButton>
-        </div>
-      </form>
-
-      <div v-if="output" class="debug-tokens">
-        <pre>{{ JSON.stringify(output, null, 2) }}</pre>
       </div>
+
+      <div v-if="message" class="alert" :class="{ 'alert-success': success, 'alert-error': !success }">
+        {{ message }}
+      </div>
+
+      <div class="form-actions">
+        <NuxtLink to="/login" class="btn-link">
+          Sign in instead
+        </NuxtLink>
+        <UiButton type="submit" variant="primary" :loading="loading">
+          Next
+        </UiButton>
+      </div>
+    </form>
+
+    <div v-if="output" class="debug-tokens">
+      <pre>{{ JSON.stringify(output, null, 2) }}</pre>
     </div>
-  </NuxtLayout>
+  </div>
 </template>
+
+<script setup lang="ts">
+definePageMeta({
+  layout: 'auth',
+})
+
+const config = useRuntimeConfig()
+const loading = ref(false)
+const message = ref('')
+const success = ref(false)
+const output = ref<Record<string, unknown> | null>(null)
+
+const form = reactive({
+  email: 'demo@example.com',
+  password: 'Passw0rd!',
+  tenantId: 'tenant-demo',
+  locale: 'en',
+})
+
+const handleSubmit = async () => {
+  loading.value = true
+  message.value = ''
+  success.value = false
+  try {
+    const data = await $fetch(`${config.public.apiBase}/auth/register`, {
+      method: 'POST',
+      body: {
+        email: form.email,
+        password: form.password,
+        tenant_id: form.tenantId,
+        locale: form.locale,
+      },
+    })
+    output.value = data as Record<string, unknown>
+    message.value = 'Account created successfully. You can now sign in.'
+    success.value = true
+    if (process.client) {
+      localStorage.setItem('sso_last_email', form.email)
+    }
+  } catch (err: any) {
+    const detail = err?.data?.message || err?.message || 'Registration failed'
+    message.value = detail
+  } finally {
+    loading.value = false
+  }
+}
+</script>
 
 <style scoped>
 .register-container {

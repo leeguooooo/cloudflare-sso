@@ -1,15 +1,55 @@
 <template>
-  <button
+  <NuxtLink
+    v-if="props.to"
     :class="[
       'btn',
-      `btn-${variant}`,
-      { 'btn-loading': loading },
-      { 'btn-block': block }
+      `btn-${props.variant}`,
+      { 'btn-loading': props.loading },
+      { 'btn-block': props.block }
     ]"
-    :disabled="disabled || loading"
+    v-bind="$attrs"
+    :to="props.to"
+    :aria-disabled="props.disabled || props.loading ? 'true' : undefined"
+    :tabindex="props.disabled || props.loading ? -1 : undefined"
+    @click="handleLinkClick"
+  >
+    <span v-if="props.loading" class="spinner"></span>
+    <span v-else>
+      <slot />
+    </span>
+  </NuxtLink>
+  <a
+    v-else-if="props.href"
+    :class="[
+      'btn',
+      `btn-${props.variant}`,
+      { 'btn-loading': props.loading },
+      { 'btn-block': props.block }
+    ]"
+    v-bind="$attrs"
+    :href="props.href"
+    :aria-disabled="props.disabled || props.loading ? 'true' : undefined"
+    :tabindex="props.disabled || props.loading ? -1 : undefined"
+    @click="handleLinkClick"
+  >
+    <span v-if="props.loading" class="spinner"></span>
+    <span v-else>
+      <slot />
+    </span>
+  </a>
+  <button
+    v-else
+    :class="[
+      'btn',
+      `btn-${props.variant}`,
+      { 'btn-loading': props.loading },
+      { 'btn-block': props.block }
+    ]"
+    :type="props.type"
+    :disabled="props.disabled || props.loading"
     v-bind="$attrs"
   >
-    <span v-if="loading" class="spinner"></span>
+    <span v-if="props.loading" class="spinner"></span>
     <span v-else>
       <slot />
     </span>
@@ -17,7 +57,11 @@
 </template>
 
 <script setup lang="ts">
-defineProps({
+import type { PropType } from 'vue'
+
+type ButtonType = 'button' | 'submit' | 'reset'
+
+const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
@@ -34,8 +78,26 @@ defineProps({
   block: {
     type: Boolean,
     default: false
+  },
+  to: {
+    type: String,
+    default: ''
+  },
+  href: {
+    type: String,
+    default: ''
+  },
+  type: {
+    type: String as PropType<ButtonType>,
+    default: 'button'
   }
 })
+
+const handleLinkClick = (event: MouseEvent) => {
+  if (!props.loading && !props.disabled) return
+  event.preventDefault()
+  event.stopPropagation()
+}
 </script>
 
 <style scoped>
@@ -62,6 +124,12 @@ defineProps({
 }
 
 .btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn[aria-disabled='true'] {
   opacity: 0.38;
   cursor: not-allowed;
   pointer-events: none;
