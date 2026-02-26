@@ -7,10 +7,7 @@
       </div>
       <div class="header-controls">
         <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
-        <label class="checkbox-control">
-          <input v-model="includeDisabled" type="checkbox" />
-          <span>Show disabled</span>
-        </label>
+        <UiCheckbox v-model="includeDisabled" label="Show disabled" class="checkbox-control" />
         <UiButton variant="ghost" @click="loadClients" :loading="loading">
           Refresh
         </UiButton>
@@ -203,55 +200,6 @@
   padding-bottom: 4px;
 }
 
-.admin-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-  gap: 24px;
-}
-
-.info-card {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-}
-
-.wide-card {
-  grid-column: span 2;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.card-header h3 {
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: #1f1f1f;
-  margin: 0;
-}
-
-.badge {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  padding: 2px 12px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.card-desc {
-  font-size: 0.875rem;
-  color: #444746;
-  line-height: 1.5rem;
-  margin-bottom: 24px;
-}
-
 .bootstrap-actions {
   display: flex;
   gap: 12px;
@@ -286,84 +234,12 @@
   gap: 24px;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.table-container {
-  overflow-x: auto;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.admin-table th {
-  text-align: left;
-  padding: 12px 16px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dadce0;
-  color: #5f6368;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.admin-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f4;
-  color: #1f1f1f;
-  vertical-align: middle;
-}
-
 .font-medium { font-weight: 500; }
 .text-xs { font-size: 0.75rem; }
 .text-danger { color: #d93025; }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-badge.active { background-color: #e6f4ea; color: #137333; }
-.status-badge.disabled { background-color: #fce8e6; color: #d93025; }
-
 .table-input {
   min-width: 120px;
-}
-
-.table-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.empty-row {
-  text-align: center;
-  color: #5f6368;
-  padding: 32px !important;
-}
-
-.error-banner {
-  background-color: #fce8e6;
-  color: #d93025;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 0.875rem;
 }
 
 @media (max-width: 900px) {
@@ -371,12 +247,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
-  }
-  .wide-card {
-    grid-column: span 1;
-  }
-  .form-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>
@@ -629,167 +499,3 @@ onMounted(() => {
   loadClients()
 })
 </script>
-
-<style scoped>
-.apps-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.toolbar {
-  display: flex;
-  align-items: end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.toolbar label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.checkbox {
-  flex-direction: row !important;
-  align-items: center;
-  gap: 0.45rem !important;
-  padding-bottom: 0.4rem;
-}
-
-.field {
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  min-width: 180px;
-}
-
-.field.compact {
-  min-width: 0;
-  width: 100%;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-danger {
-  border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.btn-primary {
-  border-color: var(--color-primary-600);
-  background: var(--color-primary-600);
-  color: white;
-}
-
-.btn-secondary {
-  border-color: var(--color-border);
-  background: white;
-  color: var(--color-text-primary);
-}
-
-.btn-danger {
-  border-color: #b3261e;
-  background: #b3261e;
-  color: white;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.55rem;
-  font-size: 0.75rem;
-}
-
-.card {
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-}
-
-.card h2 {
-  margin-bottom: 0.5rem;
-}
-
-.muted {
-  color: var(--color-text-secondary);
-}
-
-.error {
-  color: #b3261e;
-  margin-bottom: 0.5rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.form-grid label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.75rem;
-  font-size: 0.82rem;
-}
-
-.table th,
-.table td {
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-  padding: 0.625rem;
-  vertical-align: top;
-}
-
-.small {
-  max-width: 260px;
-  word-break: break-all;
-}
-
-.actions {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
-}
-
-.badge.active {
-  background: #e8f5e9;
-  color: #137333;
-}
-
-.badge.disabled {
-  background: #fce8e6;
-  color: #b3261e;
-}
-
-@media (max-width: 1080px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 860px) {
-  .table {
-    font-size: 0.75rem;
-  }
-}
-</style>

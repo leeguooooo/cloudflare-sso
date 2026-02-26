@@ -68,10 +68,12 @@
             <form @submit.prevent="createRole" class="action-form">
               <UiInput v-model="roleForm.name" :label="t('access.roleName')" required />
               <UiInput v-model="roleForm.description" :label="t('access.roleDesc')" />
-              <div class="form-group">
-                <label class="form-label">{{ t('access.rolePerms') }}</label>
-                <textarea v-model="roleForm.permissions" class="form-textarea" rows="3" placeholder="read:users, write:users"></textarea>
-              </div>
+              <UiTextarea
+                v-model="roleForm.permissions"
+                :label="t('access.rolePerms')"
+                :rows="3"
+                placeholder="read:users, write:users"
+              />
               <UiInput v-model="roleForm.clientIds" :label="t('access.client') + ' (comma separated IDs)'" />
               <UiButton type="submit" :loading="loading" block>{{ t('access.saveRole') }}</UiButton>
             </form>

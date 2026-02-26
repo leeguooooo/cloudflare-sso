@@ -7,10 +7,7 @@
       </div>
       <div class="header-controls">
         <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
-        <label class="checkbox-control">
-          <input v-model="includeArchived" type="checkbox" />
-          <span>Show archived</span>
-        </label>
+        <UiCheckbox v-model="includeArchived" label="Show archived" class="checkbox-control" />
         <UiButton variant="ghost" @click="loadCatalog" :loading="loading">
           Refresh
         </UiButton>
@@ -46,36 +43,20 @@
         <p class="card-desc">Define pricing, billing cycle, and entitlements for an existing product.</p>
         <form @submit.prevent="createPlanAction" class="admin-form">
           <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Product</label>
-              <div class="select-wrapper">
-                <select v-model="createPlan.product_id" class="form-select" required>
-                  <option value="">Select product</option>
-                  <option v-for="product in products" :key="product.id" :value="product.id">
-                    {{ product.product_key }} ({{ product.name }})
-                  </option>
-                </select>
-                <div class="select-icon">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
-                </div>
-              </div>
-            </div>
+            <UiSelect v-model="createPlan.product_id" class="form-select" label="Product" required>
+              <option value="">Select product</option>
+              <option v-for="product in products" :key="product.id" :value="product.id">
+                {{ product.product_key }} ({{ product.name }})
+              </option>
+            </UiSelect>
             <UiInput v-model="createPlan.plan_key" label="Plan Key" placeholder="paste-monthly" required />
             <UiInput v-model="createPlan.name" label="Name" placeholder="Paste Monthly" required />
-            <div class="form-group">
-              <label class="form-label">Billing Cycle</label>
-              <div class="select-wrapper">
-                <select v-model="createPlan.billing_cycle" class="form-select">
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                  <option value="one_time">One-time</option>
-                  <option value="custom">Custom</option>
-                </select>
-                <div class="select-icon">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
-                </div>
-              </div>
-            </div>
+            <UiSelect v-model="createPlan.billing_cycle" class="form-select" label="Billing Cycle">
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+              <option value="one_time">One-time</option>
+              <option value="custom">Custom</option>
+            </UiSelect>
             <UiInput v-model="createPlan.currency" label="Currency" placeholder="USD" required />
             <UiInput v-model.number="createPlan.amount_minor" label="Amount (minor)" type="number" required />
             <UiInput v-model.number="createPlan.trial_days" label="Trial Days" type="number" />
@@ -176,24 +157,20 @@
                   <span v-else>{{ plan.plan_key }}</span>
                 </td>
                 <td>
-                  <div v-if="editingPlanId === plan.id" class="select-wrapper">
-                    <select v-model="editPlan.product_id" class="form-select table-input">
+                  <UiSelect v-if="editingPlanId === plan.id" v-model="editPlan.product_id" class="table-input">
                       <option v-for="product in products" :key="product.id" :value="product.id">
                         {{ product.product_key }}
                       </option>
-                    </select>
-                  </div>
+                  </UiSelect>
                   <span v-else>{{ productKeyById(plan.product_id) }}</span>
                 </td>
                 <td>
-                  <div v-if="editingPlanId === plan.id" class="select-wrapper">
-                    <select v-model="editPlan.billing_cycle" class="form-select table-input">
+                  <UiSelect v-if="editingPlanId === plan.id" v-model="editPlan.billing_cycle" class="table-input">
                       <option value="monthly">Monthly</option>
                       <option value="yearly">Yearly</option>
                       <option value="one_time">One-time</option>
                       <option value="custom">Custom</option>
-                    </select>
-                  </div>
+                  </UiSelect>
                   <span v-else>{{ plan.billing_cycle }}</span>
                 </td>
                 <td>
@@ -288,163 +265,15 @@
   padding-bottom: 4px;
 }
 
-.admin-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-  gap: 24px;
-}
-
-.info-card {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-}
-
-.wide-card {
-  grid-column: span 2;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.card-header h3 {
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: #1f1f1f;
-  margin: 0;
-}
-
-.badge {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  padding: 2px 12px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.card-desc {
-  font-size: 0.875rem;
-  color: #444746;
-  line-height: 1.5rem;
-  margin-bottom: 24px;
-}
-
 .admin-form {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.form-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #1f1f1f;
-  margin-left: 4px;
-}
-
-.select-wrapper {
-  position: relative;
-  height: 3rem;
-}
-
-.form-select {
-  width: 100%;
-  height: 100%;
-  padding: 0 2rem 0 0.875rem;
-  font-size: 1rem;
-  color: #1f1f1f;
-  background-color: white;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  transition: border-color 0.2s;
-  appearance: none;
-  cursor: pointer;
-}
-
-.form-select:focus {
-  outline: none;
-  border: 2px solid #1a73e8;
-  padding: 0 1.9375rem 0 0.8125rem;
-}
-
-.select-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: #5f6368;
-}
-
-.table-container {
-  overflow-x: auto;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.admin-table th {
-  text-align: left;
-  padding: 12px 16px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dadce0;
-  color: #5f6368;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.admin-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f4;
-  color: #1f1f1f;
-  vertical-align: middle;
-}
-
 .font-medium { font-weight: 500; }
 .text-xs { font-size: 0.75rem; }
 .text-danger { color: #d93025; }
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-badge.active { background-color: #e6f4ea; color: #137333; }
-.status-badge.archived { background-color: #fce8e6; color: #d93025; }
 
 .table-input {
   min-width: 120px;
@@ -458,37 +287,11 @@
   gap: 8px;
 }
 
-.table-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.empty-row {
-  text-align: center;
-  color: #5f6368;
-  padding: 32px !important;
-}
-
-.error-banner {
-  background-color: #fce8e6;
-  color: #d93025;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 0.875rem;
-}
-
 @media (max-width: 900px) {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
-  }
-  .wide-card {
-    grid-column: span 1;
-  }
-  .form-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>
@@ -807,176 +610,3 @@ onMounted(() => {
   loadCatalog()
 })
 </script>
-
-<style scoped>
-.billing-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.toolbar {
-  display: flex;
-  align-items: end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.toolbar label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.checkbox {
-  flex-direction: row !important;
-  align-items: center;
-  gap: 0.45rem !important;
-  padding-bottom: 0.4rem;
-}
-
-.card {
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-}
-
-.card h2,
-.card h3 {
-  margin-bottom: 0.5rem;
-}
-
-.muted {
-  color: var(--color-text-secondary);
-}
-
-.error {
-  margin-top: 0.5rem;
-  color: #b3261e;
-}
-
-.field {
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  min-width: 180px;
-}
-
-.field.compact {
-  min-width: 0;
-  width: 100%;
-}
-
-.field.xs {
-  width: 80px;
-}
-
-.field.sm {
-  width: 120px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.form-grid label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.75rem;
-  font-size: 0.82rem;
-}
-
-.table th,
-.table td {
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-  padding: 0.625rem;
-  vertical-align: top;
-}
-
-.actions {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.inline-fields {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-danger {
-  border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.btn-primary {
-  border-color: var(--color-primary-600);
-  background: var(--color-primary-600);
-  color: white;
-}
-
-.btn-secondary {
-  border-color: var(--color-border);
-  background: white;
-  color: var(--color-text-primary);
-}
-
-.btn-danger {
-  border-color: #b3261e;
-  background: #b3261e;
-  color: white;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.55rem;
-  font-size: 0.75rem;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
-}
-
-.badge.active {
-  background: #e8f5e9;
-  color: #137333;
-}
-
-.badge.archived {
-  background: #fce8e6;
-  color: #b3261e;
-}
-
-@media (max-width: 1080px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px) {
-  .table {
-    font-size: 0.74rem;
-  }
-}
-</style>

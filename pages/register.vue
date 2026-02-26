@@ -6,15 +6,15 @@
     </div>
 
     <div class="oauth-section">
-      <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialSignup('google')">
+      <UiButton unstyled class="oauth-btn" type="button" :disabled="loading" @click="startSocialSignup('google')">
         Continue with Google
-      </button>
-      <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialSignup('github')">
+      </UiButton>
+      <UiButton unstyled class="oauth-btn" type="button" :disabled="loading" @click="startSocialSignup('github')">
         Continue with GitHub
-      </button>
-      <button class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
+      </UiButton>
+      <UiButton unstyled class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
         WeChat (planned)
-      </button>
+      </UiButton>
     </div>
 
     <div class="oauth-divider">Or create with email</div>
@@ -68,8 +68,8 @@ const success = ref(false)
 type SocialProvider = 'google' | 'github'
 
 const form = reactive({
-  email: 'demo@example.com',
-  password: 'Passw0rd!',
+  email: '',
+  password: '',
 })
 
 const resolveContinuePath = () => {
@@ -191,11 +191,11 @@ const startSocialSignup = (provider: SocialProvider) => {
   font-weight: 400;
   line-height: 2.75rem;
   margin-bottom: 8px;
-  color: #1f1f1f;
+  color: var(--color-text-primary);
 }
 
 .subtitle {
-  color: #444746;
+  color: var(--color-text-secondary);
   font-size: 1rem;
   line-height: 1.5rem;
 }
@@ -210,10 +210,10 @@ const startSocialSignup = (provider: SocialProvider) => {
 .oauth-btn {
   min-width: 170px;
   height: 42px;
-  border: 1px solid #dadce0;
-  border-radius: 999px;
-  background: #fff;
-  color: #1f1f1f;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -222,7 +222,7 @@ const startSocialSignup = (provider: SocialProvider) => {
 }
 
 .oauth-btn:hover:not(:disabled) {
-  background: #f7f9fc;
+  background: var(--color-primary-50);
 }
 
 .oauth-btn-disabled {
@@ -232,7 +232,7 @@ const startSocialSignup = (provider: SocialProvider) => {
 
 .oauth-divider {
   margin-bottom: 12px;
-  color: #5f6368;
+  color: var(--color-text-secondary);
   font-size: 0.8125rem;
 }
 
@@ -260,12 +260,12 @@ const startSocialSignup = (provider: SocialProvider) => {
 }
 
 .btn-link:hover {
-  background-color: #f7f9fc;
+  background-color: var(--color-primary-50);
 }
 
 .alert {
   padding: 0.75rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   margin-top: 8px;
 }

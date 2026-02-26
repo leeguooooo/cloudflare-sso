@@ -1,10 +1,10 @@
 <template>
   <div class="account-shell">
     <header class="topbar">
-      <div class="brand">Cloudflare 账号</div>
+      <div class="brand">leeguoo 账号</div>
       <div class="top-actions">
-        <button class="icon-btn" aria-label="help">?</button>
-        <button class="icon-btn" aria-label="apps">⋮</button>
+        <UiButton unstyled type="button" class="icon-btn" aria-label="help">?</UiButton>
+        <UiButton unstyled type="button" class="icon-btn" aria-label="apps">⋮</UiButton>
         <div class="mini-avatar">{{ initials }}</div>
       </div>
     </header>
@@ -14,16 +14,18 @@
 
     <div v-else class="body-wrap">
       <aside class="left-nav">
-        <button
+        <UiButton
           v-for="item in navItems"
           :key="item.key"
+          unstyled
+          type="button"
           class="nav-pill"
           :class="{ active: activeNav === item.key }"
           @click="activeNav = item.key"
         >
           <span class="pill-icon" :style="{ backgroundColor: item.color }">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
-        </button>
+        </UiButton>
       </aside>
 
       <main class="center-panel">
@@ -38,16 +40,15 @@
 
         <div class="search-wrap fade-in delay-1">
           <span class="search-icon">⌕</span>
-          <input
+          <UiInput
             v-model="searchText"
-            class="search-input"
-            type="text"
-            placeholder="搜索 Cloudflare 账号"
+            class="search-input-field"
+            placeholder="搜索 leeguoo 账号"
           />
         </div>
 
         <div class="quick-actions fade-in delay-2">
-          <button v-for="action in quickActions" :key="action" class="chip">{{ action }}</button>
+          <UiButton unstyled type="button" v-for="action in quickActions" :key="action" class="chip">{{ action }}</UiButton>
         </div>
 
         <section class="summary-card fade-in delay-3">
@@ -72,7 +73,7 @@
       <a href="#">条款</a>
       <a href="#">帮助</a>
       <a href="#">关于</a>
-      <button class="logout-btn" @click="logout">退出登录</button>
+      <UiButton unstyled type="button" class="logout-btn" @click="logout">退出登录</UiButton>
     </footer>
   </div>
 </template>
@@ -107,7 +108,7 @@ const navItems = [
   { key: 'home', label: '首页', icon: '⌂', color: '#b8cdfa' },
   { key: 'profile', label: '个人信息', icon: '◍', color: '#a8ddb5' },
   { key: 'security', label: '安全性与登录', icon: '⌁', color: '#9dd7ff' },
-  { key: 'password', label: 'Cloudflare 密码', icon: '•••', color: '#8ab4f8' },
+  { key: 'password', label: 'leeguoo 密码', icon: '•••', color: '#8ab4f8' },
   { key: 'linked', label: '第三方关联', icon: '◎', color: '#97d5f7' },
   { key: 'privacy', label: '数据和隐私设置', icon: '◌', color: '#ccb3f7' },
   { key: 'share', label: '用户和分享', icon: '◔', color: '#f6b2de' },
@@ -411,7 +412,11 @@ onMounted(() => {
   color: #5f6368;
 }
 
-.search-input {
+.search-input-field {
+  width: 100%;
+}
+
+.search-input-field :deep(input) {
   width: 100%;
   height: 48px;
   border: none;

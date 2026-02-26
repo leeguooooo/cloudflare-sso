@@ -10,8 +10,10 @@
 
         <div class="right-panel">
           <div v-if="!showForm" class="account-list">
-            <button
+            <UiButton
               v-if="rememberedEmail"
+              unstyled
+              type="button"
               class="row account-row"
               :disabled="loading"
               @click="prefillRemembered"
@@ -22,9 +24,9 @@
                 <small>{{ rememberedEmail }}</small>
               </div>
               <span class="signed-out">Signed out</span>
-            </button>
+            </UiButton>
 
-            <button class="row" :disabled="loading" @click="toggleForm(true)">
+            <UiButton unstyled type="button" class="row" :disabled="loading" @click="toggleForm(true)">
               <div class="row-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="8" r="4" />
@@ -32,9 +34,9 @@
                 </svg>
               </div>
               <span>Use another account</span>
-            </button>
+            </UiButton>
 
-            <button class="row" :disabled="loading || !rememberedEmail" @click="removeRemembered">
+            <UiButton unstyled type="button" class="row" :disabled="loading || !rememberedEmail" @click="removeRemembered">
               <div class="row-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10" />
@@ -42,7 +44,7 @@
                 </svg>
               </div>
               <span>Remove an account</span>
-            </button>
+            </UiButton>
           </div>
 
           <form v-if="showForm" class="login-form" @submit.prevent="handleSubmit">
@@ -90,27 +92,27 @@
           <div class="oauth-section">
             <p class="oauth-title">Or continue with</p>
             <div class="oauth-buttons">
-              <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('google')">
+              <UiButton unstyled class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('google')">
                 Google
-              </button>
-              <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('github')">
+              </UiButton>
+              <UiButton unstyled class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('github')">
                 GitHub
-              </button>
-              <button class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
+              </UiButton>
+              <UiButton unstyled class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
                 WeChat (planned)
-              </button>
+              </UiButton>
             </div>
           </div>
         </div>
       </section>
 
       <footer class="signin-footer">
-        <button class="language-btn">
+        <UiButton unstyled type="button" class="language-btn">
           English (United States)
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 10l5 5 5-5z" />
           </svg>
-        </button>
+        </UiButton>
         <nav class="footer-links">
           <a href="#">Help</a>
           <a href="#">Privacy</a>
@@ -136,13 +138,13 @@ const rememberedEmail = ref('')
 type SocialProvider = 'google' | 'github'
 
 const form = reactive({
-  email: 'demo@example.com',
-  password: 'Passw0rd!',
+  email: '',
+  password: '',
 })
 
 const rememberedName = computed(() => {
   const email = rememberedEmail.value
-  if (!email) return 'Cloudflare User'
+  if (!email) return 'leeguoo User'
   return email.split('@')[0]
 })
 
@@ -303,9 +305,9 @@ onMounted(() => {
 <style scoped>
 .signin-page {
   min-height: 100vh;
-  background: #ffffff;
-  color: #202124;
-  font-family: 'Google Sans', 'Roboto', 'Inter', sans-serif;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -318,14 +320,14 @@ onMounted(() => {
 }
 
 .signin-card {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 28px;
   min-height: 400px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 32px;
   padding: 48px 40px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--color-border);
 }
 
 .left-panel {
@@ -338,12 +340,12 @@ onMounted(() => {
   font-size: 2.25rem;
   font-weight: 400;
   line-height: 2.75rem;
-  color: #1f1f1f;
+  color: var(--color-text-primary);
 }
 
 .left-panel p {
   margin: 0;
-  color: #444746;
+  color: var(--color-text-secondary);
   font-size: 1rem;
   line-height: 1.5rem;
 }
@@ -370,14 +372,14 @@ onMounted(() => {
   width: 100%;
   height: 56px;
   border: none;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-neutral-200);
   background: transparent;
   display: flex;
   align-items: center;
   gap: 12px;
   text-align: left;
   padding: 0 4px;
-  color: #1f1f1f;
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -385,11 +387,11 @@ onMounted(() => {
 }
 
 .row:hover {
-  background-color: #f7f9fc;
+  background-color: var(--color-primary-50);
 }
 
 .row:first-child {
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--color-neutral-200);
 }
 
 .account-row {
@@ -402,7 +404,7 @@ onMounted(() => {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background-color: #1a73e8;
+  background-color: var(--color-primary-600);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 500;
@@ -420,13 +422,13 @@ onMounted(() => {
 }
 
 .account-meta small {
-  color: #444746;
+  color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 400;
 }
 
 .signed-out {
-  color: #444746;
+  color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 400;
 }
@@ -437,7 +439,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #444746;
+  color: var(--color-text-secondary);
 }
 
 .login-form {
@@ -454,7 +456,7 @@ onMounted(() => {
 .oauth-title {
   margin: 0 0 10px;
   font-size: 0.8125rem;
-  color: #444746;
+  color: var(--color-text-secondary);
 }
 
 .oauth-buttons {
@@ -466,10 +468,10 @@ onMounted(() => {
 .oauth-btn {
   min-width: 120px;
   height: 40px;
-  border: 1px solid #dadce0;
-  border-radius: 999px;
-  background: #fff;
-  color: #1f1f1f;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -478,7 +480,7 @@ onMounted(() => {
 }
 
 .oauth-btn:hover:not(:disabled) {
-  background: #f7f9fc;
+  background: var(--color-primary-50);
 }
 
 .oauth-btn-disabled {
@@ -494,7 +496,7 @@ onMounted(() => {
 }
 
 .create-account-link {
-  color: #1a73e8;
+  color: var(--color-primary-600);
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
@@ -528,7 +530,7 @@ onMounted(() => {
 .language-btn {
   border: none;
   background: transparent;
-  color: #444746;
+  color: var(--color-text-secondary);
   font-size: 0.75rem;
   display: flex;
   align-items: center;
@@ -539,7 +541,7 @@ onMounted(() => {
 }
 
 .language-btn:hover {
-  background-color: #f7f9fc;
+  background-color: var(--color-primary-50);
 }
 
 .footer-links {
@@ -548,7 +550,7 @@ onMounted(() => {
 }
 
 .footer-links a {
-  color: #444746;
+  color: var(--color-text-secondary);
   text-decoration: none;
   font-size: 0.75rem;
   padding: 8px;
@@ -556,7 +558,7 @@ onMounted(() => {
 }
 
 .footer-links a:hover {
-  background-color: #f7f9fc;
+  background-color: var(--color-primary-50);
 }
 
 @media (max-width: 900px) {
