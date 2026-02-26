@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from '../../../utils/crypto'
 import { issueTokens } from '../../../utils/auth'
 import { getUserRolesForClient } from '../../../utils/access'
 import { writeAuditLog } from '../../../utils/audit'
+import { resolveDefaultClientId } from '../../../utils/default-client'
 import {
   ensureGlobalIdentitySchema,
   findGlobalAccountByEmail,
@@ -32,10 +33,9 @@ export default defineEventHandler(async (event) => {
   const body = (await readBody(event)) as LoginBody
   const email = body.email?.toLowerCase().trim()
   const password = body.password
-  const clientPublicId = body.client_id
+  const clientPublicId = body.client_id?.trim() || resolveDefaultClientId(event)
 
   if (!email || !password) throw createError({ statusCode: 400, statusMessage: 'email and password required' })
-  if (!clientPublicId) throw createError({ statusCode: 400, statusMessage: 'client_id required' })
 
   await ensureGlobalIdentitySchema(event)
 

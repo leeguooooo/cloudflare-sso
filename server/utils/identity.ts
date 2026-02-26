@@ -17,6 +17,15 @@ export type GlobalAccountRecord = {
   status: string
 }
 
+export type GlobalExternalIdentityRecord = {
+  id: string
+  global_account_id: string
+  provider: string
+  subject: string
+  email?: string | null
+  profile_json?: string | null
+}
+
 export type TenantUserRecord = {
   id: string
   tenant_id: string
@@ -58,6 +67,27 @@ export const ensureGlobalIdentitySchema = async (event: H3Event) => {
     }
   }
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_global_account ON users(global_account_id)`).run()
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS global_external_identities (
+        id TEXT PRIMARY KEY,
+        global_account_id TEXT NOT NULL REFERENCES global_accounts(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        email TEXT,
+        profile_json TEXT DEFAULT '{}' NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+      )`,
+    )
+    .run()
+  await db
+    .prepare(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_global_external_identities_unique ON global_external_identities(provider, subject)`,
+    )
+    .run()
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_global_external_identities_account ON global_external_identities(global_account_id)`).run()
 }
 
 export const ensureClientManagementSchema = async (event: H3Event) => {
@@ -117,6 +147,74 @@ export const findGlobalAccountByEmail = async (event: H3Event, email: string) =>
     .prepare(`SELECT id, email, password_hash, locale, status FROM global_accounts WHERE normalized_email = lower(?)`)
     .bind(email)
     .first<GlobalAccountRecord>()
+}
+
+export const findGlobalAccountById = async (event: H3Event, id: string) => {
+  const db = getDb(event)
+  return db
+    .prepare(`SELECT id, email, password_hash, locale, status FROM global_accounts WHERE id = ?`)
+    .bind(id)
+    .first<GlobalAccountRecord>()
+}
+
+export const findGlobalAccountByExternalIdentity = async (
+  event: H3Event,
+  provider: string,
+  subject: string,
+) => {
+  const db = getDb(event)
+  return db
+    .prepare(
+      `SELECT ga.id, ga.email, ga.password_hash, ga.locale, ga.status
+       FROM global_external_identities gei
+       JOIN global_accounts ga ON ga.id = gei.global_account_id
+       WHERE gei.provider = ? AND gei.subject = ?`,
+    )
+    .bind(provider, subject)
+    .first<GlobalAccountRecord>()
+}
+
+export const linkExternalIdentityToGlobalAccount = async (
+  event: H3Event,
+  input: {
+    globalAccountId: string
+    provider: string
+    subject: string
+    email?: string | null
+    profile?: Record<string, unknown>
+  },
+) => {
+  const db = getDb(event)
+  const existing = await db
+    .prepare(`SELECT id, global_account_id FROM global_external_identities WHERE provider = ? AND subject = ?`)
+    .bind(input.provider, input.subject)
+    .first<{ id: string; global_account_id: string }>()
+
+  if (existing?.id) {
+    if (existing.global_account_id !== input.globalAccountId) {
+      throw createError({ statusCode: 409, statusMessage: 'External identity already linked to another account' })
+    }
+
+    await db
+      .prepare(
+        `UPDATE global_external_identities
+         SET email = ?, profile_json = ?, updated_at = strftime('%s', 'now')
+         WHERE id = ?`,
+      )
+      .bind(input.email || null, JSON.stringify(input.profile || {}), existing.id)
+      .run()
+    return existing.id
+  }
+
+  const id = crypto.randomUUID()
+  await db
+    .prepare(
+      `INSERT INTO global_external_identities (id, global_account_id, provider, subject, email, profile_json)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(id, input.globalAccountId, input.provider, input.subject, input.email || null, JSON.stringify(input.profile || {}))
+    .run()
+  return id
 }
 
 export const createGlobalAccount = async (

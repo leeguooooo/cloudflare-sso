@@ -14,7 +14,7 @@ export default defineI18nConfig(() => ({
       auth: {
         loginTitle: 'Sign in',
         registerTitle: 'Create your Identity Account',
-        subtitle: 'to continue to Cloudflare SSO',
+        subtitle: 'to continue to leeguoo SSO',
         email: 'Email address',
         password: 'Enter your password',
         tenant: 'Tenant ID',
@@ -66,7 +66,7 @@ export default defineI18nConfig(() => ({
       auth: {
         loginTitle: '登录',
         registerTitle: '创建您的 Identity 账号',
-        subtitle: '以继续访问 Cloudflare SSO',
+        subtitle: '以继续访问 leeguoo SSO',
         email: '电子邮件地址',
         password: '输入您的密码',
         tenant: '租户 ID',

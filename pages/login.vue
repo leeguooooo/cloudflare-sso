@@ -1,7 +1,16 @@
 <template>
   <div class="signin-page">
     <main class="signin-main">
-      <section class="signin-card">
+      <UiCard
+        class="signin-card"
+        :style="{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '32px',
+          padding: '48px 40px',
+          minHeight: '400px',
+        }"
+      >
         <div class="left-panel">
           <UiLogo size="lg" mode="icon" />
           <h1>Sign in</h1>
@@ -104,7 +113,7 @@
             </div>
           </div>
         </div>
-      </section>
+      </UiCard>
 
       <footer class="signin-footer">
         <UiButton unstyled type="button" class="language-btn">

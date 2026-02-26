@@ -92,7 +92,7 @@ VALUES
     'USD',
     900,
     7,
-    '["paste.pro"]',
+    '["membership.all_apps","paste.pro"]',
     'active',
     '{}'
   );
@@ -140,6 +140,18 @@ INSERT INTO entitlements (
   meta_json
 )
 VALUES
+  (
+    'ent-demo-all-apps',
+    'tenant-demo',
+    'user-demo',
+    'sub-demo-paste',
+    'membership.all_apps',
+    'plan',
+    'granted',
+    strftime('%s', 'now') - 86400,
+    strftime('%s', 'now') + 2592000,
+    '{}'
+  ),
   (
     'ent-demo-paste-pro',
     'tenant-demo',

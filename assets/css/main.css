@@ -1,88 +1,70 @@
 :root {
-  /* Google Brand Colors */
-  --color-primary-50: #e8f0fe;
-  --color-primary-100: #d2e3fc;
-  --color-primary-200: #aecbfa;
-  --color-primary-300: #8ab4f8;
-  --color-primary-400: #669df6;
-  --color-primary-500: #4285f4;
-  --color-primary-600: #1a73e8; /* Google Blue */
-  --color-primary-700: #1967d2;
-  --color-primary-800: #185abc;
-  --color-primary-900: #174ea6;
-  --color-primary-950: #0d2c65;
+  --color-primary-50: var(--lg-color-primary-50);
+  --color-primary-100: var(--lg-color-primary-100);
+  --color-primary-200: var(--lg-color-primary-200);
+  --color-primary-300: var(--lg-color-primary-300);
+  --color-primary-400: var(--lg-color-primary-400);
+  --color-primary-500: var(--lg-color-primary-500);
+  --color-primary-600: var(--lg-color-primary-600);
+  --color-primary-700: var(--lg-color-primary-700);
+  --color-primary-800: var(--lg-color-primary-800);
+  --color-primary-900: var(--lg-color-primary-900);
 
-  /* Neutral Colors (Google Palette) */
-  --color-neutral-50: #f8f9fa;
-  --color-neutral-100: #f1f3f4;
-  --color-neutral-200: #e8eaed;
-  --color-neutral-300: #dadce0;
-  --color-neutral-400: #bdc1c6;
-  --color-neutral-500: #9aa0a6;
-  --color-neutral-600: #80868b;
-  --color-neutral-700: #5f6368;
-  --color-neutral-800: #3c4043;
-  --color-neutral-900: #202124;
-  --color-neutral-950: #000000;
+  --color-neutral-50: var(--lg-color-neutral-50);
+  --color-neutral-100: var(--lg-color-neutral-100);
+  --color-neutral-200: var(--lg-color-neutral-200);
+  --color-neutral-300: var(--lg-color-neutral-300);
+  --color-neutral-400: var(--lg-color-neutral-400);
+  --color-neutral-500: var(--lg-color-neutral-500);
+  --color-neutral-600: var(--lg-color-neutral-600);
+  --color-neutral-700: var(--lg-color-neutral-700);
+  --color-neutral-800: var(--lg-color-neutral-800);
+  --color-neutral-900: var(--lg-color-neutral-900);
 
-  /* Semantic Colors */
-  --color-background: #ffffff;
-  --color-surface: #ffffff;
-  --color-text-primary: var(--color-neutral-900);
-  --color-text-secondary: var(--color-neutral-700);
-  --color-text-tertiary: var(--color-neutral-600);
-  --color-border: var(--color-neutral-300);
-  --color-border-hover: var(--color-neutral-400);
+  --color-background: var(--lg-color-background);
+  --color-surface: var(--lg-color-surface);
+  --color-text-primary: var(--lg-color-text-primary);
+  --color-text-secondary: var(--lg-color-text-secondary);
+  --color-text-tertiary: var(--lg-color-text-tertiary);
+  --color-border: var(--lg-color-border);
 
-  /* Typography */
-  --font-family-sans: 'Google Sans', 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.375rem;
-  --font-size-3xl: 1.75rem;
+  --radius-sm: var(--lg-radius-sm);
+  --radius-md: var(--lg-radius-md);
+  --radius-lg: var(--lg-radius-lg);
+  --radius-xl: var(--lg-radius-xl);
+  --radius-2xl: var(--lg-radius-2xl);
+  --radius-full: var(--lg-radius-pill);
 
-  /* Spacing & Layout */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 28px; /* Google's modern card radius */
-  --radius-full: 9999px;
+  --shadow-sm: var(--lg-shadow-sm);
+  --shadow-md: var(--lg-shadow-md);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
-  --shadow-md: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
+  --font-family-sans: var(--lg-font-family-sans);
+  --font-size-sm: var(--lg-font-size-sm);
+  --font-size-base: var(--lg-font-size-md);
+  --font-size-lg: var(--lg-font-size-lg);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
+  margin: 0;
   font-family: var(--font-family-sans);
   background-color: var(--color-background);
   color: var(--color-text-primary);
-  margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Page Transitions */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin: 0;
-  font-weight: 400; /* Google uses lighter weights for headings */
+  font-weight: 400;
   color: var(--color-text-primary);
 }
 
@@ -94,21 +76,30 @@ p {
 a {
   color: var(--color-primary-600);
   text-decoration: none;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color var(--lg-motion-base), color var(--lg-motion-base);
 }
 
 a:hover {
   color: var(--color-primary-700);
 }
 
-/* Common Google-style interactions */
-.hover-bg:hover {
-  background-color: #f7f9fc;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.btn-ripple {
-  position: relative;
-  overflow: hidden;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes lg-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hover-bg:hover {
+  background-color: var(--color-primary-50);
 }
 
 ::-webkit-scrollbar {
@@ -121,10 +112,10 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #dadce0;
+  background: var(--color-neutral-300);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #bdc1c6;
+  background: var(--color-neutral-400);
 }

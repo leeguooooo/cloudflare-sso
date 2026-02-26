@@ -17,7 +17,13 @@ export default defineNuxtConfig({
       ],
     },
   },
-  css: ['~/assets/css/main.css'],
+  css: [
+    '@leeguoo/design-tokens/tokens.css',
+    '@leeguoo/design-tokens/themes/google.css',
+    '@leeguoo/design-tokens/themes/google-brand-sso.css',
+    '@leeguoo/design-tokens/themes/admin-shell.css',
+    '~/assets/css/main.css',
+  ],
   ssr: false,
   pages: true,
   devtools: { enabled: true },
@@ -38,7 +44,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: '/api',
-      defaultClientId: 'demo-web',
+      defaultClientId: process.env.NUXT_PUBLIC_DEFAULT_CLIENT_ID || process.env.DEFAULT_CLIENT_ID || '',
       oidcIssuer: '',
       turnstileSiteKey: '',
     },

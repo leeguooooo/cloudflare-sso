@@ -6,13 +6,14 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - 单仓全栈：Nuxt SPA + Nitro Functions（Pages Functions）即 Workers 端点
 - OIDC: `/.well-known/openid-configuration`、`/authorize`、`/token`、`/userinfo`、`/jwks.json`
 - 认证：注册、登录、刷新、登出，Refresh Token 存 D1，Access/ID Token 为 RS256
+- 第三方登录：GitHub / Google OAuth（微信预留规划中）
 - 多租户：tenant + client 隔离，客户端重定向白名单
 - i18n：内置 EN / 简体，登录/注册页可切换
 - 部署：一条命令部署到 Cloudflare Pages，支持多账号 wrangler 切换
 
 ## 新增（统一登录简化方案，Phase 1）
 - 全局账号模型：`global_accounts` 作为统一凭据源，`users.global_account_id` 做租户映射
-- 应用开通接口：`POST /api/admin/apps/bootstrap`（`blog`/`paste`/`cherry`）
+- 应用开通接口：`POST /api/admin/apps/bootstrap`（`blog`/`paste`/`misonote`/`cherry`）
 - 自动开通租户用户：`POST /api/auth/provision-tenant-user`
 - 管理面安全收口：`/api/admin/*` 与 `/api/access/*` 现要求 Bearer Access Token 且需 admin 权限
 - Web 双轨：登录仍返回 Bearer Token，并写入 HttpOnly refresh cookie
@@ -25,10 +26,10 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 
 ## 主要 API（Phase 1）
 - `POST /api/auth/register`
-  - 入参：`email`, `password`, `client_id`（或 `tenant_id`）
+  - 入参：`email`, `password`，可选 `client_id`（或 `tenant_id`）
   - 行为：创建 global account，并在目标 tenant 自动开通 user
 - `POST /api/auth/login`
-  - 入参：`email`, `password`, `client_id`
+  - 入参：`email`, `password`，可选 `client_id`
   - 行为：校验 global account，按 client tenant 自动开通 user，返回 access/id/refresh token
 - `POST /api/auth/provision-tenant-user`
   - 入参：`client_id` 或 `tenant_id`
@@ -38,7 +39,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
   - 入参：`app_key`（单个）或 `app_keys`（批量，字符串数组）
   - 鉴权：Bearer Access Token（admin）
   - 行为：创建 tenant、默认 clients、`admin/user` roles 与基础权限绑定
-  - 示例：首批可一次传 `["cherry","paste"]`，完成 `cherry-admin-web`、`paste-web`、`paste-macos` 注册
+  - 示例：可一次传 `["misonote","paste"]`，完成 `misonote-app-web`、`misonote-paste-web`、`paste-web`、`paste-macos` 注册
   - 回执：返回 `bootstrap_run_id`，用于后续追踪
 - `GET /api/admin/apps/bootstrap-runs`
   - 入参：`run_id`（可选），`limit`（可选，默认 20）
@@ -71,6 +72,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
   - `action=create|update|archive|unarchive`
   - 鉴权：Bearer Access Token（tenant admin）
   - 行为：维护计划定义（price/cycle/trial/entitlement_keys）
+  - 推荐：统一会员计划至少包含 `membership.all_apps`
 - `GET /api/billing/entitlements`
   - 入参：可选 `tenant_id`, `user_id`, `as_of`, `include_inactive=true`
   - 鉴权：Bearer Access Token（同 tenant；跨用户查询需 admin）
@@ -103,5 +105,10 @@ pnpm dev
 - `JWT_ISSUER`：`https://your-domain`（用于 `iss` 与发现文档）
 - `PASSWORD_PEPPER`：额外的密码 pepper
 - `ACCESS_TOKEN_TTL_SECONDS` / `REFRESH_TOKEN_TTL_SECONDS`：Token 时长
+- `DEFAULT_CLIENT_ID`：登录/注册未传 `client_id` 时使用的默认 client（例如生产可设 `misonote-app-web`）
+- `OAUTH_GITHUB_CLIENT_ID` / `OAUTH_GITHUB_CLIENT_SECRET`：GitHub OAuth 应用凭据
+- `OAUTH_GITHUB_REDIRECT_URI`：可选，GitHub 回调地址（默认 `${origin}/api/auth/oauth/callback?provider=github`）
+- `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET`：Google OAuth 应用凭据
+- `OAUTH_GOOGLE_REDIRECT_URI`：可选，Google 回调地址（默认 `${origin}/api/auth/oauth/callback?provider=google`）
 
 更多细节见 `docs/DEPLOY.md` 与 `docs/WRANGLER_CONFIG.md`。

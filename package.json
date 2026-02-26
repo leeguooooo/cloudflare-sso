@@ -22,8 +22,8 @@
     "setup:pages:sh": "./scripts/setup-pages.sh"
   },
   "dependencies": {
-    "@leeguoo/design-tokens": "~0.2.0",
-    "@leeguoo/leeguoo-ui-vue": "~0.2.0",
+    "@leeguoo/design-tokens": "link:../cherry/packages/design-tokens",
+    "@leeguoo/leeguoo-ui-vue": "link:../cherry/packages/ui-vue",
     "@nuxtjs/i18n": "^9.0.0",
     "@pinia/nuxt": "^0.11.2",
     "nuxt": "^4.2.0",

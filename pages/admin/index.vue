@@ -13,19 +13,19 @@
     </div>
 
     <div class="stats-container">
-      <div v-for="item in stats" :key="item.label" class="stat-card">
+      <UiCard v-for="item in stats" :key="item.label" class="stat-card">
         <div class="stat-info">
           <span class="stat-label">{{ item.label }}</span>
           <span class="stat-value">{{ item.value }}</span>
         </div>
-        <div class="stat-footer">
+        <template #footer>
           <NuxtLink :to="item.link" class="stat-link">View details</NuxtLink>
-        </div>
-      </div>
+        </template>
+      </UiCard>
     </div>
 
     <div class="management-grid">
-      <div class="management-card">
+      <UiCard class="management-card">
         <div class="card-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -37,9 +37,9 @@
         </div>
         <p class="card-desc">Manage your users, roles, and application-specific permissions from a central location.</p>
         <NuxtLink to="/admin/access" class="card-action">Manage Access Control</NuxtLink>
-      </div>
+      </UiCard>
 
-      <div class="management-card">
+      <UiCard class="management-card">
         <div class="card-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
@@ -50,9 +50,9 @@
         </div>
         <p class="card-desc">Configure OIDC clients, redirect URIs, and identity federation settings for your apps.</p>
         <NuxtLink to="/admin/apps" class="card-action">Manage Applications</NuxtLink>
-      </div>
+      </UiCard>
 
-      <div class="management-card">
+      <UiCard class="management-card">
         <div class="card-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
@@ -62,7 +62,7 @@
         </div>
         <p class="card-desc">Monitor usage, manage product plans, and handle entitlement transitions for your tenants.</p>
         <NuxtLink to="/admin/billing" class="card-action">Manage Billing</NuxtLink>
-      </div>
+      </UiCard>
     </div>
   </div>
 </template>
@@ -162,16 +162,7 @@ onMounted(() => {
   gap: 16px;
 }
 
-.stat-card {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-}
-
 .stat-info {
-  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -191,11 +182,6 @@ onMounted(() => {
   color: #1a73e8;
 }
 
-.stat-footer {
-  padding: 8px 16px;
-  border-top: 1px solid #f1f3f4;
-}
-
 .stat-link {
   font-size: 0.75rem;
   color: #1a73e8;
@@ -211,15 +197,6 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
-}
-
-.management-card {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
 }
 
 .card-title {

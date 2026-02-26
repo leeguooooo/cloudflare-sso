@@ -1,7 +1,17 @@
 <template>
   <div class="auth-layout">
     <div class="auth-container">
-      <div class="auth-card">
+      <UiCard
+        class="auth-card"
+        :style="{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          minHeight: '500px',
+          overflow: 'hidden',
+          padding: '0',
+          gap: '0',
+        }"
+      >
         <div class="auth-card-content">
           <slot />
         </div>
@@ -12,7 +22,7 @@
             <p>Securely access all your applications with a single identity.</p>
           </div>
         </div>
-      </div>
+      </UiCard>
       <footer class="auth-footer">
         <nav class="footer-links">
           <a href="#">Help</a>
@@ -43,12 +53,7 @@
 }
 
 .auth-card {
-  background: #ffffff;
   border-radius: 28px;
-  border: 1px solid #dadce0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 500px;
   overflow: hidden;
 }
 

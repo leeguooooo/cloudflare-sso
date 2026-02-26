@@ -14,15 +14,10 @@
       </div>
     </div>
 
-    <div v-if="error" class="error-banner">{{ error }}</div>
+    <UiAlert v-if="error" variant="danger" :message="error" class="error-alert" />
 
     <div class="admin-grid">
-      <!-- Create Product Card -->
-      <section class="info-card">
-        <div class="card-header">
-          <h3>Create Product</h3>
-        </div>
-        <p class="card-desc">Define a new product entity that can contain multiple pricing plans.</p>
+      <UiCard class="info-card" title="Create Product" subtitle="Define a new product entity that can contain multiple pricing plans.">
         <form @submit.prevent="createProductAction" class="admin-form">
           <div class="form-grid">
             <UiInput v-model="createProduct.product_key" label="Product Key" placeholder="blog-premium" required />
@@ -33,14 +28,9 @@
             <UiButton type="submit" variant="primary" :loading="loading">Create Product</UiButton>
           </div>
         </form>
-      </section>
+      </UiCard>
 
-      <!-- Create Plan Card -->
-      <section class="info-card">
-        <div class="card-header">
-          <h3>Create Plan</h3>
-        </div>
-        <p class="card-desc">Define pricing, billing cycle, and entitlements for an existing product.</p>
+      <UiCard class="info-card" title="Create Plan" subtitle="Define pricing, billing cycle, and entitlements for an existing product.">
         <form @submit.prevent="createPlanAction" class="admin-form">
           <div class="form-grid">
             <UiSelect v-model="createPlan.product_id" class="form-select" label="Product" required>
@@ -66,155 +56,133 @@
             <UiButton type="submit" variant="primary" :loading="loading">Create Plan</UiButton>
           </div>
         </form>
-      </section>
+      </UiCard>
 
-      <!-- Products Table Card -->
-      <section class="info-card wide-card">
-        <div class="card-header">
-          <h3>Products</h3>
-          <span class="badge">{{ products.length }}</span>
-        </div>
-        <div class="table-container">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Product Key</th>
-                <th>Name</th>
-                <th>App</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="product in products" :key="product.id">
-                <td class="font-medium">
-                  <UiInput v-if="editingProductId === product.id" v-model="editProduct.product_key" class="table-input" />
-                  <span v-else>{{ product.product_key }}</span>
-                </td>
-                <td>
-                  <UiInput v-if="editingProductId === product.id" v-model="editProduct.name" class="table-input" />
-                  <span v-else>{{ product.name }}</span>
-                </td>
-                <td>
-                  <UiInput v-if="editingProductId === product.id" v-model="editProduct.app_key" class="table-input" />
-                  <span v-else>{{ product.app_key }}</span>
-                </td>
-                <td>
-                  <span class="status-badge" :class="product.status">{{ product.status }}</span>
-                </td>
-                <td>
-                  <div class="table-actions">
-                    <template v-if="editingProductId === product.id">
-                      <UiButton variant="primary" size="sm" @click="saveProductEdit(product.id)" :loading="loading">Save</UiButton>
-                      <UiButton variant="ghost" size="sm" @click="cancelProductEdit" :disabled="loading">Cancel</UiButton>
-                    </template>
-                    <template v-else>
-                      <UiButton variant="ghost" size="sm" @click="startProductEdit(product)" :disabled="loading">Edit</UiButton>
-                      <UiButton
-                        variant="ghost"
-                        size="sm"
-                        @click="toggleProductStatus(product)"
-                        :disabled="loading"
-                        :class="{ 'text-danger': product.status === 'active' }"
-                      >
-                        {{ product.status === 'active' ? 'Archive' : 'Unarchive' }}
-                      </UiButton>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="products.length === 0">
-                <td colspan="5" class="empty-row">No products found.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <UiCard class="info-card wide-card">
+        <template #header>
+          <div class="card-header">
+            <h3>Products</h3>
+            <UiBadge variant="info" :label="String(products.length)" />
+          </div>
+        </template>
 
-      <!-- Plans Table Card -->
-      <section class="info-card wide-card">
-        <div class="card-header">
-          <h3>Plans</h3>
-          <span class="badge">{{ plans.length }}</span>
-        </div>
-        <div class="table-container">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Plan Key</th>
-                <th>Product</th>
-                <th>Billing</th>
-                <th>Price</th>
-                <th>Entitlements</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="plan in plans" :key="plan.id">
-                <td class="font-medium">
-                  <UiInput v-if="editingPlanId === plan.id" v-model="editPlan.plan_key" class="table-input" />
-                  <span v-else>{{ plan.plan_key }}</span>
-                </td>
-                <td>
-                  <UiSelect v-if="editingPlanId === plan.id" v-model="editPlan.product_id" class="table-input">
-                      <option v-for="product in products" :key="product.id" :value="product.id">
-                        {{ product.product_key }}
-                      </option>
-                  </UiSelect>
-                  <span v-else>{{ productKeyById(plan.product_id) }}</span>
-                </td>
-                <td>
-                  <UiSelect v-if="editingPlanId === plan.id" v-model="editPlan.billing_cycle" class="table-input">
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                      <option value="one_time">One-time</option>
-                      <option value="custom">Custom</option>
-                  </UiSelect>
-                  <span v-else>{{ plan.billing_cycle }}</span>
-                </td>
-                <td>
-                  <div v-if="editingPlanId === plan.id" class="inline-fields">
-                    <UiInput v-model="editPlan.currency" class="xs-input" />
-                    <UiInput v-model.number="editPlan.amount_minor" type="number" class="sm-input" />
-                  </div>
-                  <span v-else>{{ plan.currency }} {{ (plan.amount_minor / 100).toFixed(2) }}</span>
-                </td>
-                <td class="text-xs">
-                  <UiInput v-if="editingPlanId === plan.id" v-model="editPlan.entitlement_keys" class="table-input" />
-                  <span v-else>{{ plan.entitlement_keys.join(', ') }}</span>
-                </td>
-                <td>
-                  <span class="status-badge" :class="plan.status">{{ plan.status }}</span>
-                </td>
-                <td>
-                  <div class="table-actions">
-                    <template v-if="editingPlanId === plan.id">
-                      <UiButton variant="primary" size="sm" @click="savePlanEdit(plan.id)" :loading="loading">Save</UiButton>
-                      <UiButton variant="ghost" size="sm" @click="cancelPlanEdit" :disabled="loading">Cancel</UiButton>
-                    </template>
-                    <template v-else>
-                      <UiButton variant="ghost" size="sm" @click="startPlanEdit(plan)" :disabled="loading">Edit</UiButton>
-                      <UiButton
-                        variant="ghost"
-                        size="sm"
-                        @click="togglePlanStatus(plan)"
-                        :disabled="loading"
-                        :class="{ 'text-danger': plan.status === 'active' }"
-                      >
-                        {{ plan.status === 'active' ? 'Archive' : 'Unarchive' }}
-                      </UiButton>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="plans.length === 0">
-                <td colspan="7" class="empty-row">No plans found.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <UiTableShell
+          :columns="productColumns"
+          :rows="products"
+          empty-text="No products found."
+        >
+          <template #cell="{ row, column }">
+            <template v-if="column.key === 'product_key'">
+              <UiInput v-if="editingProductId === asProduct(row).id" v-model="editProduct.product_key" class="table-input" />
+              <span v-else class="font-medium">{{ asProduct(row).product_key }}</span>
+            </template>
+            <template v-else-if="column.key === 'name'">
+              <UiInput v-if="editingProductId === asProduct(row).id" v-model="editProduct.name" class="table-input" />
+              <span v-else>{{ asProduct(row).name }}</span>
+            </template>
+            <template v-else-if="column.key === 'app_key'">
+              <UiInput v-if="editingProductId === asProduct(row).id" v-model="editProduct.app_key" class="table-input" />
+              <span v-else>{{ asProduct(row).app_key }}</span>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiBadge :variant="statusBadgeVariant(asProduct(row).status)" :label="asProduct(row).status" />
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="table-actions">
+                <template v-if="editingProductId === asProduct(row).id">
+                  <UiButton variant="primary" size="sm" @click="saveProductEdit(asProduct(row).id)" :loading="loading">Save</UiButton>
+                  <UiButton variant="ghost" size="sm" @click="cancelProductEdit" :disabled="loading">Cancel</UiButton>
+                </template>
+                <template v-else>
+                  <UiButton variant="ghost" size="sm" @click="startProductEdit(asProduct(row))" :disabled="loading">Edit</UiButton>
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    @click="toggleProductStatus(asProduct(row))"
+                    :disabled="loading"
+                    :class="{ 'text-danger': asProduct(row).status === 'active' }"
+                  >
+                    {{ asProduct(row).status === 'active' ? 'Archive' : 'Unarchive' }}
+                  </UiButton>
+                </template>
+              </div>
+            </template>
+          </template>
+        </UiTableShell>
+      </UiCard>
+
+      <UiCard class="info-card wide-card">
+        <template #header>
+          <div class="card-header">
+            <h3>Plans</h3>
+            <UiBadge variant="info" :label="String(plans.length)" />
+          </div>
+        </template>
+
+        <UiTableShell
+          :columns="planColumns"
+          :rows="plans"
+          empty-text="No plans found."
+        >
+          <template #cell="{ row, column }">
+            <template v-if="column.key === 'plan_key'">
+              <UiInput v-if="editingPlanId === asPlan(row).id" v-model="editPlan.plan_key" class="table-input" />
+              <span v-else class="font-medium">{{ asPlan(row).plan_key }}</span>
+            </template>
+            <template v-else-if="column.key === 'product_id'">
+              <UiSelect v-if="editingPlanId === asPlan(row).id" v-model="editPlan.product_id" class="table-input">
+                <option v-for="product in products" :key="product.id" :value="product.id">
+                  {{ product.product_key }}
+                </option>
+              </UiSelect>
+              <span v-else>{{ productKeyById(asPlan(row).product_id) }}</span>
+            </template>
+            <template v-else-if="column.key === 'billing_cycle'">
+              <UiSelect v-if="editingPlanId === asPlan(row).id" v-model="editPlan.billing_cycle" class="table-input">
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="one_time">One-time</option>
+                <option value="custom">Custom</option>
+              </UiSelect>
+              <span v-else>{{ asPlan(row).billing_cycle }}</span>
+            </template>
+            <template v-else-if="column.key === 'price'">
+              <div v-if="editingPlanId === asPlan(row).id" class="inline-fields">
+                <UiInput v-model="editPlan.currency" class="xs-input" />
+                <UiInput v-model.number="editPlan.amount_minor" type="number" class="sm-input" />
+              </div>
+              <span v-else>{{ asPlan(row).currency }} {{ (asPlan(row).amount_minor / 100).toFixed(2) }}</span>
+            </template>
+            <template v-else-if="column.key === 'entitlements'">
+              <UiInput v-if="editingPlanId === asPlan(row).id" v-model="editPlan.entitlement_keys" class="table-input" />
+              <span v-else class="text-xs">{{ asPlan(row).entitlement_keys.join(', ') }}</span>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiBadge :variant="statusBadgeVariant(asPlan(row).status)" :label="asPlan(row).status" />
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="table-actions">
+                <template v-if="editingPlanId === asPlan(row).id">
+                  <UiButton variant="primary" size="sm" @click="savePlanEdit(asPlan(row).id)" :loading="loading">Save</UiButton>
+                  <UiButton variant="ghost" size="sm" @click="cancelPlanEdit" :disabled="loading">Cancel</UiButton>
+                </template>
+                <template v-else>
+                  <UiButton variant="ghost" size="sm" @click="startPlanEdit(asPlan(row))" :disabled="loading">Edit</UiButton>
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    @click="togglePlanStatus(asPlan(row))"
+                    :disabled="loading"
+                    :class="{ 'text-danger': asPlan(row).status === 'active' }"
+                  >
+                    {{ asPlan(row).status === 'active' ? 'Archive' : 'Unarchive' }}
+                  </UiButton>
+                </template>
+              </div>
+            </template>
+          </template>
+        </UiTableShell>
+      </UiCard>
     </div>
   </div>
 </template>
@@ -265,10 +233,49 @@
   padding-bottom: 4px;
 }
 
+.error-alert {
+  margin-bottom: 8px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 24px;
+}
+
+.wide-card {
+  grid-column: span 2;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #1f1f1f;
+}
+
 .admin-form {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .font-medium { font-weight: 500; }
@@ -287,11 +294,24 @@
   gap: 8px;
 }
 
+.table-actions {
+  display: flex;
+  gap: 6px;
+}
+
 @media (max-width: 900px) {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+  }
+
+  .wide-card {
+    grid-column: span 1;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
@@ -325,6 +345,24 @@ type BillingCatalogResponse = {
   products: ProductItem[]
   plans: PlanItem[]
 }
+
+const productColumns = [
+  { key: 'product_key', label: 'Product Key' },
+  { key: 'name', label: 'Name' },
+  { key: 'app_key', label: 'App' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions' },
+]
+
+const planColumns = [
+  { key: 'plan_key', label: 'Plan Key' },
+  { key: 'product_id', label: 'Product' },
+  { key: 'billing_cycle', label: 'Billing' },
+  { key: 'price', label: 'Price' },
+  { key: 'entitlements', label: 'Entitlements' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions' },
+]
 
 const config = useRuntimeConfig()
 const tenantId = ref('tenant-demo')
@@ -370,6 +408,13 @@ const editPlan = reactive({
   trial_days: 0,
   entitlement_keys: '',
 })
+
+const asProduct = (row: Record<string, unknown>) => row as unknown as ProductItem
+const asPlan = (row: Record<string, unknown>) => row as unknown as PlanItem
+
+const statusBadgeVariant = (status: ProductItem['status'] | PlanItem['status']) => {
+  return status === 'active' ? 'success' : 'danger'
+}
 
 const getAuthHeaders = () => {
   if (!process.client) return {}

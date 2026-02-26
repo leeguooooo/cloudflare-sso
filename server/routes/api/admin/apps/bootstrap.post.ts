@@ -55,6 +55,37 @@ const APP_SEEDS: Record<string, AppSeed> = {
       },
     ],
   },
+  misonote: {
+    tenantId: 'tenant-misonote',
+    tenantName: 'Misonote Tenant',
+    clients: [
+      {
+        client_id: 'misonote-app-web',
+        name: 'Misonote App Web',
+        redirect_uris: ['http://localhost:3000/auth/callback', 'https://app.misonote.com/auth/callback'],
+      },
+      {
+        client_id: 'misonote-paste-web',
+        name: 'Misonote Paste Web',
+        redirect_uris: [
+          'http://localhost:3000/',
+          'http://localhost:3000/auth/callback',
+          'https://paste-web.misonote.com/',
+          'https://paste-web.misonote.com/auth/callback',
+        ],
+      },
+      {
+        client_id: 'misonote-choose-browser-web',
+        name: 'Misonote Choose Browser Web',
+        redirect_uris: ['http://localhost:5174/auth/callback', 'https://choose-browser.misonote.com/auth/callback'],
+      },
+      {
+        client_id: 'misonote-blog-web',
+        name: 'Misonote Blog Web',
+        redirect_uris: ['http://localhost:4321/auth/callback', 'https://blog.misonote.com/auth/callback'],
+      },
+    ],
+  },
   cherry: {
     tenantId: 'tenant-cherry',
     tenantName: 'Cherry Tenant',

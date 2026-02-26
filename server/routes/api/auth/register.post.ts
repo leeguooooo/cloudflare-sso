@@ -2,6 +2,7 @@ import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb, getEnv } from '../../../utils/env'
 import { hashPassword } from '../../../utils/crypto'
 import { writeAuditLog } from '../../../utils/audit'
+import { resolveDefaultClientId } from '../../../utils/default-client'
 import {
   createGlobalAccount,
   ensureGlobalIdentitySchema,
@@ -32,11 +33,13 @@ export default defineEventHandler(async (event) => {
 
   await ensureGlobalIdentitySchema(event)
 
-  let tenantId = body.tenant_id || 'tenant-demo'
-  if (body.client_id) {
-    const client = await getClientByPublicId(event, body.client_id)
+  const clientId = body.client_id?.trim() || resolveDefaultClientId(event)
+  let tenantId = body.tenant_id?.trim() || ''
+  if (clientId) {
+    const client = await getClientByPublicId(event, clientId)
     tenantId = client.tenant_id
   } else {
+    tenantId = tenantId || 'tenant-demo'
     const tenantName = body.tenant_name || tenantId
     await ensureTenantExists(event, tenantId, tenantName)
   }
@@ -82,7 +85,7 @@ export default defineEventHandler(async (event) => {
       email,
       global_account_id: globalAccountId,
       created_tenant_user: provisioned.created,
-      client_id: body.client_id || null,
+      client_id: clientId || null,
     },
   })
 

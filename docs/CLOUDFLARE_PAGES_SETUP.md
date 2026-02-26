@@ -42,6 +42,7 @@ wrangler pages project list
 | `CDN_BASE_URL` | `https://cdn.example.com` | CDN 基础 URL |
 | `ACCESS_TOKEN_TTL_SECONDS` | `600` | Access Token 过期时间（秒） |
 | `REFRESH_TOKEN_TTL_SECONDS` | `1209600` | Refresh Token 过期时间（秒） |
+| `DEFAULT_CLIENT_ID` | `misonote-app-web` | 未传 `client_id` 时使用的默认客户端 |
 
 ### 获取 JWT_PRIVATE_KEY
 
@@ -64,7 +65,7 @@ pnpm deploy:test
 ```bash
 curl 'https://cloudflare-sso.pages.dev/api/auth/login' \
   -H 'content-type: application/json' \
-  --data-raw '{"email":"demo@example.com","password":"Passw0rd!","tenant_id":"tenant-demo","client_id":"demo-web"}'
+  --data-raw '{"email":"demo@example.com","password":"Passw0rd!"}'
 ```
 
 ## 常见问题

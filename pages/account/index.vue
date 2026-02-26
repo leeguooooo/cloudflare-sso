@@ -51,7 +51,7 @@
           <UiButton unstyled type="button" v-for="action in quickActions" :key="action" class="chip">{{ action }}</UiButton>
         </div>
 
-        <section class="summary-card fade-in delay-3">
+        <UiCard class="summary-card fade-in delay-3">
           <h2>{{ activeSection.title }}</h2>
           <p class="summary-desc">{{ activeSection.desc }}</p>
           <div class="summary-grid">
@@ -60,7 +60,7 @@
               <strong>{{ item.value }}</strong>
             </div>
           </div>
-        </section>
+        </UiCard>
 
         <p class="privacy-copy">
           只有你本人可以查看你的设置。你可以在这里统一管理登录、安全、应用授权与订阅权益。

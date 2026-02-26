@@ -1,10 +1,10 @@
 <template>
   <div class="portal-page">
-    <section class="info-card">
-      <div class="card-header">
-        <h2>My Session</h2>
-      </div>
-      <p class="card-desc">Use your login cookie to refresh the current session and inspect profile claims.</p>
+    <UiCard
+      class="info-card"
+      title="My Session"
+      subtitle="Use your login cookie to refresh the current session and inspect profile claims."
+    >
       <div class="card-actions">
         <UiButton variant="primary" :loading="loading" @click="refreshSession">
           Refresh Session
@@ -13,33 +13,27 @@
           Sign out
         </UiButton>
       </div>
-    </section>
+    </UiCard>
 
-    <section v-if="session" class="info-card wide-card">
-      <div class="card-header">
-        <h2>Token Snapshot</h2>
-      </div>
+    <UiCard v-if="session" class="info-card wide-card" title="Token Snapshot">
       <div class="code-wrapper">
         <pre class="code">{{ JSON.stringify(session, null, 2) }}</pre>
       </div>
-    </section>
+    </UiCard>
 
-    <section v-if="error" class="info-card">
-      <div class="card-header">
-        <h2 class="error-title">Session Status</h2>
-      </div>
-      <p class="error-message">{{ error }}</p>
-    </section>
+    <UiCard v-if="error" class="info-card" title="Session Status">
+      <UiAlert variant="danger" :message="error" />
+    </UiCard>
 
-    <section class="info-card">
-      <div class="card-header">
-        <h2>Subscriptions</h2>
-      </div>
-      <p class="card-desc">Billing schema is ready in SSO. Next step is entitlement read APIs and event ingestion.</p>
-      <div class="card-footer-link">
+    <UiCard
+      class="info-card"
+      title="Subscriptions"
+      subtitle="Billing schema is ready in SSO. Next step is entitlement read APIs and event ingestion."
+    >
+      <template #footer>
         <NuxtLink class="card-link" to="/admin/billing">Open Billing Console</NuxtLink>
-      </div>
-    </section>
+      </template>
+    </UiCard>
   </div>
 </template>
 
@@ -107,34 +101,6 @@ const logout = async () => {
   gap: 24px;
 }
 
-.info-card {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-}
-
-.wide-card {
-  grid-column: span 2;
-}
-
-.card-header h2 {
-  font-size: 1.375rem;
-  font-weight: 400;
-  color: #1f1f1f;
-  margin-bottom: 16px;
-}
-
-.card-desc {
-  font-size: 0.875rem;
-  color: #444746;
-  line-height: 1.5rem;
-  margin-bottom: 24px;
-  flex: 1;
-}
-
 .card-actions {
   display: flex;
   gap: 12px;
@@ -154,20 +120,6 @@ const logout = async () => {
   color: #1f1f1f;
 }
 
-.error-title {
-  color: #d93025;
-}
-
-.error-message {
-  color: #d93025;
-  font-size: 0.875rem;
-}
-
-.card-footer-link {
-  margin-top: auto;
-  padding-top: 16px;
-}
-
 .card-link {
   font-size: 0.875rem;
   font-weight: 500;
@@ -182,9 +134,6 @@ const logout = async () => {
 @media (max-width: 800px) {
   .portal-page {
     grid-template-columns: 1fr;
-  }
-  .wide-card {
-    grid-column: span 1;
   }
 }
 </style>

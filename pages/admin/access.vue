@@ -17,12 +17,14 @@
       </div>
 
       <div class="dashboard-grid">
-        <!-- Roles Section -->
-        <section class="card">
-          <div class="card-header">
-            <h3>{{ t('access.roles') }}</h3>
-            <span class="badge">{{ roles.length }}</span>
-          </div>
+        <UiCard class="card">
+          <template #header>
+            <div class="card-header">
+              <h3>{{ t('access.roles') }}</h3>
+              <UiBadge variant="info" :label="String(roles.length)" />
+            </div>
+          </template>
+
           <div class="card-body">
             <div v-if="roles.length === 0" class="empty-state">
               No roles found.
@@ -37,33 +39,31 @@
                   <p class="role-desc">{{ role.description }}</p>
                 </div>
                 <div class="role-perms">
-                  <span v-for="perm in role.permissions" :key="perm" class="perm-tag">{{ perm }}</span>
+                  <UiBadge v-for="perm in role.permissions" :key="perm" variant="neutral" :label="perm" />
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </UiCard>
 
-        <!-- Permissions Section -->
-        <section class="card">
-          <div class="card-header">
-            <h3>{{ t('access.permissions') }}</h3>
-            <span class="badge">{{ permissions.length }}</span>
-          </div>
+        <UiCard class="card">
+          <template #header>
+            <div class="card-header">
+              <h3>{{ t('access.permissions') }}</h3>
+              <UiBadge variant="info" :label="String(permissions.length)" />
+            </div>
+          </template>
+
           <div class="card-body">
             <div class="perm-cloud">
-              <span v-for="perm in permissions" :key="perm" class="perm-tag ghost">{{ perm }}</span>
+              <UiBadge v-for="perm in permissions" :key="perm" variant="neutral" :label="perm" />
             </div>
           </div>
-        </section>
+        </UiCard>
       </div>
 
       <div class="dashboard-grid">
-        <!-- Create Role -->
-        <section class="card">
-          <div class="card-header">
-            <h3>{{ t('access.createRole') }}</h3>
-          </div>
+        <UiCard class="card" :title="t('access.createRole')">
           <div class="card-body">
             <form @submit.prevent="createRole" class="action-form">
               <UiInput v-model="roleForm.name" :label="t('access.roleName')" required />
@@ -78,13 +78,9 @@
               <UiButton type="submit" :loading="loading" block>{{ t('access.saveRole') }}</UiButton>
             </form>
           </div>
-        </section>
+        </UiCard>
 
-        <!-- Assignments -->
-        <section class="card">
-          <div class="card-header">
-            <h3>{{ t('access.assign') }}</h3>
-          </div>
+        <UiCard class="card" :title="t('access.assign')">
           <div class="card-body">
             <form @submit.prevent="assignRole" class="action-form">
               <UiInput v-model="assign.userId" :label="t('access.user')" required />
@@ -92,7 +88,7 @@
               <UiInput v-model="assign.clientId" :label="t('access.client') + ' (optional)'" />
               <UiButton type="submit" :loading="loading" block>{{ t('access.assign') }}</UiButton>
             </form>
-            
+
             <div class="divider"></div>
 
             <h4 class="sub-header">{{ t('access.bindRole') }}</h4>
@@ -102,12 +98,15 @@
               <UiButton type="submit" :loading="loading" block>{{ t('access.bindRole') }}</UiButton>
             </form>
           </div>
-        </section>
+        </UiCard>
       </div>
 
-      <div v-if="message" class="toast" :class="{ error: message.includes('Failed') }">
-        {{ message }}
-      </div>
+      <UiAlert
+        v-if="message"
+        class="toast"
+        :variant="message.includes('Failed') ? 'danger' : 'success'"
+        :message="message"
+      />
     </div>
   </NuxtLayout>
 </template>
@@ -141,7 +140,6 @@ const assign = reactive({
 const bind = reactive({
   clientId: '',
   roleId: '',
-  roleName: '', // Added to match template usage if needed, though not used in original
 })
 
 const getAuthHeaders = () => {
@@ -305,20 +303,11 @@ onMounted(() => {
   gap: 24px;
 }
 
-.card {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-}
-
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  width: 100%;
 }
 
 .card-header h3 {
@@ -326,15 +315,6 @@ onMounted(() => {
   font-weight: 500;
   color: #1f1f1f;
   margin: 0;
-}
-
-.badge {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  padding: 2px 12px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
 }
 
 .role-list {
@@ -403,38 +383,6 @@ onMounted(() => {
   gap: 16px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.form-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #1f1f1f;
-  margin-left: 4px;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 12px;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: #1f1f1f;
-  background-color: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  resize: vertical;
-  font-family: inherit;
-}
-
-.form-textarea:focus {
-  outline: none;
-  border: 2px solid #1a73e8;
-  padding: 11px;
-}
-
 .divider {
   height: 1px;
   background-color: #dadce0;
@@ -459,23 +407,8 @@ onMounted(() => {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  padding: 12px 24px;
-  background-color: #323232;
-  color: #ffffff;
-  border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  font-size: 0.875rem;
   z-index: 1000;
-  animation: slide-up 0.3s ease;
-}
-
-.toast.error {
-  background-color: #d93025;
-}
-
-@keyframes slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
 }
 
 @media (max-width: 900px) {
@@ -484,9 +417,11 @@ onMounted(() => {
     align-items: flex-start;
     gap: 16px;
   }
+
   .header-controls {
     width: 100%;
   }
+
   .control-input {
     flex: 1;
   }

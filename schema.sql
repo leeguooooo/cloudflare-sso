@@ -22,6 +22,19 @@ CREATE TABLE IF NOT EXISTS global_accounts (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_global_accounts_email_unique ON global_accounts(normalized_email);
 
+CREATE TABLE IF NOT EXISTS global_external_identities (
+  id TEXT PRIMARY KEY, -- uuid
+  global_account_id TEXT NOT NULL REFERENCES global_accounts(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL, -- github/google/wechat
+  subject TEXT NOT NULL, -- provider subject/user id
+  email TEXT,
+  profile_json TEXT DEFAULT '{}' NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_global_external_identities_unique ON global_external_identities(provider, subject);
+CREATE INDEX IF NOT EXISTS idx_global_external_identities_account ON global_external_identities(global_account_id);
+
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY, -- uuid
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

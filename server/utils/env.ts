@@ -8,6 +8,13 @@ type EnvBindings = {
   PASSWORD_PEPPER?: string
   ACCESS_TOKEN_TTL_SECONDS?: string
   REFRESH_TOKEN_TTL_SECONDS?: string
+  OAUTH_GITHUB_CLIENT_ID?: string
+  OAUTH_GITHUB_CLIENT_SECRET?: string
+  OAUTH_GITHUB_REDIRECT_URI?: string
+  OAUTH_GOOGLE_CLIENT_ID?: string
+  OAUTH_GOOGLE_CLIENT_SECRET?: string
+  OAUTH_GOOGLE_REDIRECT_URI?: string
+  DEFAULT_CLIENT_ID?: string
 }
 
 export const getEnv = (event: H3Event): EnvBindings => {
