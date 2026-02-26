@@ -1,5 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb } from '../../../utils/env'
+import { requireTenantAdmin } from '../../../utils/guard'
+import { writeAuditLog } from '../../../utils/audit'
 
 type RoleBody = {
   tenant_id?: string
@@ -14,6 +16,7 @@ export default defineEventHandler(async (event) => {
   const tenantId = body.tenant_id
   const name = body.name?.trim()
   if (!tenantId || !name) throw createError({ statusCode: 400, statusMessage: 'tenant_id and name required' })
+  const principal = await requireTenantAdmin(event, tenantId)
   const db = getDb(event)
 
   // Create role
@@ -47,6 +50,18 @@ export default defineEventHandler(async (event) => {
       await db.prepare(`INSERT OR IGNORE INTO client_roles (client_id, role_id) VALUES (?, ?)`).bind(cid, roleId).run()
     }
   }
+
+  await writeAuditLog(event, {
+    tenantId,
+    userId: principal.sub,
+    action: 'access.role.create',
+    payload: {
+      role_id: roleId,
+      name,
+      client_ids: Array.isArray(body.client_ids) ? body.client_ids : [],
+      permissions: Array.isArray(body.permissions) ? body.permissions : [],
+    },
+  })
 
   return { success: true, role_id: roleId }
 })

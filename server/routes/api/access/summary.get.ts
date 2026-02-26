@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, getQuery } from 'h3'
 import { getDb } from '../../../utils/env'
 import { getUserRolesForClient, flattenPermissions } from '../../../utils/access'
+import { requireTenantAdmin } from '../../../utils/guard'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -8,6 +9,7 @@ export default defineEventHandler(async (event) => {
   const clientPublicId = query.client_id ? String(query.client_id) : undefined
   const userId = query.user_id ? String(query.user_id) : undefined
   if (!tenantId) throw createError({ statusCode: 400, statusMessage: 'tenant_id required' })
+  await requireTenantAdmin(event, tenantId)
 
   const db = getDb(event)
   const client = clientPublicId

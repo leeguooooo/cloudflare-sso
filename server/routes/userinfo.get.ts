@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
     email_verified: true,
     locale: user.locale,
     tid: user.tenant_id,
+    gaid: typeof payload.gaid === 'string' ? payload.gaid : undefined,
     roles: roles.map((r) => r.name),
     perms,
   }

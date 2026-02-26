@@ -63,11 +63,18 @@ const stats = computed(() => [
   { label: 'Active Sessions', value: overview.value.active_sessions },
 ])
 
+const getAuthHeaders = () => {
+  if (!process.client) return {}
+  const token = localStorage.getItem('sso_access_token')
+  return token ? { authorization: `Bearer ${token}` } : {}
+}
+
 const loadOverview = async () => {
   loading.value = true
   try {
     const data = await $fetch<OverviewResponse>(`${config.public.apiBase}/admin/overview`, {
       query: { tenant_id: tenantId.value },
+      headers: getAuthHeaders(),
     })
     overview.value = data
   } finally {
@@ -76,6 +83,10 @@ const loadOverview = async () => {
 }
 
 onMounted(() => {
+  if (process.client && !localStorage.getItem('sso_access_token')) {
+    navigateTo('/login')
+    return
+  }
   loadOverview()
 })
 </script>

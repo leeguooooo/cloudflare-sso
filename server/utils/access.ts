@@ -10,7 +10,8 @@ export type RoleWithPermissions = {
 
 export const getUserRolesForClient = async (event: H3Event, userId: string, tenantId: string, clientId?: string) => {
   const db = getDb(event)
-  // roles directly assigned to user for the client or global (client_id IS NULL)
+  // Roles directly assigned to user for the client or global (client_id IS NULL).
+  // Do not auto-merge all client roles here; those represent available roles, not granted roles.
   const rows = await db
     .prepare(
       `SELECT r.id, r.name, r.description, r.built_in
@@ -20,20 +21,10 @@ export const getUserRolesForClient = async (event: H3Event, userId: string, tena
     )
     .bind(userId, tenantId, clientId || null)
     .all<{ id: string; name: string; description: string }>()
-
-  // roles available to this client
-  const clientRoleRows = await db
-    .prepare(
-      `SELECT r.id, r.name, r.description
-       FROM client_roles cr
-       JOIN roles r ON r.id = cr.role_id
-       WHERE cr.client_id = ?`,
-    )
-    .bind(clientId || '')
-    .all<{ id: string; name: string; description: string }>()
+  const rowItems = rows.results || []
 
   const combined: Record<string, RoleWithPermissions> = {}
-  for (const role of [...rows, ...clientRoleRows]) {
+  for (const role of rowItems) {
     combined[role.id] = { ...role, permissions: [] }
   }
   if (!Object.keys(combined).length) return []
@@ -49,7 +40,7 @@ export const getUserRolesForClient = async (event: H3Event, userId: string, tena
     )
     .bind(...roleIds)
     .all<{ role_id: string; action: string; resource: string }>()
-  for (const perm of perms) {
+  for (const perm of perms.results || []) {
     if (combined[perm.role_id]) {
       combined[perm.role_id].permissions.push(`${perm.action}:${perm.resource}`)
     }

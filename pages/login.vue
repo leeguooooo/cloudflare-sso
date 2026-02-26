@@ -1,72 +1,139 @@
 <template>
-  <NuxtLayout name="auth">
-    <div class="login-container">
-      <div class="header">
-        <div class="logo">CF</div>
-        <h1>{{ t('auth.loginTitle') }}</h1>
-        <p class="subtitle">{{ t('auth.subtitle') }}</p>
-      </div>
-
-      <form @submit.prevent="handleSubmit" class="login-form">
-        <UiInput
-          v-model="form.email"
-          type="email"
-          :label="t('auth.email')"
-          autocomplete="email"
-          required
-          :disabled="loading"
-        />
-        
-        <UiInput
-          v-model="form.password"
-          type="password"
-          :label="t('auth.password')"
-          autocomplete="current-password"
-          required
-          :disabled="loading"
-        />
-
-        <div class="form-row">
-          <UiInput
-            v-model="form.tenantId"
-            :label="t('auth.tenant')"
-            autocomplete="organization"
-            :disabled="loading"
-          />
-          <UiInput
-            v-model="form.clientId"
-            :label="t('auth.client')"
-            autocomplete="off"
-            :disabled="loading"
-          />
+  <div class="signin-page">
+    <main class="signin-main">
+      <section class="signin-card">
+        <div class="left-panel">
+          <svg class="google-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-1 .67-2.28 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          <h1>Sign in</h1>
+          <p>to continue to Cloudflare SSO</p>
         </div>
 
-        <div v-if="message" class="alert" :class="{ 'alert-success': success, 'alert-error': !success }">
-          {{ message }}
+        <div class="right-panel">
+          <div v-if="!showForm" class="account-list">
+            <button
+              v-if="rememberedEmail"
+              class="row account-row"
+              :disabled="loading"
+              @click="prefillRemembered"
+            >
+              <div class="avatar">{{ rememberedInitial }}</div>
+              <div class="account-meta">
+                <strong>{{ rememberedName }}</strong>
+                <small>{{ rememberedEmail }}</small>
+              </div>
+              <span class="signed-out">Signed out</span>
+            </button>
+
+            <button class="row" :disabled="loading" @click="toggleForm(true)">
+              <div class="row-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M20 21a8 8 0 1 0-16 0" />
+                </svg>
+              </div>
+              <span>Use another account</span>
+            </button>
+
+            <button class="row" :disabled="loading || !rememberedEmail" @click="removeRemembered">
+              <div class="row-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
+              </div>
+              <span>Remove an account</span>
+            </button>
+          </div>
+
+          <form v-if="showForm" class="login-form" @submit.prevent="handleSubmit">
+            <UiInput
+              v-model="form.email"
+              type="email"
+              label="Email"
+              autocomplete="email"
+              required
+              :disabled="loading"
+            />
+            <UiInput
+              v-model="form.password"
+              type="password"
+              label="Password"
+              autocomplete="current-password"
+              required
+              :disabled="loading"
+            />
+            <div class="inline-fields">
+              <UiInput
+                v-model="form.tenantId"
+                label="Tenant"
+                autocomplete="organization"
+                :disabled="loading"
+              />
+              <UiInput
+                v-model="form.clientId"
+                label="Client"
+                autocomplete="off"
+                :disabled="loading"
+              />
+            </div>
+
+            <p v-if="message" class="message" :class="{ success }">{{ message }}</p>
+
+            <div class="form-actions">
+              <UiButton
+                variant="ghost"
+                type="button"
+                :disabled="loading"
+                @click="toggleForm(false)"
+              >
+                Back
+              </UiButton>
+              <UiButton
+                variant="primary"
+                type="submit"
+                :loading="loading"
+              >
+                Continue
+              </UiButton>
+            </div>
+          </form>
         </div>
+      </section>
 
-        <UiButton type="submit" :loading="loading" block>
-          {{ t('auth.submitLogin') }}
-        </UiButton>
-
-        <div class="form-footer">
-          <p>
-            Don't have an account? 
-            <NuxtLink to="/register" class="link">{{ t('auth.toRegister') }}</NuxtLink>
-          </p>
-        </div>
-      </form>
-
-      <div v-if="tokens" class="debug-tokens">
-        <pre>{{ JSON.stringify(tokens, null, 2) }}</pre>
-      </div>
-    </div>
-  </NuxtLayout>
+      <footer class="signin-footer">
+        <button class="language-btn">
+          English (United States)
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z" />
+          </svg>
+        </button>
+        <nav class="footer-links">
+          <a href="#">Help</a>
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+        </nav>
+      </footer>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-const { t } = useI18n()
+definePageMeta({
+  layout: false,
+})
+
 const config = useRuntimeConfig()
+const route = useRoute()
+const loading = ref(false)
+const message = ref('')
+const success = ref(false)
+const showForm = ref(false)
+const rememberedEmail = ref('')
 
 const form = reactive({
   email: 'demo@example.com',
@@ -75,10 +142,44 @@ const form = reactive({
   clientId: 'demo-web',
 })
 
-const tokens = ref<Record<string, unknown> | null>(null)
-const loading = ref(false)
-const message = ref('')
-const success = ref(false)
+const rememberedName = computed(() => {
+  const email = rememberedEmail.value
+  if (!email) return 'Cloudflare User'
+  return email.split('@')[0]
+})
+
+const rememberedInitial = computed(() => {
+  const name = rememberedName.value.trim()
+  if (!name) return 'U'
+  return name.slice(0, 1).toUpperCase()
+})
+
+const resolveContinuePath = () => {
+  const raw = typeof route.query.continue === 'string' ? route.query.continue : ''
+  if (!raw) return ''
+  if (!raw.startsWith('/')) return ''
+  if (raw.startsWith('//')) return ''
+  return raw
+}
+
+const toggleForm = (open: boolean) => {
+  showForm.value = open
+  message.value = ''
+  success.value = false
+}
+
+const prefillRemembered = () => {
+  if (!rememberedEmail.value) return
+  form.email = rememberedEmail.value
+  toggleForm(true)
+}
+
+const removeRemembered = () => {
+  rememberedEmail.value = ''
+  if (process.client) {
+    localStorage.removeItem('sso_last_email')
+  }
+}
 
 const handleSubmit = async () => {
   loading.value = true
@@ -94,10 +195,19 @@ const handleSubmit = async () => {
         client_id: form.clientId,
       },
     })
-    tokens.value = data as Record<string, unknown>
-    message.value = t('auth.success')
+
+    if (process.client) {
+      const accessToken = (data as { access_token?: string }).access_token
+      if (accessToken) {
+        localStorage.setItem('sso_access_token', accessToken)
+      }
+      localStorage.setItem('sso_last_email', form.email)
+    }
+
+    message.value = 'Sign in successful'
     success.value = true
-    await navigateTo('/portal')
+    const continuePath = resolveContinuePath()
+    await navigateTo(continuePath || '/account')
   } catch (err: any) {
     const detail = err?.data?.message || err?.message || 'Login failed'
     message.value = detail
@@ -105,95 +215,280 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  if (!process.client) return
+  rememberedEmail.value = localStorage.getItem('sso_last_email') || ''
+
+  const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
+  if (queryClientId) {
+    form.clientId = queryClientId
+  }
+  const queryTenantId = typeof route.query.tenant_id === 'string' ? route.query.tenant_id.trim() : ''
+  if (queryTenantId) {
+    form.tenantId = queryTenantId
+  }
+
+  const continuePath = resolveContinuePath()
+  if (continuePath.startsWith('/authorize?')) {
+    const params = new URLSearchParams(continuePath.split('?')[1] || '')
+    const continueClientId = params.get('client_id') || ''
+    if (continueClientId) {
+      form.clientId = continueClientId
+    }
+  }
+
+  if (!rememberedEmail.value) {
+    showForm.value = true
+  }
+})
 </script>
 
 <style scoped>
-.login-container {
+.signin-page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #202124;
+  font-family: 'Google Sans', 'Roboto', 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.signin-main {
+  width: min(840px, 100%);
+}
+
+.signin-card {
+  background: #ffffff;
+  border-radius: 28px;
+  min-height: 400px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding: 48px 40px;
+  border: 1px solid #dadce0;
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel h1 {
+  margin: 16px 0 8px;
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 2.75rem;
+  color: #1f1f1f;
+}
+
+.left-panel p {
+  margin: 0;
+  color: #444746;
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.google-logo {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
   width: 100%;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 2rem;
+.row {
+  width: 100%;
+  height: 56px;
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 0 4px;
+  color: #1f1f1f;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.logo {
-  width: 48px;
-  height: 48px;
-  background-color: var(--color-primary-600);
-  color: white;
-  border-radius: var(--radius-lg);
+.row:hover {
+  background-color: #f7f9fc;
+}
+
+.row:first-child {
+  border-top: 1px solid #e0e0e0;
+}
+
+.account-row {
+  height: 64px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  font-weight: 700;
-  font-size: 1.25rem;
-  margin: 0 auto 1.5rem;
-}
-
-h1 {
-  font-size: 1.875rem;
-  margin-bottom: 0.5rem;
-  color: var(--color-text-primary);
-}
-
-.subtitle {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.form-footer {
-  text-align: center;
-  margin-top: 1rem;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.link {
-  color: var(--color-primary-600);
+  background-color: #1a73e8;
+  color: #fff;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
-.link:hover {
-  text-decoration: underline;
+.account-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
-.alert {
-  padding: 0.75rem;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  margin-bottom: 0.5rem;
+.account-meta strong {
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
-.alert-error {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fee2e2;
-}
-
-.alert-success {
-  background-color: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #dcfce7;
-}
-
-.debug-tokens {
-  margin-top: 2rem;
-  padding: 1rem;
-  background-color: var(--color-neutral-100);
-  border-radius: var(--radius-md);
+.account-meta small {
+  color: #444746;
   font-size: 0.75rem;
-  overflow-x: auto;
+  font-weight: 400;
+}
+
+.signed-out {
+  color: #444746;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.row-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444746;
+}
+
+.login-form {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.message {
+  margin: 8px 0;
+  font-size: 0.75rem;
+  color: #b3261e;
+  padding: 0 4px;
+}
+
+.message.success {
+  color: #137333;
+}
+
+.signin-footer {
+  margin-top: 16px;
+  width: min(840px, 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.language-btn {
+  border: none;
+  background: transparent;
+  color: #444746;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.language-btn:hover {
+  background-color: #f7f9fc;
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+}
+
+.footer-links a {
+  color: #444746;
+  text-decoration: none;
+  font-size: 0.75rem;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.footer-links a:hover {
+  background-color: #f7f9fc;
+}
+
+@media (max-width: 900px) {
+  .signin-main {
+    width: min(450px, 100%);
+  }
+
+  .signin-card {
+    grid-template-columns: 1fr;
+    padding: 36px 24px;
+    border-radius: 28px;
+    min-height: auto;
+    text-align: center;
+  }
+
+  .left-panel {
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .google-logo {
+    margin-bottom: 0;
+  }
+
+  .left-panel h1 {
+    font-size: 1.75rem;
+    margin-top: 8px;
+  }
+
+  .signin-footer {
+    width: min(450px, 100%);
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
 }
 </style>

@@ -3,6 +3,8 @@ import { getDb } from '../utils/env'
 import { getSessionByRefreshToken, issueTokens, rotateSession } from '../utils/auth'
 import { nowInSeconds, base64UrlEncode } from '../utils/crypto'
 import { getUserRolesForClient } from '../utils/access'
+import { ensureClientManagementSchema } from '../utils/identity'
+import { writeAuditLog } from '../utils/audit'
 
 const hashVerifier = async (verifier: string) => {
   const data = new TextEncoder().encode(verifier)
@@ -12,6 +14,7 @@ const hashVerifier = async (verifier: string) => {
 
 export default defineEventHandler(async (event) => {
   const db = getDb(event)
+  await ensureClientManagementSchema(event)
   const body = (await readBody(event)) as Record<string, unknown>
   const grantType = body.grant_type
   const authHeader = getRequestHeader(event, 'authorization')
@@ -31,8 +34,12 @@ export default defineEventHandler(async (event) => {
     client_secret: string | null
     redirect_uris: string
     scope: string
+    status?: string
   }>()
   if (!client) throw createError({ statusCode: 400, statusMessage: 'Unknown client' })
+  if ((client.status || 'active') !== 'active') {
+    throw createError({ statusCode: 403, statusMessage: 'Client disabled' })
+  }
 
   if (client.client_secret && clientSecret !== client.client_secret) {
     throw createError({ statusCode: 401, statusMessage: 'Invalid client secret' })
@@ -47,7 +54,7 @@ export default defineEventHandler(async (event) => {
     }
     const authCode = await db
       .prepare(
-        `SELECT ac.*, u.email, u.locale
+        `SELECT ac.*, u.email, u.locale, u.global_account_id
          FROM auth_codes ac
          JOIN users u ON u.id = ac.user_id
          WHERE ac.code = ?`,
@@ -67,6 +74,7 @@ export default defineEventHandler(async (event) => {
         consumed_at: number | null
         email: string
         locale?: string
+        global_account_id?: string | null
       }>()
     if (!authCode) throw createError({ statusCode: 400, statusMessage: 'Invalid authorization code' })
     if (authCode.consumed_at) throw createError({ statusCode: 400, statusMessage: 'Authorization code used' })
@@ -91,7 +99,16 @@ export default defineEventHandler(async (event) => {
       tenant_id: authCode.tenant_id,
       email: authCode.email,
       locale: authCode.locale,
+      global_account_id: authCode.global_account_id,
     }, { id: client.id, client_id: clientId }, authCode.scope, undefined, roles)
+
+    await writeAuditLog(event, {
+      tenantId: authCode.tenant_id,
+      userId: authCode.user_id,
+      action: 'auth.token.authorization_code',
+      payload: { client_id: clientId, scope: authCode.scope },
+    })
+
     return {
       token_type: 'Bearer',
       access_token: tokens.accessToken,
@@ -112,9 +129,9 @@ export default defineEventHandler(async (event) => {
     }
 
     const userRow = await db
-      .prepare(`SELECT id, email, locale, tenant_id FROM users WHERE id = ?`)
+      .prepare(`SELECT id, email, locale, tenant_id, global_account_id FROM users WHERE id = ?`)
       .bind(session.user_id)
-      .first<{ id: string; email: string; locale?: string; tenant_id: string }>()
+      .first<{ id: string; email: string; locale?: string; tenant_id: string; global_account_id?: string | null }>()
     if (!userRow) throw createError({ statusCode: 404, statusMessage: 'User not found' })
 
     const roles = await getUserRolesForClient(event, userRow.id, userRow.tenant_id, client.id)
@@ -126,6 +143,14 @@ export default defineEventHandler(async (event) => {
       client.scope || 'openid profile email',
       roles,
     )
+
+    await writeAuditLog(event, {
+      tenantId: userRow.tenant_id,
+      userId: userRow.id,
+      action: 'auth.token.refresh_token',
+      payload: { client_id: clientId, session_id: session.id },
+    })
+
     return {
       token_type: 'Bearer',
       access_token: rotated.accessToken,

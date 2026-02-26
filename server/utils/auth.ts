@@ -9,6 +9,7 @@ export type BasicUser = {
   tenant_id: string
   email: string
   locale?: string
+  global_account_id?: string | null
 }
 
 export const getIssuer = (event: H3Event, env = getEnv(event)) => {
@@ -59,6 +60,7 @@ export const issueTokens = async (
     {
       sub: user.id,
       tid: user.tenant_id,
+      gaid: user.global_account_id || undefined,
       sid: session,
       scope,
       email: user.email,
@@ -78,6 +80,7 @@ export const issueTokens = async (
     {
       sub: user.id,
       tid: user.tenant_id,
+      gaid: user.global_account_id || undefined,
       sid: session,
       email: user.email,
       locale: user.locale,
@@ -128,12 +131,32 @@ export const rotateSession = async (
 
   const accessToken = await signJwt(
     event,
-    { sub: user.id, tid: user.tenant_id, sid: sessionId, scope, email: user.email, token_use: 'access', roles: roleIds, perms: permissions },
+    {
+      sub: user.id,
+      tid: user.tenant_id,
+      gaid: user.global_account_id || undefined,
+      sid: sessionId,
+      scope,
+      email: user.email,
+      token_use: 'access',
+      roles: roleIds,
+      perms: permissions,
+    },
     { expiresInSeconds: accessTtl, issuer: getIssuer(event, env), audience: client.client_id || client.id },
   )
   const idToken = await signJwt(
     event,
-    { sub: user.id, tid: user.tenant_id, sid: sessionId, email: user.email, locale: user.locale, scope, token_use: 'id', roles: roleIds },
+    {
+      sub: user.id,
+      tid: user.tenant_id,
+      gaid: user.global_account_id || undefined,
+      sid: sessionId,
+      email: user.email,
+      locale: user.locale,
+      scope,
+      token_use: 'id',
+      roles: roleIds,
+    },
     { expiresInSeconds: accessTtl, issuer: getIssuer(event, env), audience: client.client_id || client.id },
   )
   return { accessToken, idToken, refreshToken, refreshTokenExpiresAt: expiresAt, accessTokenExpiresIn: accessTtl }

@@ -1,36 +1,46 @@
 <template>
-  <NuxtLayout name="default">
-    <div class="portal-page">
-      <section class="card">
+  <div class="portal-page">
+    <section class="info-card">
+      <div class="card-header">
         <h2>My Session</h2>
-        <p class="muted">Use your login cookie to refresh the current session and inspect profile claims.</p>
-        <div class="actions">
-          <button class="btn-primary" @click="refreshSession" :disabled="loading">
-            {{ loading ? 'Loading...' : 'Refresh Session' }}
-          </button>
-          <button class="btn-secondary" @click="logout" :disabled="loading">
-            Sign out
-          </button>
-        </div>
-      </section>
+      </div>
+      <p class="card-desc">Use your login cookie to refresh the current session and inspect profile claims.</p>
+      <div class="card-actions">
+        <UiButton variant="primary" :loading="loading" @click="refreshSession">
+          Refresh Session
+        </UiButton>
+        <UiButton variant="outline" :disabled="loading" @click="logout">
+          Sign out
+        </UiButton>
+      </div>
+    </section>
 
-      <section class="card" v-if="session">
+    <section v-if="session" class="info-card wide-card">
+      <div class="card-header">
         <h2>Token Snapshot</h2>
+      </div>
+      <div class="code-wrapper">
         <pre class="code">{{ JSON.stringify(session, null, 2) }}</pre>
-      </section>
+      </div>
+    </section>
 
-      <section class="card" v-if="error">
-        <h2>Session Status</h2>
-        <p class="error">{{ error }}</p>
-      </section>
+    <section v-if="error" class="info-card">
+      <div class="card-header">
+        <h2 class="error-title">Session Status</h2>
+      </div>
+      <p class="error-message">{{ error }}</p>
+    </section>
 
-      <section class="card">
+    <section class="info-card">
+      <div class="card-header">
         <h2>Subscriptions</h2>
-        <p class="muted">Billing center is prepared in admin module. Next step is connecting product/plan/subscription tables.</p>
-        <NuxtLink class="inline-link" to="/admin/billing">Open Billing Console</NuxtLink>
-      </section>
-    </div>
-  </NuxtLayout>
+      </div>
+      <p class="card-desc">Billing schema is ready in SSO. Next step is entitlement read APIs and event ingestion.</p>
+      <div class="card-footer-link">
+        <NuxtLink class="card-link" to="/admin/billing">Open Billing Console</NuxtLink>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -56,6 +66,9 @@ const refreshSession = async () => {
       body: {},
     })
     session.value = data
+    if (process.client && data.access_token) {
+      localStorage.setItem('sso_access_token', data.access_token)
+    }
   } catch (err: any) {
     const detail = err?.data?.statusMessage || err?.data?.message || err?.message || 'Refresh session failed'
     error.value = detail
@@ -73,6 +86,9 @@ const logout = async () => {
       method: 'POST',
       body: {},
     })
+    if (process.client) {
+      localStorage.removeItem('sso_access_token')
+    }
     session.value = null
     await navigateTo('/login')
   } catch (err: any) {
@@ -87,70 +103,88 @@ const logout = async () => {
 <style scoped>
 .portal-page {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
 }
 
-.card {
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-}
-
-.card h2 {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.muted {
-  color: var(--color-text-secondary);
-  margin-bottom: 0.75rem;
-}
-
-.actions {
+.info-card {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 12px;
+  padding: 24px;
   display: flex;
-  gap: 0.75rem;
+  flex-direction: column;
 }
 
-.btn-primary,
-.btn-secondary {
-  border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
+.wide-card {
+  grid-column: span 2;
 }
 
-.btn-primary {
-  border: 1px solid var(--color-primary-600);
-  background: var(--color-primary-600);
-  color: white;
+.card-header h2 {
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: #1f1f1f;
+  margin-bottom: 16px;
 }
 
-.btn-secondary {
-  border: 1px solid var(--color-border);
-  background: white;
-  color: var(--color-text-primary);
+.card-desc {
+  font-size: 0.875rem;
+  color: #444746;
+  line-height: 1.5rem;
+  margin-bottom: 24px;
+  flex: 1;
 }
 
-.btn-primary:disabled,
-.btn-secondary:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+.card-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.code-wrapper {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  overflow: auto;
 }
 
 .code {
-  background: var(--color-neutral-100);
-  border-radius: var(--radius-md);
-  padding: 0.75rem;
-  overflow: auto;
+  font-family: 'Roboto Mono', monospace;
   font-size: 0.75rem;
+  margin: 0;
+  color: #1f1f1f;
 }
 
-.error {
-  color: #b91c1c;
+.error-title {
+  color: #d93025;
 }
 
-.inline-link {
-  font-weight: 600;
+.error-message {
+  color: #d93025;
+  font-size: 0.875rem;
+}
+
+.card-footer-link {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.card-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+.card-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 800px) {
+  .portal-page {
+    grid-template-columns: 1fr;
+  }
+  .wide-card {
+    grid-column: span 1;
+  }
 }
 </style>

@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, getQuery } from 'h3'
 import { getDb } from '../../../utils/env'
+import { requireTenantAdmin } from '../../../utils/guard'
 
 type ScalarRow = {
   c: number
@@ -11,6 +12,7 @@ export default defineEventHandler(async (event) => {
   if (!tenantId) {
     throw createError({ statusCode: 400, statusMessage: 'tenant_id required' })
   }
+  await requireTenantAdmin(event, tenantId)
 
   const db = getDb(event)
 

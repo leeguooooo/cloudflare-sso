@@ -2,16 +2,15 @@
   <NuxtLayout name="auth">
     <div class="register-container">
       <div class="header">
-        <div class="logo">CF</div>
-        <h1>{{ t('auth.registerTitle') }}</h1>
-        <p class="subtitle">{{ t('auth.subtitle') }}</p>
+        <h1>Create an Identity Account</h1>
+        <p class="subtitle">Enter your details to get started</p>
       </div>
 
       <form @submit.prevent="handleSubmit" class="register-form">
         <UiInput
           v-model="form.email"
           type="email"
-          :label="t('auth.email')"
+          label="Email address"
           autocomplete="email"
           required
           :disabled="loading"
@@ -20,7 +19,7 @@
         <UiInput
           v-model="form.password"
           type="password"
-          :label="t('auth.password')"
+          label="Password"
           autocomplete="new-password"
           required
           :disabled="loading"
@@ -29,18 +28,23 @@
         <div class="form-row">
           <UiInput
             v-model="form.tenantId"
-            :label="t('auth.tenant')"
+            label="Tenant ID"
             autocomplete="organization"
             :disabled="loading"
           />
           
           <div class="form-group">
-            <label class="form-label">{{ t('auth.locale') }}</label>
+            <label class="form-label">Language</label>
             <div class="select-wrapper">
               <select v-model="form.locale" class="form-select" :disabled="loading">
-                <option value="en">English</option>
+                <option value="en">English (US)</option>
                 <option value="zh">简体中文</option>
               </select>
+              <div class="select-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 10l5 5 5-5z" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -49,15 +53,13 @@
           {{ message }}
         </div>
 
-        <UiButton type="submit" :loading="loading" block>
-          {{ t('auth.submitRegister') }}
-        </UiButton>
-
-        <div class="form-footer">
-          <p>
-            Already have an account? 
-            <NuxtLink to="/login" class="link">{{ t('auth.toLogin') }}</NuxtLink>
-          </p>
+        <div class="form-actions">
+          <NuxtLink to="/login" class="btn-link">
+            Sign in instead
+          </NuxtLink>
+          <UiButton type="submit" variant="primary" :loading="loading">
+            Next
+          </UiButton>
         </div>
       </form>
 
@@ -68,173 +70,137 @@
   </NuxtLayout>
 </template>
 
-<script setup lang="ts">
-const { t } = useI18n()
-const config = useRuntimeConfig()
-
-const form = reactive({
-  email: 'demo@example.com',
-  password: 'Passw0rd!',
-  tenantId: 'tenant-demo',
-  locale: 'en',
-})
-
-const loading = ref(false)
-const message = ref('')
-const success = ref(false)
-const output = ref<Record<string, unknown> | null>(null)
-
-const handleSubmit = async () => {
-  loading.value = true
-  message.value = ''
-  success.value = false
-  try {
-    const data = await $fetch(`${config.public.apiBase}/auth/register`, {
-      method: 'POST',
-      body: {
-        email: form.email,
-        password: form.password,
-        tenant_id: form.tenantId,
-        locale: form.locale,
-      },
-    })
-    output.value = data as Record<string, unknown>
-    message.value = t('auth.registered')
-    success.value = true
-  } catch (err: any) {
-    const detail = err?.data?.message || err?.message || 'Registration failed'
-    message.value = detail
-  } finally {
-    loading.value = false
-  }
-}
-</script>
-
 <style scoped>
 .register-container {
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
-  text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 24px;
 }
 
-.logo {
-  width: 48px;
-  height: 48px;
-  background-color: var(--color-primary-600);
-  color: white;
-  border-radius: var(--radius-lg);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 1.25rem;
-  margin: 0 auto 1.5rem;
-}
-
-h1 {
-  font-size: 1.875rem;
-  margin-bottom: 0.5rem;
-  color: var(--color-text-primary);
+.header h1 {
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 2.75rem;
+  margin-bottom: 8px;
+  color: #1f1f1f;
 }
 
 .subtitle {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
+  color: #444746;
+  font-size: 1rem;
+  line-height: 1.5rem;
 }
 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 16px;
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 0.25rem;
 }
 
 .form-label {
-  font-size: var(--font-size-sm);
+  font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-neutral-800);
+  margin-left: 0.25rem;
 }
 
 .select-wrapper {
   position: relative;
+  height: 3rem;
 }
 
 .form-select {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  font-size: var(--font-size-sm);
-  line-height: 1.25rem;
-  color: var(--color-text-primary);
+  height: 100%;
+  padding: 0 2rem 0 0.875rem;
+  font-size: 1rem;
+  color: var(--color-neutral-900);
   background-color: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 4px;
+  transition: border-color 0.2s;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
-  background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
+  cursor: pointer;
+}
+
+.form-select:hover:not(:disabled) {
+  border-color: var(--color-neutral-900);
 }
 
 .form-select:focus {
   outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px var(--color-primary-100);
+  border: 2px solid var(--color-primary-600);
+  padding: 0 1.9375rem 0 0.8125rem;
 }
 
-.form-footer {
-  text-align: center;
-  margin-top: 1rem;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+.select-icon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #444746;
 }
 
-.link {
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.btn-link {
   color: var(--color-primary-600);
   font-weight: 500;
+  font-size: 0.875rem;
+  text-decoration: none;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
-.link:hover {
-  text-decoration: underline;
+.btn-link:hover {
+  background-color: #f7f9fc;
 }
 
 .alert {
   padding: 0.75rem;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  margin-top: 8px;
 }
 
 .alert-error {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fee2e2;
+  background-color: #fce8e6;
+  color: #d93025;
 }
 
 .alert-success {
-  background-color: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #dcfce7;
+  background-color: #e6f4ea;
+  color: #137333;
 }
 
 .debug-tokens {
-  margin-top: 2rem;
-  padding: 1rem;
-  background-color: var(--color-neutral-100);
-  border-radius: var(--radius-md);
+  margin-top: 24px;
+  padding: 12px;
+  background-color: #f1f3f4;
+  border-radius: 4px;
   font-size: 0.75rem;
   overflow-x: auto;
 }

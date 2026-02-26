@@ -1,4 +1,9 @@
 DELETE FROM audit_logs;
+DELETE FROM subscription_events;
+DELETE FROM entitlements;
+DELETE FROM subscriptions;
+DELETE FROM plans;
+DELETE FROM products;
 DELETE FROM email_tokens;
 DELETE FROM sessions;
 DELETE FROM auth_codes;
@@ -9,5 +14,6 @@ DELETE FROM permissions;
 DELETE FROM roles;
 DELETE FROM credentials;
 DELETE FROM users;
+DELETE FROM global_accounts;
 DELETE FROM clients;
 DELETE FROM tenants;

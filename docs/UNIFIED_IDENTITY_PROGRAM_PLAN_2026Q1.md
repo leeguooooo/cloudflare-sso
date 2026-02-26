@@ -1,6 +1,6 @@
 # Unified Identity Program Plan (2026 Q1)
 
-Last updated: 2026-02-25
+Last updated: 2026-02-26
 Program owner: platform
 Single source of truth: this file
 
@@ -29,6 +29,10 @@ Program implication:
   - `cherry` (mobile + mini-program + admin)
   - future apps
 - Ensure each new app can onboard with a standard checklist and no custom auth stack.
+- UX north star is explicitly aligned to `https://account.google.com/`:
+  - account center information architecture
+  - account chooser login interaction model
+  - simple, low-friction cross-app sign-in experience
 
 ## 2. Architecture Principles (Google-Inspired, First-Party Scope)
 - Standards first:
@@ -46,6 +50,7 @@ Program implication:
 Notes:
 - We can and should reference Google's mature model as a benchmark for flow design and safety controls.
 - We should not copy Google-specific product behavior that does not fit first-party internal SSO.
+- We mirror Google Account UX structure, but keep first-party branding and assets.
 
 ## 3. Non-Negotiables
 - SSO is the only identity provider in production after cutover.
@@ -101,12 +106,12 @@ Acceptance:
 ### W1. SSO Platform (cloudflare-sso)
 - [x] W1-01 Add platform entry + portal + admin shell
 - [x] W1-02 Add admin overview + clients API scaffold
-- [ ] W1-03 Add mandatory authz middleware for `/api/admin/*` and `/api/access/*` (role/perms required)
-- [ ] W1-04 Add client management CRUD UI/API (create/update/disable client)
+- [x] W1-03 Add mandatory authz middleware for `/api/admin/*` and `/api/access/*` (role/perms required)
+- [x] W1-04 Add client management CRUD UI/API (create/update/disable client)
 - [ ] W1-05 Add mini-program login exchange endpoint (`wx.code -> SSO tokens`)
 - [ ] W1-06 Add machine-to-machine token flow for backend calls (if needed)
-- [ ] W1-07 Add audit logs for auth, client changes, role changes
-- [ ] W1-08 Add interactive OIDC login/authorize flow for browser PKCE clients
+- [x] W1-07 Add audit logs for auth, client changes, role changes
+- [x] W1-08 Add interactive OIDC login/authorize flow for browser PKCE clients
 
 Acceptance:
 - `pnpm lint` passes
@@ -115,11 +120,11 @@ Acceptance:
 - Browser PKCE client can complete code flow end-to-end
 
 ### W2. Billing and Entitlement Control Plane
-- [ ] W2-01 Create schema: `products`, `plans`, `subscriptions`, `entitlements`, `subscription_events`
-- [ ] W2-02 Add idempotent event ingestion endpoint (Stripe/manual/system)
-- [ ] W2-03 Add entitlement read API for apps
-- [ ] W2-04 Add admin billing UI for product/plan mapping
-- [ ] W2-05 Add transition guards for subscription state machine
+- [x] W2-01 Create schema: `products`, `plans`, `subscriptions`, `entitlements`, `subscription_events`
+- [x] W2-02 Add idempotent event ingestion endpoint (Stripe/manual/system)
+- [x] W2-03 Add entitlement read API for apps
+- [x] W2-04 Add admin billing UI for product/plan mapping
+- [x] W2-05 Add transition guards for subscription state machine
 - [ ] W2-06 Add reconciliation job and mismatch alerting
 
 Acceptance:
@@ -140,7 +145,7 @@ Acceptance:
 
 ### W4. cherry Integration (mobile + mini-program + admin)
 - [x] W4-01 Write integration plan for cherry
-- [ ] W4-02 Add hybrid principal resolver in cherry API (JWT first, KV fallback)
+- [x] W4-02 Add hybrid principal resolver in cherry API (JWT first, KV fallback)
 - [ ] W4-03 Register clients:
   - `cherry-consumer`
   - `cherry-leader`
@@ -218,8 +223,17 @@ Acceptance:
 - Decision log:
 
 ## 8. Immediate Next 5 Tasks
-- [ ] N-01 Implement W1-03 admin/access authz middleware
-- [ ] N-02 Implement W1-08 browser PKCE authorize/login end-to-end path
-- [ ] N-03 Implement W2-01 billing schema migration
-- [ ] N-04 Implement W4-02 cherry hybrid principal resolver
-- [ ] N-05 Register first batch clients: `cherry-admin-web`, `paste-web`, `paste-macos`
+- [x] N-01 Implement W1-03 admin/access authz middleware
+- [x] N-02 Implement W1-08 browser PKCE authorize/login end-to-end path
+- [x] N-03 Implement W2-01 billing schema migration
+- [x] N-04 Implement W4-02 cherry hybrid principal resolver
+- [x] N-05 Register first batch clients: `cherry-admin-web`, `paste-web`, `paste-macos`
+
+## 9. Execution Records
+- 2026-02-26 10:44:28 +0900 (local validation)
+  - `POST /api/admin/apps/bootstrap` with `app_keys=["cherry","paste"]`
+  - `bootstrap_run_id=2d38df9d-fa55-443f-8db6-2c106f1d38eb`
+  - Receipt verified by `GET /api/admin/apps/bootstrap-runs?run_id=2d38df9d-fa55-443f-8db6-2c106f1d38eb`
+  - Client presence verified by:
+    - `GET /api/admin/clients?tenant_id=tenant-cherry&include_disabled=true`
+    - `GET /api/admin/clients?tenant_id=tenant-paste&include_disabled=true`

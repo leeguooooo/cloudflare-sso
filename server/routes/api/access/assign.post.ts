@@ -1,5 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb } from '../../../utils/env'
+import { requireTenantAdmin } from '../../../utils/guard'
+import { writeAuditLog } from '../../../utils/audit'
 
 type AssignBody = {
   user_id?: string
@@ -34,10 +36,19 @@ export default defineEventHandler(async (event) => {
     if (client.tenant_id !== role.tenant_id) throw createError({ statusCode: 400, statusMessage: 'Tenant mismatch' })
   }
 
+  const principal = await requireTenantAdmin(event, role.tenant_id)
+
   await db
-    .prepare(`INSERT OR REPLACE INTO user_roles (user_id, role_id, client_id) VALUES (?, ?, ?)`)
-    .bind(userId, roleId, clientId)
+    .prepare(`INSERT OR IGNORE INTO user_roles (id, user_id, role_id, client_id) VALUES (?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), userId, roleId, clientId)
     .run()
+
+  await writeAuditLog(event, {
+    tenantId: role.tenant_id,
+    userId: principal.sub,
+    action: 'access.user_role.assign',
+    payload: { user_id: userId, role_id: roleId, client_id: clientId },
+  })
 
   return { success: true }
 })

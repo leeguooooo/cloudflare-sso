@@ -115,7 +115,7 @@ const { t } = useI18n()
 const config = useRuntimeConfig()
 
 const tenantId = ref('tenant-demo')
-const clientId = ref('client-demo')
+const clientId = ref('demo-web')
 const userId = ref('user-demo')
 
 const roles = ref<{ id: string; name: string; description: string; permissions: string[] }[]>([])
@@ -142,6 +142,12 @@ const bind = reactive({
   roleName: '', // Added to match template usage if needed, though not used in original
 })
 
+const getAuthHeaders = () => {
+  if (!process.client) return {}
+  const token = localStorage.getItem('sso_access_token')
+  return token ? { authorization: `Bearer ${token}` } : {}
+}
+
 const loadSnapshot = async () => {
   if (!tenantId.value) return
   loading.value = true
@@ -154,6 +160,7 @@ const loadSnapshot = async () => {
         client_id: clientId.value,
         user_id: userId.value,
       },
+      headers: getAuthHeaders(),
     })
     roles.value = (data as any).roles || []
     permissions.value = (data as any).permissions || []
@@ -187,6 +194,7 @@ const createRole = async () => {
         permissions: perms,
         client_ids: clientIds,
       },
+      headers: getAuthHeaders(),
     })
     message.value = t('access.success')
     roleForm.name = ''
@@ -212,6 +220,7 @@ const assignRole = async () => {
         role_id: assign.roleId,
         client_id: assign.clientId || undefined,
       },
+      headers: getAuthHeaders(),
     })
     message.value = t('access.success')
     await loadSnapshot()
@@ -232,6 +241,7 @@ const bindRole = async () => {
         client_id: bind.clientId,
         role_id: bind.roleId,
       },
+      headers: getAuthHeaders(),
     })
     message.value = t('access.success')
     await loadSnapshot()
@@ -243,6 +253,10 @@ const bindRole = async () => {
 }
 
 onMounted(() => {
+  if (process.client && !localStorage.getItem('sso_access_token')) {
+    navigateTo('/login')
+    return
+  }
   loadSnapshot()
 })
 </script>

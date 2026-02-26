@@ -69,17 +69,18 @@ defineEmits(['update:modelValue'])
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 0.25rem;
 }
 
 .form-label {
-  font-size: var(--font-size-sm);
+  font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-neutral-800);
+  margin-left: 0.25rem;
 }
 
 .required {
-  color: #ef4444;
+  color: #d93025;
   margin-left: 0.125rem;
 }
 
@@ -89,43 +90,54 @@ defineEmits(['update:modelValue'])
 
 .form-input {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  font-size: var(--font-size-sm);
-  line-height: 1.25rem;
-  color: var(--color-text-primary);
+  height: 3rem;
+  padding: 0 0.875rem;
+  font-size: 1rem;
+  color: var(--color-neutral-900);
   background-color: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input::placeholder {
+  color: var(--color-neutral-600);
+}
+
+.form-input:hover:not(:disabled) {
+  border-color: var(--color-neutral-900);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px var(--color-primary-100);
+  border: 2px solid var(--color-primary-600);
+  padding: 0 0.8125rem; /* Account for 2px border */
 }
 
 .form-input:disabled {
   background-color: var(--color-neutral-50);
-  color: var(--color-text-tertiary);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-500);
   cursor: not-allowed;
 }
 
 .form-input.has-error {
-  border-color: #ef4444;
+  border-color: #d93025;
 }
 
 .form-input.has-error:focus {
-  box-shadow: 0 0 0 3px #fee2e2;
+  border-color: #d93025;
 }
 
 .form-error {
   font-size: 0.75rem;
-  color: #ef4444;
+  color: #d93025;
+  margin-left: 0.25rem;
 }
 
 .form-help {
   font-size: 0.75rem;
-  color: var(--color-text-tertiary);
+  color: var(--color-neutral-600);
+  margin-left: 0.25rem;
 }
 </style>
