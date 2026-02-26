@@ -3,8 +3,8 @@
     <header class="topbar">
       <div class="brand">leeguoo 账号</div>
       <div class="top-actions">
-        <UiButton unstyled type="button" class="icon-btn" aria-label="help">?</UiButton>
-        <UiButton unstyled type="button" class="icon-btn" aria-label="apps">⋮</UiButton>
+        <UiButton variant="ghost" type="button" class="icon-btn" aria-label="help">?</UiButton>
+        <UiButton variant="ghost" type="button" class="icon-btn" aria-label="apps">⋮</UiButton>
         <div class="mini-avatar">
           <img
             v-if="profile?.avatar_url"
@@ -25,7 +25,7 @@
         <UiButton
           v-for="item in navItems"
           :key="item.key"
-          unstyled
+          variant="ghost"
           type="button"
           class="nav-pill"
           :class="{ active: activeNav === item.key }"
@@ -62,7 +62,7 @@
         </div>
 
         <div class="quick-actions fade-in delay-2">
-          <UiButton unstyled type="button" v-for="action in quickActions" :key="action" class="chip">{{ action }}</UiButton>
+          <UiButton variant="ghost" type="button" v-for="action in quickActions" :key="action" class="chip">{{ action }}</UiButton>
         </div>
 
         <UiCard class="summary-card fade-in delay-3">
@@ -87,7 +87,7 @@
       <a href="#">条款</a>
       <a href="#">帮助</a>
       <a href="#">关于</a>
-      <UiButton unstyled type="button" class="logout-btn" @click="logout">退出登录</UiButton>
+    <UiButton variant="ghost" type="button" class="logout-btn" @click="logout">退出登录</UiButton>
     </footer>
   </div>
 </template>
@@ -121,14 +121,14 @@ const activeNav = ref('home')
 const profile = ref<UserInfoPayload | null>(null)
 
 const navItems = [
-  { key: 'home', label: '首页', icon: '⌂', color: '#b8cdfa' },
-  { key: 'profile', label: '个人信息', icon: '◍', color: '#a8ddb5' },
-  { key: 'security', label: '安全性与登录', icon: '⌁', color: '#9dd7ff' },
-  { key: 'password', label: 'leeguoo 密码', icon: '•••', color: '#8ab4f8' },
-  { key: 'linked', label: '第三方关联', icon: '◎', color: '#97d5f7' },
-  { key: 'privacy', label: '数据和隐私设置', icon: '◌', color: '#ccb3f7' },
-  { key: 'share', label: '用户和分享', icon: '◔', color: '#f6b2de' },
-  { key: 'billing', label: '付费和订阅', icon: '▣', color: '#f7c089' },
+  { key: 'home', label: '首页', icon: '⌂', color: 'var(--color-primary-300)' },
+  { key: 'profile', label: '个人信息', icon: '◍', color: 'var(--lg-color-success)' },
+  { key: 'security', label: '安全性与登录', icon: '⌁', color: 'var(--color-primary-200)' },
+  { key: 'password', label: 'leeguoo 密码', icon: '•••', color: 'var(--lg-color-warning)' },
+  { key: 'linked', label: '第三方关联', icon: '◎', color: 'var(--color-primary-400)' },
+  { key: 'privacy', label: '数据和隐私设置', icon: '◌', color: 'var(--color-neutral-400)' },
+  { key: 'share', label: '用户和分享', icon: '◔', color: 'var(--color-neutral-500)' },
+  { key: 'billing', label: '付费和订阅', icon: '▣', color: 'var(--lg-color-warning)' },
 ]
 
 const quickActions = ['我的密码', '设备', '密码管理工具', '我的活动记录', '邮箱']
@@ -275,9 +275,9 @@ onMounted(() => {
 <style scoped>
 .account-shell {
   min-height: 100vh;
-  font-family: 'Google Sans', 'Noto Sans SC', 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at 10% 0%, #e6ebf3 0%, #dfe4ed 45%, #d8dde8 100%);
-  color: #202124;
+  font-family: var(--font-family-sans);
+  background: var(--color-background);
+  color: var(--color-text-primary);
   display: flex;
   flex-direction: column;
 }
@@ -288,11 +288,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .brand {
-  font-size: clamp(1.45rem, 2.3vw, 2.25rem);
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .top-actions {
@@ -302,21 +305,20 @@ onMounted(() => {
 }
 
 .icon-btn {
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   width: 34px;
   height: 34px;
   border-radius: 9999px;
-  border: 1px solid #bbc3d1;
-  background: #edf1f8;
-  color: #3c4043;
-  cursor: pointer;
 }
 
 .mini-avatar {
   width: 36px;
   height: 36px;
   border-radius: 9999px;
-  background: linear-gradient(135deg, #60739e, #3f5278);
-  color: #fff;
+  background: var(--color-primary-200);
+  color: var(--color-surface);
   display: grid;
   place-items: center;
   font-weight: 600;
@@ -344,9 +346,9 @@ onMounted(() => {
 }
 
 .nav-pill {
-  border: none;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
   background: transparent;
-  border-radius: 9999px;
   height: 54px;
   display: flex;
   align-items: center;
@@ -354,11 +356,13 @@ onMounted(() => {
   padding: 0 12px;
   font-size: 1.02rem;
   text-align: left;
-  cursor: pointer;
+  color: var(--color-text-secondary);
 }
 
 .nav-pill.active {
-  background: #edf2fb;
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-200);
 }
 
 .pill-icon {
@@ -380,6 +384,11 @@ onMounted(() => {
 
 .profile-block {
   text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: min(860px, 95%);
+  padding: 18px 12px 14px;
 }
 
 .hero-avatar {
@@ -387,8 +396,8 @@ onMounted(() => {
   height: 96px;
   border-radius: 9999px;
   margin: 0 auto 8px;
-  background: linear-gradient(135deg, #9db2d7, #6078ad);
-  color: #fff;
+  background: var(--color-primary-300);
+  color: var(--color-surface);
   font-size: 2.1rem;
   font-weight: 600;
   display: grid;
@@ -410,9 +419,9 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 9999px;
-  border: 1px solid #c8d0df;
-  background: #fff;
-  color: #4e5769;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   font-size: 0.85rem;
   display: grid;
   place-items: center;
@@ -422,12 +431,13 @@ onMounted(() => {
   margin: 0;
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 .profile-block p {
   margin: 4px 0 0;
   font-size: clamp(1rem, 2vw, 1.5rem);
-  color: #3c4043;
+  color: var(--color-text-secondary);
 }
 
 .search-wrap {
@@ -441,21 +451,19 @@ onMounted(() => {
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: #5f6368;
+  color: var(--color-text-secondary);
 }
 
 .search-input-field {
   width: 100%;
+  color: var(--color-text-primary);
 }
 
 .search-input-field :deep(input) {
   width: 100%;
-  height: 48px;
-  border: none;
   border-radius: 9999px;
-  padding: 0 20px 0 44px;
-  font-size: 1.05rem;
-  background: #f2f4f8;
+  padding-left: 44px;
+  height: 48px;
 }
 
 .quick-actions {
@@ -469,25 +477,25 @@ onMounted(() => {
 .chip {
   height: 34px;
   padding: 0 14px;
-  border: 1px solid #9aa0a6;
-  border-radius: 10px;
-  background: #f6f7f8;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-size: 0.95rem;
-  cursor: pointer;
+  color: var(--color-text-primary);
 }
 
 .summary-card {
   margin-top: 22px;
   width: min(860px, 95%);
-  border-radius: 16px;
-  background: #f4f6fa;
-  border: 1px solid #cad0dc;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   padding: 16px;
 }
 
 .summary-desc {
   margin: 8px 0 12px;
-  color: #4c5566;
+  color: var(--color-text-secondary);
   font-size: 0.92rem;
 }
 
@@ -498,14 +506,14 @@ onMounted(() => {
 }
 
 .summary-item {
-  background: #fff;
-  border: 1px solid #d7ddea;
-  border-radius: 12px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 12px;
 }
 
 .summary-label {
-  color: #5f6368;
+  color: var(--color-text-secondary);
   font-size: 0.82rem;
   display: block;
   margin-bottom: 6px;
@@ -515,6 +523,7 @@ onMounted(() => {
   width: min(860px, 95%);
   margin-top: 18px;
   font-size: 0.87rem;
+  color: var(--color-text-tertiary);
 }
 
 .bottom-links {
@@ -523,22 +532,22 @@ onMounted(() => {
   gap: 18px;
   padding: 12px 24px 16px;
   font-size: 0.82rem;
+  color: var(--color-text-tertiary);
 }
 
 .bottom-links a {
-  color: #3c4043;
+  color: var(--color-text-secondary);
   text-decoration: none;
 }
 
 .logout-btn {
   margin-left: auto;
-  border: 1px solid #b5becd;
-  background: #eef2f8;
-  color: #3c4043;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   border-radius: 8px;
   height: 34px;
   padding: 0 14px;
-  cursor: pointer;
 }
 
 .state-text {
@@ -546,7 +555,7 @@ onMounted(() => {
 }
 
 .state-text.error {
-  color: #b3261e;
+  color: var(--lg-color-danger);
 }
 
 .fade-in {
