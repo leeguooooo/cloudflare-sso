@@ -20,7 +20,7 @@ if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
 fi
 
 echo "📋 读取 wrangler 配置..."
-CONFIG_FILE="wrangler.account-test.toml"
+CONFIG_FILE="wrangler.account-prod.toml"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "❌ 找不到配置文件: $CONFIG_FILE"
@@ -48,7 +48,6 @@ fi
 
 # 提取当前配置
 PROD_CONFIG=$(echo "$CURRENT_CONFIG" | jq -r '.result.deployment_configs.production // {}')
-PREVIEW_CONFIG=$(echo "$CURRENT_CONFIG" | jq -r '.result.deployment_configs.preview // {}')
 
 # 准备更新配置
 # 注意：环境变量需要通过 Cloudflare Dashboard 或单独的 API 设置
@@ -58,11 +57,6 @@ UPDATE_PAYLOAD=$(cat <<EOF
 {
   "deployment_configs": {
     "production": {
-      "d1_databases": {
-        "${DB_BINDING}": "${DB_ID}"
-      }
-    },
-    "preview": {
       "d1_databases": {
         "${DB_BINDING}": "${DB_ID}"
       }
@@ -85,14 +79,14 @@ if echo "$RESPONSE" | grep -q '"success":true'; then
   echo "⚠️  注意：环境变量需要通过 Cloudflare Dashboard 手动设置："
   echo "   1. 访问: https://dash.cloudflare.com → Pages → ${PROJECT_NAME}"
   echo "   2. Settings → Environment variables"
-  echo "   3. 添加以下变量（从 wrangler.account-test.toml 中复制）："
+  echo "   3. 添加以下变量（从 wrangler.account-prod.toml 中复制）："
   echo "      - JWT_PRIVATE_KEY"
   echo "      - JWT_KID"
   echo "      - JWT_ISSUER"
   echo "      - PASSWORD_PEPPER"
   echo "      - 其他变量..."
   echo ""
-  echo "✨ 配置完成后，重新部署: pnpm deploy:test"
+  echo "✨ 配置完成后，重新部署: pnpm deploy:prod"
 else
   echo "❌ 更新配置失败:"
   echo "$RESPONSE" | jq '.' 2>/dev/null || echo "$RESPONSE"

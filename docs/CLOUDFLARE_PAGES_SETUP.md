@@ -12,7 +12,7 @@ Cloudflare Pages 项目需要手动在 Dashboard 中配置 D1 数据库绑定。
 4. 配置：
    - **Variable name**: `DB`
    - **D1 Database**: 选择 `cf-nuxt-pages-db`
-   - 应用到 **Production** 和 **Preview** 环境
+   - 仅应用到 **Production** 环境
 
 ### 或者使用 Wrangler CLI（推荐）
 
@@ -30,7 +30,7 @@ wrangler pages project list
 
 1. 访问 Cloudflare Dashboard → Pages → `cloudflare-sso`
 2. 进入 "Settings" → "Environment variables"
-3. 添加以下变量（Production 和 Preview 都需要）：
+3. 添加以下变量（仅 Production 环境需要）：
 
 | 变量名 | 值 | 说明 |
 |--------|-----|------|
@@ -57,7 +57,7 @@ node -e "const crypto = require('crypto'); const { privateKey } = crypto.generat
 配置完成后，重新部署应用：
 
 ```bash
-pnpm deploy:test
+ pnpm deploy:prod
 ```
 
 然后测试登录接口：

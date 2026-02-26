@@ -26,13 +26,12 @@
 
 ### 自动部署
 
-- **测试环境**: 推送到 `main` 或 `develop` 分支时自动部署
 - **生产环境**: 推送 tag（格式：`v*`）时自动部署，或手动触发
 
 ### 手动部署
 
 1. 在 GitHub 仓库中，点击 "Actions" 标签
-2. 选择对应的工作流（Deploy to Test/Production）
+2. 选择对应的工作流（Deploy to Production）
 3. 点击 "Run workflow"
 
 ## 环境变量配置

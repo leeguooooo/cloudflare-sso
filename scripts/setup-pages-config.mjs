@@ -90,7 +90,7 @@ function parseTomlConfig(configContent) {
 
 function getWranglerConfig() {
   try {
-    const configPath = resolve(projectRoot, 'wrangler.account-test.toml')
+    const configPath = resolve(projectRoot, 'wrangler.account-prod.toml')
     const configContent = readFileSync(configPath, 'utf-8')
     return parseTomlConfig(configContent)
   } catch (error) {
@@ -146,7 +146,6 @@ async function updatePagesProject(apiToken, vars, d1Databases) {
   
   const currentConfig = project.result?.deployment_configs || {
     production: {},
-    preview: {},
   }
   
   // 准备 D1 数据库绑定
@@ -171,17 +170,6 @@ async function updatePagesProject(apiToken, vars, d1Databases) {
       },
       d1_databases: {
         ...(currentConfig.production?.d1_databases || {}),
-        ...d1Bindings,
-      },
-    },
-    preview: {
-      ...(currentConfig.preview || {}),
-      env_vars: {
-        ...(currentConfig.preview?.env_vars || {}),
-        ...envVars,
-      },
-      d1_databases: {
-        ...(currentConfig.preview?.d1_databases || {}),
         ...d1Bindings,
       },
     },
@@ -230,9 +218,8 @@ async function main() {
     console.log('\n✅ Successfully updated project configuration!')
     console.log('\n📝 Configuration applied to:')
     console.log('   - Production environment')
-    console.log('   - Preview environment')
     console.log('\n✨ Next steps:')
-    console.log('   1. Redeploy your application: pnpm deploy:test')
+    console.log('   1. Redeploy your application: pnpm deploy:prod')
     console.log('   2. Test the login endpoint')
   } catch (error) {
     console.error('\n❌ Error:', error.message)

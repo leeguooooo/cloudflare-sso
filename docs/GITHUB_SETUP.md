@@ -23,7 +23,7 @@
 
 1. 访问 Cloudflare Dashboard → Pages → `cloudflare-sso`
 2. 进入 "Settings" → "Environment variables"
-3. 添加以下变量（Production 和 Preview 环境都需要）：
+3. 添加以下变量（仅生产环境）：
    - `JWT_PRIVATE_KEY`: 你的 JWT 私钥（PKCS8 格式，多行）
    - `PASSWORD_PEPPER`: 密码加密盐值
    - `RECORDING_JWT_SECRET`: 录制 JWT 密钥
@@ -35,7 +35,7 @@
 
 ## 3. 检查配置文件
 
-确保 `wrangler.account-test.toml` 和 `wrangler.account-prod.toml` 中的数据库 ID 正确：
+确保 `wrangler.account-prod.toml` 中的数据库 ID 正确：
 
 ```toml
 [[d1_databases]]
@@ -48,19 +48,18 @@ database_id = "你的数据库ID"
 
 ### 自动部署
 
-- **测试环境**: 推送到 `main` 或 `develop` 分支时自动部署
-- **生产环境**: 推送 tag（格式：`v*`）时自动部署
+- **生产环境**: 推送 tag（格式：`v*`）时自动部署，或手动触发
 
 ### 手动部署
 
 1. 在 GitHub 仓库中，点击 "Actions" 标签
-2. 选择对应的工作流（Deploy to Test/Production）
+2. 选择对应的工作流（Deploy to Production）
 3. 点击 "Run workflow"
 
 ## 5. 验证部署
 
 部署完成后，访问：
-- 测试环境: https://cloudflare-sso.pages.dev
+- 生产环境: https://cloudflare-sso.pages.dev
 - 查看部署日志: GitHub Actions → 对应的工作流运行
 
 ## 安全建议

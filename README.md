@@ -85,7 +85,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 ## 快速开始（本地）
 ```bash
 pnpm install
-pnpm wrangler:config:test              # 写入 wrangler.toml（确保 D1 database_id 正确）
+pnpm wrangler:config:prod              # 写入 wrangler.toml（确保 D1 database_id 正确）
 pnpm dlx wrangler d1 execute DB --file=./schema.sql --remote   # 初始化表（或本地 wrangler d1）
 pnpm dlx wrangler d1 execute DB --file=./test-data.sql --remote # 导入示例账号
 pnpm dev
@@ -94,9 +94,8 @@ pnpm dev
 示例账号：`demo@example.com` / 密码：`Passw0rd!`，租户 `tenant-demo`，客户端 `demo-web`。
 
 ## 部署到 Cloudflare Pages
-- 测试：`pnpm deploy:test`
-- 生产：`pnpm deploy:prod`
-- 日志：`pnpm logs:test` / `pnpm logs:prod`
+- 生产：`pnpm deploy`（等价于 `pnpm deploy:prod`）
+- 日志：`pnpm logs:prod`
 
 ## 环境变量（wrangler.account-*.toml）
 - `DB`：D1 binding（保持现有配置）

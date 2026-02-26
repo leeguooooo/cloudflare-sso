@@ -1,14 +1,12 @@
 # Wrangler 多账号指南
 
-- 模板内置 `wrangler.account-test.toml` 与 `wrangler.account-prod.toml`
-- `pnpm wrangler:config:test|prod` 会把对应文件复制为 `wrangler.toml`
-- 新账号时，复制一份 `wrangler.account-test.toml`，更改 `database_id`、变量，再在 `package.json` 增加同名脚本
+- 模板内置 `wrangler.account-prod.toml`
+- `pnpm wrangler:config:prod` 会把生产配置复制为 `wrangler.toml`
+- 新账号时，复制一份 `wrangler.account-prod.toml`，修改配置后再提交生产环境相关文件
 
 | 命令 | 作用 |
 | --- | --- |
-| `pnpm wrangler:config:test` | 切换到测试账号配置 |
 | `pnpm wrangler:config:prod` | 切换到生产账号配置 |
-| `pnpm deploy:test` | build + deploy 到测试 Pages 项目 |
 | `pnpm deploy:prod` | build + deploy 到生产 Pages 项目 |
 
 ## 配置模板

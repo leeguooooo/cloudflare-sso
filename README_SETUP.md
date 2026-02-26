@@ -34,7 +34,7 @@ pnpm setup:pages:sh
 3. Add binding:
    - Variable name: `DB`
    - D1 Database: `cf-nuxt-pages-db`
-   - 应用到 Production 和 Preview
+   - 应用到 Production
 
 ### 2. 配置环境变量
 
@@ -42,7 +42,7 @@ pnpm setup:pages:sh
 
 | 变量名 | 值 |
 |--------|-----|
-| `JWT_PRIVATE_KEY` | (从 `wrangler.account-test.toml` 复制) |
+| `JWT_PRIVATE_KEY` | (从 `wrangler.account-prod.toml` 复制) |
 | `JWT_KID` | `primary` |
 | `JWT_ISSUER` | `https://cloudflare-sso.pages.dev` |
 | `PASSWORD_PEPPER` | `change-me` |
@@ -54,7 +54,7 @@ pnpm setup:pages:sh
 ### 3. 重新部署
 
 ```bash
-pnpm deploy:test
+pnpm deploy:prod
 ```
 
 ## 验证配置
