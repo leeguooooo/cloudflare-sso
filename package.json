@@ -8,6 +8,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
+    "test": "vitest run --passWithNoTests",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -16,7 +17,8 @@
     "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso",
     "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cloudflare-sso --environment production --format pretty",
     "setup:pages": "node scripts/setup-pages-config.mjs",
-    "setup:pages:sh": "./scripts/setup-pages.sh"
+    "setup:pages:sh": "./scripts/setup-pages.sh",
+    "repro:sso:callback": "bash ./scripts/repro-sso-callback.sh"
   },
   "dependencies": {
     "@leeguoo/design-tokens": "link:../cherry/packages/design-tokens",
@@ -31,6 +33,8 @@
     "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.5.1",
+    "h3": "^1.15.4",
+    "vitest": "^3.1.4",
     "vue-eslint-parser": "^10.4.0",
     "wrangler": "^4.45.3"
   }

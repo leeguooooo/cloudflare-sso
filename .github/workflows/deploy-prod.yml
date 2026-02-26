@@ -15,6 +15,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout shared packages
+        uses: actions/checkout@v4
+        with:
+          repository: cherryport/cherry
+          ref: main
+          path: cherry
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:

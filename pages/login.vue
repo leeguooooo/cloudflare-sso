@@ -179,6 +179,15 @@ const resolveContinuePath = () => {
   return raw
 }
 
+const redirectAfterLogin = async () => {
+  const continuePath = resolveContinuePath()
+  if (continuePath.startsWith('/authorize?') && process.client) {
+    window.location.assign(continuePath)
+    return
+  }
+  await navigateTo(continuePath || '/account')
+}
+
 const registerPath = computed(() => {
   const query = new URLSearchParams()
   const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
@@ -253,8 +262,7 @@ const handleSubmit = async () => {
 
     message.value = 'Sign in successful'
     success.value = true
-    const continuePath = resolveContinuePath()
-    await navigateTo(continuePath || '/account')
+    await redirectAfterLogin()
   } catch (err: any) {
     const detail = err?.data?.message || err?.message || 'Login failed'
     message.value = detail
@@ -305,8 +313,7 @@ const tryResumeRememberedSession = async () => {
       return
     }
 
-    const continuePath = resolveContinuePath()
-    await navigateTo(continuePath || '/account')
+    await redirectAfterLogin()
   } catch {
     localStorage.removeItem('sso_access_token')
     form.email = rememberedEmail.value

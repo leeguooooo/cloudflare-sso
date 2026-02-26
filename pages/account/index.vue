@@ -3,8 +3,8 @@
     <header class="topbar">
       <div class="brand">leeguoo 账号</div>
       <div class="top-actions">
-        <UiButton unstyled type="button" class="icon-btn" aria-label="help">?</UiButton>
-        <UiButton unstyled type="button" class="icon-btn" aria-label="apps">⋮</UiButton>
+        <UiButton unstyled type="button" class="icon-btn" aria-label="help" @click="goSection('help')">?</UiButton>
+        <UiButton unstyled type="button" class="icon-btn" aria-label="apps" @click="goSection('linked')">⋮</UiButton>
         <div class="mini-avatar">
           <img
             v-if="profile?.avatar_url"
@@ -29,7 +29,7 @@
           type="button"
           class="nav-pill"
           :class="{ active: activeNav === item.key }"
-          @click="activeNav = item.key"
+          @click="goSection(item.key)"
         >
           <span class="pill-icon" :style="{ backgroundColor: item.color }">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
@@ -62,7 +62,16 @@
         </div>
 
         <div class="quick-actions fade-in delay-2">
-          <UiButton unstyled type="button" v-for="action in quickActions" :key="action" class="chip">{{ action }}</UiButton>
+          <UiButton
+            unstyled
+            type="button"
+            v-for="action in quickActions"
+            :key="action.label"
+            class="chip"
+            @click="goSection(action.section)"
+          >
+            {{ action.label }}
+          </UiButton>
         </div>
 
         <UiCard class="summary-card fade-in delay-3">
@@ -83,10 +92,10 @@
     </div>
 
     <footer class="bottom-links">
-      <a href="#">隐私权</a>
-      <a href="#">条款</a>
-      <a href="#">帮助</a>
-      <a href="#">关于</a>
+      <a href="/account?section=privacy" @click.prevent="goSection('privacy')">隐私权</a>
+      <a href="/account?section=terms" @click.prevent="goSection('terms')">条款</a>
+      <a href="/account?section=help" @click.prevent="goSection('help')">帮助</a>
+      <a href="/account?section=about" @click.prevent="goSection('about')">关于</a>
       <UiButton unstyled type="button" class="logout-btn" @click="logout">退出登录</UiButton>
     </footer>
   </div>
@@ -113,14 +122,38 @@ type RefreshPayload = {
   access_token?: string
 }
 
+type AccountSection = 'home' | 'profile' | 'security' | 'password' | 'linked' | 'privacy' | 'share' | 'billing' | 'help' | 'terms' | 'about'
+
+const ACCOUNT_SECTIONS: AccountSection[] = [
+  'home',
+  'profile',
+  'security',
+  'password',
+  'linked',
+  'privacy',
+  'share',
+  'billing',
+  'help',
+  'terms',
+  'about',
+]
+
 const config = useRuntimeConfig()
+const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const searchText = ref('')
-const activeNav = ref('home')
+const activeNav = computed<AccountSection>(() => {
+  const section = Array.isArray(route.query.section) ? route.query.section[0] : route.query.section
+  if (typeof section === 'string' && ACCOUNT_SECTIONS.includes(section as AccountSection)) {
+    return section as AccountSection
+  }
+  return 'home'
+})
 const profile = ref<UserInfoPayload | null>(null)
 
-const navItems = [
+const navItems: Array<{ key: AccountSection; label: string; icon: string; color: string }> = [
   { key: 'home', label: '首页', icon: '⌂', color: '#b8cdfa' },
   { key: 'profile', label: '个人信息', icon: '◍', color: '#a8ddb5' },
   { key: 'security', label: '安全性与登录', icon: '⌁', color: '#9dd7ff' },
@@ -131,7 +164,24 @@ const navItems = [
   { key: 'billing', label: '付费和订阅', icon: '▣', color: '#f7c089' },
 ]
 
-const quickActions = ['我的密码', '设备', '密码管理工具', '我的活动记录', '邮箱']
+const quickActions: Array<{ label: string; section: AccountSection }> = [
+  { label: '我的密码', section: 'password' },
+  { label: '设备', section: 'security' },
+  { label: '密码管理工具', section: 'linked' },
+  { label: '我的活动记录', section: 'profile' },
+  { label: '邮箱', section: 'privacy' },
+]
+
+const goSection = (section: AccountSection) => {
+  if (activeNav.value === section) return
+  void router.replace({
+    path: route.path,
+    query: {
+      ...route.query,
+      section,
+    },
+  })
+}
 
 const displayName = computed(() => {
   const name = (profile.value?.name || '').trim()
@@ -157,6 +207,17 @@ const activeSection = computed(() => {
   const locale = profile.value?.locale || '-'
   const gaid = profile.value?.gaid || '-'
 
+  if (activeNav.value === 'profile') {
+    return {
+      title: '个人信息',
+      desc: '以下为当前用户信息概览；资料编辑与同步功能正在排期中。',
+      meta: [
+        { label: '姓名', value: displayName.value },
+        { label: '邮箱', value: profile.value?.email || '-' },
+        { label: '租户', value: tid },
+      ],
+    }
+  }
   if (activeNav.value === 'security') {
     return {
       title: '安全性与登录',
@@ -168,6 +229,36 @@ const activeSection = computed(() => {
       ],
     }
   }
+  if (activeNav.value === 'password') {
+    return {
+      title: '密码设置',
+      desc: '密码修改与验证策略功能正在开发中，当前暂不提供站内配置。',
+      meta: [
+        { label: '当前状态', value: '开发中' },
+        { label: '关联邮箱', value: profile.value?.email || '-' },
+      ],
+    }
+  }
+  if (activeNav.value === 'linked') {
+    return {
+      title: '第三方关联',
+      desc: '第三方账号绑定/解绑能力已进入排期，当前先展示入口。',
+      meta: [
+        { label: '支持供应商', value: 'Google / GitHub' },
+        { label: '当前状态', value: '待接入' },
+      ],
+    }
+  }
+  if (activeNav.value === 'share') {
+    return {
+      title: '用户和分享',
+      desc: '分享相关的受邀与权限管理将在后续版本提供。',
+      meta: [
+        { label: '当前状态', value: '即将发布' },
+        { label: '功能范围', value: '组织 / 家庭' },
+      ],
+    }
+  }
   if (activeNav.value === 'privacy') {
     return {
       title: '数据和隐私设置',
@@ -176,6 +267,33 @@ const activeSection = computed(() => {
         { label: '邮箱', value: profile.value?.email || '-' },
         { label: 'Locale', value: locale },
         { label: 'Global Account', value: gaid },
+      ],
+    }
+  }
+  if (activeNav.value === 'help') {
+    return {
+      title: '帮助',
+      desc: '常见问题与账号支持入口先以说明形式先行，后续将接入工单与反馈入口。',
+      meta: [
+        { label: '反馈渠道', value: '计划中' },
+        { label: '优先级', value: '高' },
+      ],
+    }
+  }
+  if (activeNav.value === 'terms') {
+    return {
+      title: '服务条款',
+      desc: '服务条款页已进入落地流程，当前提供当前版本指引和状态说明。',
+      meta: [{ label: '状态', value: '开发中' }],
+    }
+  }
+  if (activeNav.value === 'about') {
+    return {
+      title: '关于',
+      desc: '这是账号中心一期形态，优先支持可点交互；真实可配置项持续迭代中。',
+      meta: [
+        { label: '版本', value: 'Phase-1' },
+        { label: '更新策略', value: '计划内滚动交付' },
       ],
     }
   }

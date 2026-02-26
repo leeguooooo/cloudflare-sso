@@ -97,6 +97,23 @@ pnpm dev
 - 生产：`pnpm deploy`（等价于 `pnpm deploy:prod`）
 - 日志：`pnpm logs:prod`
 
+## SSO Callback 复现脚本
+- 脚本位置：`./scripts/repro-sso-callback.sh`
+- npm/pnpm 调用：`pnpm repro:sso:callback -- "<callback_base_url>" "<code>" "<state>" "<state_cookie>" "<verifier_cookie>" "<return_cookie>"`
+- 直接 bash：`bash ./scripts/repro-sso-callback.sh "<callback_base_url>" "<code>" "<state>" "<state_cookie>" "<verifier_cookie>" "<return_cookie>"`
+- 可选参数：第 7~9 个参数可覆盖 cookie 名（默认 `blog_sso_state` / `blog_sso_verifier` / `blog_sso_return`）
+- 产物目录：默认 `/tmp/sso-callback-repro-<timestamp>`，也可通过 `SSO_REPRO_OUT_DIR` 自定义
+
+脚本会固定执行 3 个分支并输出 `HTTP`、`x-request-id`、`content-type`、响应体：
+- `clean_cookie`：不带 cookie，使用原始 `state`
+- `state_mismatch_with_cookie`：带 cookie，故意篡改 `state`
+- `provider_exchange`：带 cookie，使用正确 `state`
+
+建议转发给团队的关键信息：
+- 三个分支对应的 `x-request-id`
+- `provider_exchange` 的响应体（尤其是 `sso token exchange failed: upstream returned html response (status=400)` 场景下的 HTML 片段）
+- `return_cookie` 是否为 `https` 回跳地址且与 provider callback 完全一致
+
 ## 环境变量（wrangler.account-*.toml）
 - `DB`：D1 binding（保持现有配置）
 - `JWT_PRIVATE_KEY`：RS256 PKCS8 私钥（多行字符串）
