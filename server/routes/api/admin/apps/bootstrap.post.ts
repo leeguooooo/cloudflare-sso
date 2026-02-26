@@ -70,9 +70,16 @@ const APP_SEEDS: Record<string, AppSeed> = {
         redirect_uris: [
           'http://localhost:3000/',
           'http://localhost:3000/auth/callback',
+          'https://paste.misonote.com/',
+          'https://paste.misonote.com/auth/callback',
           'https://paste-web.misonote.com/',
           'https://paste-web.misonote.com/auth/callback',
         ],
+      },
+      {
+        client_id: 'misonote-paste-macos',
+        name: 'Misonote Paste macOS',
+        redirect_uris: ['http://127.0.0.1:45897/auth/sso/callback'],
       },
       {
         client_id: 'misonote-choose-browser-web',

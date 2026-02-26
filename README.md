@@ -39,12 +39,23 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
   - 入参：`app_key`（单个）或 `app_keys`（批量，字符串数组）
   - 鉴权：Bearer Access Token（admin）
   - 行为：创建 tenant、默认 clients、`admin/user` roles 与基础权限绑定
-  - 示例：可一次传 `["misonote","paste"]`，完成 `misonote-app-web`、`misonote-paste-web`、`paste-web`、`paste-macos` 注册
+  - 示例：可一次传 `["misonote","paste"]`，完成 `misonote-app-web`、`misonote-paste-web`、`misonote-paste-macos`、`paste-web`、`paste-macos` 注册
   - 回执：返回 `bootstrap_run_id`，用于后续追踪
 - `GET /api/admin/apps/bootstrap-runs`
   - 入参：`run_id`（可选），`limit`（可选，默认 20）
   - 鉴权：Bearer Access Token（admin）
   - 行为：查询 `admin.apps.bootstrap` 审计回执，便于验收追踪
+
+Paste 客户端约定（统一账号）：
+- Web：`misonote-paste-web`
+  - `redirect_uri` 白名单包含：
+    - `https://paste-web.misonote.com/`
+    - `https://paste-web.misonote.com/auth/callback`
+    - `https://paste.misonote.com/`
+    - `https://paste.misonote.com/auth/callback`
+- macOS：`misonote-paste-macos`
+  - `redirect_uri` 白名单包含：`http://127.0.0.1:45897/auth/sso/callback`
+- 不建议 Web 与 Desktop 复用同一个 `client_id`。
 - `GET /api/admin/clients`
   - 入参：`tenant_id`，可选 `include_disabled=true`
   - 鉴权：Bearer Access Token（tenant admin）
