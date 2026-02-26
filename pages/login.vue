@@ -273,10 +273,6 @@ const handleSubmit = async () => {
 
 const tryResumeRememberedSession = async () => {
   if (!process.client || loading.value) return
-  if (!rememberedEmail.value) {
-    toggleForm(true)
-    return
-  }
 
   loading.value = true
   message.value = ''
@@ -298,7 +294,9 @@ const tryResumeRememberedSession = async () => {
     }
 
     if (!token) {
-      form.email = rememberedEmail.value
+      if (rememberedEmail.value) {
+        form.email = rememberedEmail.value
+      }
       toggleForm(true)
       return
     }
@@ -306,17 +304,23 @@ const tryResumeRememberedSession = async () => {
     const profile = await $fetch<UserInfoPayload>(`${config.public.apiBase}/userinfo`, {
       headers: { authorization: `Bearer ${token}` },
     })
-    const targetEmail = profile?.email || ''
-    if (!targetEmail || targetEmail.toLowerCase() !== rememberedEmail.value.toLowerCase()) {
-      form.email = rememberedEmail.value
+    const targetEmail = (profile?.email || '').trim().toLowerCase()
+    if (!targetEmail) {
+      if (rememberedEmail.value) {
+        form.email = rememberedEmail.value
+      }
       toggleForm(true)
       return
     }
+    rememberedEmail.value = targetEmail
+    localStorage.setItem('sso_last_email', targetEmail)
 
     await redirectAfterLogin()
   } catch {
     localStorage.removeItem('sso_access_token')
-    form.email = rememberedEmail.value
+    if (rememberedEmail.value) {
+      form.email = rememberedEmail.value
+    }
     toggleForm(true)
   } finally {
     loading.value = false
@@ -360,11 +364,17 @@ onMounted(() => {
     showForm.value = true
   }
 
-const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
+  const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
   if (oauthError) {
     message.value = oauthError
     success.value = false
     showForm.value = true
+  }
+
+  const continuePath = resolveContinuePath()
+  if (continuePath.startsWith('/authorize?') && !registered && !prefillEmail && !oauthError) {
+    void tryResumeRememberedSession()
+    return
   }
 
   if (!rememberedEmail.value) {
