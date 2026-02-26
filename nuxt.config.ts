@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   app: {
     pageTransition: { name: 'fade', mode: 'out-in' },
     head: {
-      title: 'Identity Hub',
+      title: 'leeguoo Identity',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
