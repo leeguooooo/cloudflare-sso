@@ -1,39 +1,70 @@
 <template>
-  <NuxtLayout name="default">
-    <div class="admin-home">
-      <section class="toolbar">
-        <label>
-          Tenant
-          <input v-model="tenantId" class="field" />
-        </label>
-        <button class="btn-primary" @click="loadOverview" :disabled="loading">
-          {{ loading ? 'Loading...' : 'Reload' }}
-        </button>
-      </section>
-
-      <section class="stats-grid">
-        <article class="stat-card" v-for="item in stats" :key="item.label">
-          <p class="label">{{ item.label }}</p>
-          <p class="value">{{ item.value }}</p>
-        </article>
-      </section>
-
-      <section class="quick-links">
-        <NuxtLink to="/admin/access" class="link-card">
-          <h3>Access Control</h3>
-          <p>Role, permission, and assignment management.</p>
-        </NuxtLink>
-        <NuxtLink to="/admin/apps" class="link-card">
-          <h3>Application Clients</h3>
-          <p>OIDC clients and redirect URI governance.</p>
-        </NuxtLink>
-        <NuxtLink to="/admin/billing" class="link-card">
-          <h3>Billing Console</h3>
-          <p>Product plans and entitlement operations.</p>
-        </NuxtLink>
-      </section>
+  <div class="admin-home">
+    <div class="admin-header">
+      <div class="header-content">
+        <h2 class="section-title">Overview</h2>
+        <div class="tenant-selector">
+          <UiInput v-model="tenantId" label="Tenant ID" class="tenant-input" />
+          <UiButton variant="ghost" @click="loadOverview" :loading="loading">
+            Refresh
+          </UiButton>
+        </div>
+      </div>
     </div>
-  </NuxtLayout>
+
+    <div class="stats-container">
+      <div v-for="item in stats" :key="item.label" class="stat-card">
+        <div class="stat-info">
+          <span class="stat-label">{{ item.label }}</span>
+          <span class="stat-value">{{ item.value }}</span>
+        </div>
+        <div class="stat-footer">
+          <NuxtLink :to="item.link" class="stat-link">View details</NuxtLink>
+        </div>
+      </div>
+    </div>
+
+    <div class="management-grid">
+      <div class="management-card">
+        <div class="card-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <h3>Users & Access</h3>
+        </div>
+        <p class="card-desc">Manage your users, roles, and application-specific permissions from a central location.</p>
+        <NuxtLink to="/admin/access" class="card-action">Manage Access Control</NuxtLink>
+      </div>
+
+      <div class="management-card">
+        <div class="card-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+          <h3>Applications</h3>
+        </div>
+        <p class="card-desc">Configure OIDC clients, redirect URIs, and identity federation settings for your apps.</p>
+        <NuxtLink to="/admin/apps" class="card-action">Manage Applications</NuxtLink>
+      </div>
+
+      <div class="management-card">
+        <div class="card-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+            <line x1="1" y1="10" x2="23" y2="10" />
+          </svg>
+          <h3>Billing & Subscriptions</h3>
+        </div>
+        <p class="card-desc">Monitor usage, manage product plans, and handle entitlement transitions for your tenants.</p>
+        <NuxtLink to="/admin/billing" class="card-action">Manage Billing</NuxtLink>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -57,10 +88,10 @@ const overview = ref<OverviewResponse>({
 })
 
 const stats = computed(() => [
-  { label: 'Users', value: overview.value.users },
-  { label: 'OIDC Clients', value: overview.value.clients },
-  { label: 'Roles', value: overview.value.roles },
-  { label: 'Active Sessions', value: overview.value.active_sessions },
+  { label: 'Active Users', value: overview.value.users, link: '/admin/access' },
+  { label: 'OIDC Clients', value: overview.value.clients, link: '/admin/apps' },
+  { label: 'Custom Roles', value: overview.value.roles, link: '/admin/access' },
+  { label: 'Active Sessions', value: overview.value.active_sessions, link: '/portal' },
 ])
 
 const getAuthHeaders = () => {
@@ -95,89 +126,146 @@ onMounted(() => {
 .admin-home {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 32px;
 }
 
-.toolbar {
+.admin-header {
+  margin-bottom: 8px;
+}
+
+.header-content {
   display: flex;
-  align-items: end;
-  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-end;
 }
 
-.toolbar label {
+.section-title {
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: #1f1f1f;
+  margin: 0;
+}
+
+.tenant-selector {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  align-items: flex-end;
+  gap: 12px;
 }
 
-.field {
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+.tenant-input {
+  width: 200px;
 }
 
-.btn-primary {
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-primary-600);
-  background: var(--color-primary-600);
-  color: white;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-}
-
-.stats-grid {
+.stats-container {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 .stat-card {
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
-.label {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+.stat-info {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.value {
-  font-size: 1.5rem;
-  font-weight: 700;
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.quick-links {
+.stat-value {
+  font-size: 2rem;
+  font-weight: 400;
+  color: #1a73e8;
+}
+
+.stat-footer {
+  padding: 8px 16px;
+  border-top: 1px solid #f1f3f4;
+}
+
+.stat-link {
+  font-size: 0.75rem;
+  color: #1a73e8;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.stat-link:hover {
+  text-decoration: underline;
+}
+
+.management-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
 }
 
-.link-card {
-  display: block;
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
+.management-card {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
-.link-card h3 {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #1a73e8;
 }
 
-.link-card p {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+.card-title h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #1f1f1f;
+  margin: 0;
 }
 
-@media (max-width: 980px) {
-  .stats-grid,
-  .quick-links {
-    grid-template-columns: 1fr;
+.card-desc {
+  font-size: 0.875rem;
+  color: #444746;
+  line-height: 1.5rem;
+  margin-bottom: 24px;
+  flex: 1;
+}
+
+.card-action {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a73e8;
+  text-decoration: none;
+  padding: 8px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  align-self: flex-start;
+  transition: background-color 0.2s;
+}
+
+.card-action:hover {
+  background-color: #f7f9fc;
+}
+
+@media (max-width: 600px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 }
 </style>

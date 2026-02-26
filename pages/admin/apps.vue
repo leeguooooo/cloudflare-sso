@@ -1,157 +1,385 @@
 <template>
-  <NuxtLayout name="default">
-    <div class="apps-page">
-      <section class="toolbar">
-        <label>
-          Tenant
-          <input v-model="tenantId" class="field" />
-        </label>
-        <label class="checkbox">
+  <div class="apps-page">
+    <div class="page-header">
+      <div class="header-text">
+        <h2>Applications</h2>
+        <p>Manage OIDC clients and bootstrap standard application environments.</p>
+      </div>
+      <div class="header-controls">
+        <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
+        <label class="checkbox-control">
           <input v-model="includeDisabled" type="checkbox" />
-          Show disabled
+          <span>Show disabled</span>
         </label>
-        <button class="btn-primary" @click="loadClients" :disabled="loading">
-          {{ loading ? 'Loading...' : 'Reload Clients' }}
-        </button>
-      </section>
+        <UiButton variant="ghost" @click="loadClients" :loading="loading">
+          Refresh
+        </UiButton>
+      </div>
+    </div>
 
-      <section class="card">
-        <h2>Quick Bootstrap</h2>
-        <p class="muted">为标准应用自动创建租户、客户端与默认角色，支持首批客户端一键注册。</p>
-        <div class="actions">
-          <button class="btn-secondary btn-sm" @click="bootstrapApps(['blog'])" :disabled="loading">Bootstrap blog</button>
-          <button class="btn-secondary btn-sm" @click="bootstrapApps(['paste'])" :disabled="loading">Bootstrap paste</button>
-          <button class="btn-secondary btn-sm" @click="bootstrapApps(['cherry'])" :disabled="loading">Bootstrap cherry</button>
-          <button class="btn-primary btn-sm" @click="bootstrapApps(['cherry', 'paste'])" :disabled="loading">
-            Bootstrap first batch
-          </button>
+    <div class="admin-grid">
+      <!-- Quick Bootstrap Card -->
+      <section class="info-card">
+        <div class="card-header">
+          <h3>Quick Bootstrap</h3>
         </div>
-        <p v-if="bootstrapMessage" class="muted">{{ bootstrapMessage }}</p>
-        <p v-if="bootstrapRunId" class="muted">Run ID: <code>{{ bootstrapRunId }}</code></p>
-        <button class="btn-secondary btn-sm" @click="loadBootstrapReceipts()" :disabled="loading || !bootstrapRunId">
-          Refresh Receipts
-        </button>
-        <table v-if="bootstrapReceipts.length" class="table">
-          <thead>
-            <tr>
-              <th>Run ID</th>
-              <th>App</th>
-              <th>Tenant</th>
-              <th>Clients</th>
-              <th>Created At (Unix)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="receipt in bootstrapReceipts" :key="receipt.audit_id">
-              <td class="small">{{ receipt.bootstrap_run_id }}</td>
-              <td>{{ receipt.app_key }}</td>
-              <td>{{ receipt.tenant_id }}</td>
-              <td>{{ receipt.clients.join(', ') }}</td>
-              <td>{{ receipt.created_at }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+        <p class="card-desc">Automatically create tenants, clients, and default roles for standard applications.</p>
+        <div class="bootstrap-actions">
+          <UiButton variant="outline" size="sm" @click="bootstrapApps(['blog'])" :loading="loading">Blog</UiButton>
+          <UiButton variant="outline" size="sm" @click="bootstrapApps(['paste'])" :loading="loading">Paste</UiButton>
+          <UiButton variant="outline" size="sm" @click="bootstrapApps(['cherry'])" :loading="loading">Cherry</UiButton>
+          <UiButton variant="primary" size="sm" @click="bootstrapApps(['cherry', 'paste'])" :loading="loading">
+            Bootstrap First Batch
+          </UiButton>
+        </div>
+        
+        <div v-if="bootstrapMessage || bootstrapRunId" class="bootstrap-status">
+          <p v-if="bootstrapMessage" class="status-text">{{ bootstrapMessage }}</p>
+          <div v-if="bootstrapRunId" class="run-info">
+            <span>Run ID: <code>{{ bootstrapRunId }}</code></span>
+            <UiButton variant="ghost" size="sm" @click="loadBootstrapReceipts()">Refresh Receipts</UiButton>
+          </div>
+        </div>
 
-      <section class="card">
-        <h2>Create OIDC Client</h2>
-        <p class="muted">支持 blog/paste/cherry 之外的新应用快速注册。</p>
-        <div class="form-grid">
-          <label>
-            Client ID
-            <input v-model="createForm.client_id" class="field" placeholder="sample-web" />
-          </label>
-          <label>
-            Name
-            <input v-model="createForm.name" class="field" placeholder="Sample Web" />
-          </label>
-          <label>
-            Redirect URIs (comma separated)
-            <input v-model="createForm.redirect_uris" class="field" placeholder="http://localhost:3000/callback" />
-          </label>
-          <label>
-            Grant Types
-            <input v-model="createForm.grant_types" class="field" />
-          </label>
-          <label>
-            Scope
-            <input v-model="createForm.scope" class="field" />
-          </label>
-          <button class="btn-primary" @click="createClient" :disabled="loading">
-            Create
-          </button>
+        <div v-if="bootstrapReceipts.length" class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>App</th>
+                <th>Tenant</th>
+                <th>Clients</th>
+                <th>Created At</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="receipt in bootstrapReceipts" :key="receipt.audit_id">
+                <td class="font-medium">{{ receipt.app_key }}</td>
+                <td>{{ receipt.tenant_id }}</td>
+                <td class="text-xs">{{ receipt.clients.join(', ') }}</td>
+                <td>{{ new Date(receipt.created_at * 1000).toLocaleString() }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <section class="card">
-        <h2>OIDC Clients</h2>
-        <p v-if="error" class="error">{{ error }}</p>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Client ID</th>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Grant Types</th>
-              <th>Scope</th>
-              <th>Redirect URIs</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="client in clients" :key="client.id">
-              <td>{{ client.client_id }}</td>
-              <td>
-                <input v-if="editingId === client.id" v-model="editForm.name" class="field compact" />
-                <span v-else>{{ client.name }}</span>
-              </td>
-              <td>
-                <span class="badge" :class="client.status">{{ client.status }}</span>
-              </td>
-              <td>
-                <input v-if="editingId === client.id" v-model="editForm.grant_types" class="field compact" />
-                <span v-else>{{ client.grant_types }}</span>
-              </td>
-              <td>
-                <input v-if="editingId === client.id" v-model="editForm.scope" class="field compact" />
-                <span v-else>{{ client.scope }}</span>
-              </td>
-              <td class="small">
-                <input
-                  v-if="editingId === client.id"
-                  v-model="editForm.redirect_uris"
-                  class="field compact"
-                />
-                <span v-else>{{ client.redirect_uris.join(', ') }}</span>
-              </td>
-              <td>
-                <div class="actions">
-                  <template v-if="editingId === client.id">
-                    <button class="btn-primary btn-sm" @click="saveEdit(client.id)" :disabled="loading">Save</button>
-                    <button class="btn-secondary btn-sm" @click="cancelEdit" :disabled="loading">Cancel</button>
-                  </template>
-                  <template v-else>
-                    <button class="btn-secondary btn-sm" @click="startEdit(client)" :disabled="loading">Edit</button>
-                    <button
-                      class="btn-danger btn-sm"
-                      @click="toggleClientStatus(client)"
-                      :disabled="loading"
-                    >
-                      {{ client.status === 'active' ? 'Disable' : 'Enable' }}
-                    </button>
-                  </template>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="clients.length === 0">
-              <td colspan="7" class="muted">No clients found for this tenant.</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Create OIDC Client Card -->
+      <section class="info-card">
+        <div class="card-header">
+          <h3>Create OIDC Client</h3>
+        </div>
+        <p class="card-desc">Register a new application client with custom OIDC parameters.</p>
+        <form @submit.prevent="createClient" class="admin-form">
+          <div class="form-grid">
+            <UiInput v-model="createForm.client_id" label="Client ID" placeholder="sample-web" required />
+            <UiInput v-model="createForm.name" label="Name" placeholder="Sample Web" required />
+            <UiInput v-model="createForm.redirect_uris" label="Redirect URIs" placeholder="http://localhost:3000/callback" required />
+            <UiInput v-model="createForm.grant_types" label="Grant Types" />
+            <UiInput v-model="createForm.scope" label="Scope" />
+          </div>
+          <div class="form-actions">
+            <UiButton type="submit" variant="primary" :loading="loading">Create Client</UiButton>
+          </div>
+        </form>
+      </section>
+
+      <!-- Clients Table Card -->
+      <section class="info-card wide-card">
+        <div class="card-header">
+          <h3>OIDC Clients</h3>
+          <span class="badge">{{ clients.length }}</span>
+        </div>
+        <div v-if="error" class="error-banner">{{ error }}</div>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Client ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Grant Types</th>
+                <th>Scope</th>
+                <th>Redirect URIs</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="client in clients" :key="client.id">
+                <td class="font-medium">{{ client.client_id }}</td>
+                <td>
+                  <UiInput v-if="editingId === client.id" v-model="editForm.name" class="table-input" />
+                  <span v-else>{{ client.name }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" :class="client.status">{{ client.status }}</span>
+                </td>
+                <td>
+                  <UiInput v-if="editingId === client.id" v-model="editForm.grant_types" class="table-input" />
+                  <span v-else>{{ client.grant_types }}</span>
+                </td>
+                <td>
+                  <UiInput v-if="editingId === client.id" v-model="editForm.scope" class="table-input" />
+                  <span v-else>{{ client.scope }}</span>
+                </td>
+                <td class="text-xs">
+                  <UiInput v-if="editingId === client.id" v-model="editForm.redirect_uris" class="table-input" />
+                  <span v-else>{{ client.redirect_uris.join(', ') }}</span>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <template v-if="editingId === client.id">
+                      <UiButton variant="primary" size="sm" @click="saveEdit(client.id)" :loading="loading">Save</UiButton>
+                      <UiButton variant="ghost" size="sm" @click="cancelEdit" :disabled="loading">Cancel</UiButton>
+                    </template>
+                    <template v-else>
+                      <UiButton variant="ghost" size="sm" @click="startEdit(client)" :disabled="loading">Edit</UiButton>
+                      <UiButton
+                        :variant="client.status === 'active' ? 'ghost' : 'outline'"
+                        size="sm"
+                        @click="toggleClientStatus(client)"
+                        :disabled="loading"
+                        :class="{ 'text-danger': client.status === 'active' }"
+                      >
+                        {{ client.status === 'active' ? 'Disable' : 'Enable' }}
+                      </UiButton>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="clients.length === 0">
+                <td colspan="7" class="empty-row">No clients found for this tenant.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
-  </NuxtLayout>
+  </div>
 </template>
+
+<style scoped>
+.apps-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.header-text h2 {
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: #1f1f1f;
+  margin-bottom: 4px;
+}
+
+.header-text p {
+  color: #5f6368;
+  font-size: 0.875rem;
+}
+
+.header-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.control-input {
+  width: 160px;
+}
+
+.checkbox-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #444746;
+  cursor: pointer;
+  padding-bottom: 4px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 24px;
+}
+
+.info-card {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.wide-card {
+  grid-column: span 2;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-header h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #1f1f1f;
+  margin: 0;
+}
+
+.badge {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+  padding: 2px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.card-desc {
+  font-size: 0.875rem;
+  color: #444746;
+  line-height: 1.5rem;
+  margin-bottom: 24px;
+}
+
+.bootstrap-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.bootstrap-status {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.status-text {
+  font-size: 0.875rem;
+  color: #1f1f1f;
+  margin-bottom: 8px;
+}
+
+.run-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #5f6368;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dadce0;
+  color: #5f6368;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f3f4;
+  color: #1f1f1f;
+  vertical-align: middle;
+}
+
+.font-medium { font-weight: 500; }
+.text-xs { font-size: 0.75rem; }
+.text-danger { color: #d93025; }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.active { background-color: #e6f4ea; color: #137333; }
+.status-badge.disabled { background-color: #fce8e6; color: #d93025; }
+
+.table-input {
+  min-width: 120px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.empty-row {
+  text-align: center;
+  color: #5f6368;
+  padding: 32px !important;
+}
+
+.error-banner {
+  background-color: #fce8e6;
+  color: #d93025;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .wide-card {
+    grid-column: span 1;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 
 <script setup lang="ts">
 type ClientItem = {

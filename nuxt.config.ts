@@ -4,6 +4,19 @@ const i18nConfigPath = fileURLToPath(new URL('./i18n.config.ts', import.meta.url
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-12-01',
+  app: {
+    pageTransition: { name: 'fade', mode: 'out-in' },
+    head: {
+      title: 'Identity Hub',
+      meta: [
+        { charset: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      ],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+      ],
+    },
+  },
   css: ['~/assets/css/main.css'],
   ssr: false,
   pages: true,

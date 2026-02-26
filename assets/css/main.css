@@ -65,13 +65,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Page Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
-  font-weight: 600;
+  font-weight: 400; /* Google uses lighter weights for headings */
   color: var(--color-text-primary);
 }
 
@@ -83,9 +94,37 @@ p {
 a {
   color: var(--color-primary-600);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 a:hover {
   color: var(--color-primary-700);
+}
+
+/* Common Google-style interactions */
+.hover-bg:hover {
+  background-color: #f7f9fc;
+}
+
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bdc1c6;
 }

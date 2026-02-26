@@ -1,226 +1,497 @@
 <template>
-  <NuxtLayout name="default">
-    <div class="billing-page">
-      <section class="toolbar">
-        <label>
-          Tenant
-          <input v-model="tenantId" class="field" />
-        </label>
-        <label class="checkbox">
+  <div class="billing-page">
+    <div class="page-header">
+      <div class="header-text">
+        <h2>Billing & Subscriptions</h2>
+        <p>Manage product catalog, pricing plans, and entitlement configurations.</p>
+      </div>
+      <div class="header-controls">
+        <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
+        <label class="checkbox-control">
           <input v-model="includeArchived" type="checkbox" />
-          Show archived
+          <span>Show archived</span>
         </label>
-        <button class="btn-primary" @click="loadCatalog" :disabled="loading">
-          {{ loading ? 'Loading...' : 'Reload Catalog' }}
-        </button>
-      </section>
+        <UiButton variant="ghost" @click="loadCatalog" :loading="loading">
+          Refresh
+        </UiButton>
+      </div>
+    </div>
 
-      <section class="card">
-        <h2>Billing Control Plane</h2>
-        <p class="muted">
-          Product/Plan mapping management is live. Use this page to maintain pricing plans and entitlement keys.
-        </p>
-        <p v-if="error" class="error">{{ error }}</p>
-      </section>
+    <div v-if="error" class="error-banner">{{ error }}</div>
 
-      <section class="card">
-        <h3>Create Product</h3>
-        <div class="form-grid">
-          <label>
-            Product Key
-            <input v-model="createProduct.product_key" class="field" placeholder="blog-premium" />
-          </label>
-          <label>
-            Name
-            <input v-model="createProduct.name" class="field" placeholder="Blog Premium" />
-          </label>
-          <label>
-            App Key
-            <input v-model="createProduct.app_key" class="field" placeholder="blog | paste | cherry" />
-          </label>
-          <button class="btn-primary" @click="createProductAction" :disabled="loading">Create Product</button>
+    <div class="admin-grid">
+      <!-- Create Product Card -->
+      <section class="info-card">
+        <div class="card-header">
+          <h3>Create Product</h3>
         </div>
+        <p class="card-desc">Define a new product entity that can contain multiple pricing plans.</p>
+        <form @submit.prevent="createProductAction" class="admin-form">
+          <div class="form-grid">
+            <UiInput v-model="createProduct.product_key" label="Product Key" placeholder="blog-premium" required />
+            <UiInput v-model="createProduct.name" label="Name" placeholder="Blog Premium" required />
+            <UiInput v-model="createProduct.app_key" label="App Key" placeholder="blog | paste | cherry" required />
+          </div>
+          <div class="form-actions">
+            <UiButton type="submit" variant="primary" :loading="loading">Create Product</UiButton>
+          </div>
+        </form>
       </section>
 
-      <section class="card">
-        <h3>Create Plan</h3>
-        <div class="form-grid">
-          <label>
-            Product
-            <select v-model="createPlan.product_id" class="field">
-              <option value="">Select product</option>
-              <option v-for="product in products" :key="product.id" :value="product.id">
-                {{ product.product_key }} ({{ product.name }})
-              </option>
-            </select>
-          </label>
-          <label>
-            Plan Key
-            <input v-model="createPlan.plan_key" class="field" placeholder="paste-monthly" />
-          </label>
-          <label>
-            Name
-            <input v-model="createPlan.name" class="field" placeholder="Paste Monthly" />
-          </label>
-          <label>
-            Billing Cycle
-            <select v-model="createPlan.billing_cycle" class="field">
-              <option value="monthly">monthly</option>
-              <option value="yearly">yearly</option>
-              <option value="one_time">one_time</option>
-              <option value="custom">custom</option>
-            </select>
-          </label>
-          <label>
-            Currency
-            <input v-model="createPlan.currency" class="field" placeholder="USD" />
-          </label>
-          <label>
-            Amount (minor)
-            <input v-model.number="createPlan.amount_minor" class="field" type="number" min="0" />
-          </label>
-          <label>
-            Trial Days
-            <input v-model.number="createPlan.trial_days" class="field" type="number" min="0" />
-          </label>
-          <label>
-            Entitlement Keys (comma separated)
-            <input v-model="createPlan.entitlement_keys" class="field" placeholder="blog.read.premium,paste.pro" />
-          </label>
-          <button class="btn-primary" @click="createPlanAction" :disabled="loading">Create Plan</button>
+      <!-- Create Plan Card -->
+      <section class="info-card">
+        <div class="card-header">
+          <h3>Create Plan</h3>
         </div>
-      </section>
-
-      <section class="card">
-        <h3>Products</h3>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Product Key</th>
-              <th>Name</th>
-              <th>App</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="product in products" :key="product.id">
-              <td>
-                <input v-if="editingProductId === product.id" v-model="editProduct.product_key" class="field compact" />
-                <span v-else>{{ product.product_key }}</span>
-              </td>
-              <td>
-                <input v-if="editingProductId === product.id" v-model="editProduct.name" class="field compact" />
-                <span v-else>{{ product.name }}</span>
-              </td>
-              <td>
-                <input v-if="editingProductId === product.id" v-model="editProduct.app_key" class="field compact" />
-                <span v-else>{{ product.app_key }}</span>
-              </td>
-              <td>
-                <span class="badge" :class="product.status">{{ product.status }}</span>
-              </td>
-              <td>
-                <div class="actions">
-                  <template v-if="editingProductId === product.id">
-                    <button class="btn-primary btn-sm" @click="saveProductEdit(product.id)" :disabled="loading">Save</button>
-                    <button class="btn-secondary btn-sm" @click="cancelProductEdit" :disabled="loading">Cancel</button>
-                  </template>
-                  <template v-else>
-                    <button class="btn-secondary btn-sm" @click="startProductEdit(product)" :disabled="loading">Edit</button>
-                    <button class="btn-danger btn-sm" @click="toggleProductStatus(product)" :disabled="loading">
-                      {{ product.status === 'active' ? 'Archive' : 'Unarchive' }}
-                    </button>
-                  </template>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="products.length === 0">
-              <td colspan="5" class="muted">No products found.</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section class="card">
-        <h3>Plans</h3>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Plan Key</th>
-              <th>Product</th>
-              <th>Billing</th>
-              <th>Price</th>
-              <th>Entitlements</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="plan in plans" :key="plan.id">
-              <td>
-                <input v-if="editingPlanId === plan.id" v-model="editPlan.plan_key" class="field compact" />
-                <span v-else>{{ plan.plan_key }}</span>
-              </td>
-              <td>
-                <select v-if="editingPlanId === plan.id" v-model="editPlan.product_id" class="field compact">
+        <p class="card-desc">Define pricing, billing cycle, and entitlements for an existing product.</p>
+        <form @submit.prevent="createPlanAction" class="admin-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Product</label>
+              <div class="select-wrapper">
+                <select v-model="createPlan.product_id" class="form-select" required>
+                  <option value="">Select product</option>
                   <option v-for="product in products" :key="product.id" :value="product.id">
-                    {{ product.product_key }}
+                    {{ product.product_key }} ({{ product.name }})
                   </option>
                 </select>
-                <span v-else>{{ productKeyById(plan.product_id) }}</span>
-              </td>
-              <td>
-                <span v-if="editingPlanId !== plan.id">{{ plan.billing_cycle }}</span>
-                <select v-else v-model="editPlan.billing_cycle" class="field compact">
-                  <option value="monthly">monthly</option>
-                  <option value="yearly">yearly</option>
-                  <option value="one_time">one_time</option>
-                  <option value="custom">custom</option>
+                <div class="select-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
+                </div>
+              </div>
+            </div>
+            <UiInput v-model="createPlan.plan_key" label="Plan Key" placeholder="paste-monthly" required />
+            <UiInput v-model="createPlan.name" label="Name" placeholder="Paste Monthly" required />
+            <div class="form-group">
+              <label class="form-label">Billing Cycle</label>
+              <div class="select-wrapper">
+                <select v-model="createPlan.billing_cycle" class="form-select">
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="one_time">One-time</option>
+                  <option value="custom">Custom</option>
                 </select>
-              </td>
-              <td>
-                <div v-if="editingPlanId === plan.id" class="inline-fields">
-                  <input v-model="editPlan.currency" class="field compact xs" />
-                  <input v-model.number="editPlan.amount_minor" class="field compact sm" type="number" min="0" />
+                <div class="select-icon">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z" /></svg>
                 </div>
-                <span v-else>{{ plan.currency }} {{ plan.amount_minor }}</span>
-              </td>
-              <td>
-                <input
-                  v-if="editingPlanId === plan.id"
-                  v-model="editPlan.entitlement_keys"
-                  class="field compact"
-                />
-                <span v-else>{{ plan.entitlement_keys.join(', ') }}</span>
-              </td>
-              <td>
-                <span class="badge" :class="plan.status">{{ plan.status }}</span>
-              </td>
-              <td>
-                <div class="actions">
-                  <template v-if="editingPlanId === plan.id">
-                    <button class="btn-primary btn-sm" @click="savePlanEdit(plan.id)" :disabled="loading">Save</button>
-                    <button class="btn-secondary btn-sm" @click="cancelPlanEdit" :disabled="loading">Cancel</button>
-                  </template>
-                  <template v-else>
-                    <button class="btn-secondary btn-sm" @click="startPlanEdit(plan)" :disabled="loading">Edit</button>
-                    <button class="btn-danger btn-sm" @click="togglePlanStatus(plan)" :disabled="loading">
-                      {{ plan.status === 'active' ? 'Archive' : 'Unarchive' }}
-                    </button>
-                  </template>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="plans.length === 0">
-              <td colspan="7" class="muted">No plans found.</td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            </div>
+            <UiInput v-model="createPlan.currency" label="Currency" placeholder="USD" required />
+            <UiInput v-model.number="createPlan.amount_minor" label="Amount (minor)" type="number" required />
+            <UiInput v-model.number="createPlan.trial_days" label="Trial Days" type="number" />
+            <UiInput v-model="createPlan.entitlement_keys" label="Entitlement Keys" placeholder="blog.read.premium, paste.pro" />
+          </div>
+          <div class="form-actions">
+            <UiButton type="submit" variant="primary" :loading="loading">Create Plan</UiButton>
+          </div>
+        </form>
+      </section>
+
+      <!-- Products Table Card -->
+      <section class="info-card wide-card">
+        <div class="card-header">
+          <h3>Products</h3>
+          <span class="badge">{{ products.length }}</span>
+        </div>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Product Key</th>
+                <th>Name</th>
+                <th>App</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="product in products" :key="product.id">
+                <td class="font-medium">
+                  <UiInput v-if="editingProductId === product.id" v-model="editProduct.product_key" class="table-input" />
+                  <span v-else>{{ product.product_key }}</span>
+                </td>
+                <td>
+                  <UiInput v-if="editingProductId === product.id" v-model="editProduct.name" class="table-input" />
+                  <span v-else>{{ product.name }}</span>
+                </td>
+                <td>
+                  <UiInput v-if="editingProductId === product.id" v-model="editProduct.app_key" class="table-input" />
+                  <span v-else>{{ product.app_key }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" :class="product.status">{{ product.status }}</span>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <template v-if="editingProductId === product.id">
+                      <UiButton variant="primary" size="sm" @click="saveProductEdit(product.id)" :loading="loading">Save</UiButton>
+                      <UiButton variant="ghost" size="sm" @click="cancelProductEdit" :disabled="loading">Cancel</UiButton>
+                    </template>
+                    <template v-else>
+                      <UiButton variant="ghost" size="sm" @click="startProductEdit(product)" :disabled="loading">Edit</UiButton>
+                      <UiButton
+                        variant="ghost"
+                        size="sm"
+                        @click="toggleProductStatus(product)"
+                        :disabled="loading"
+                        :class="{ 'text-danger': product.status === 'active' }"
+                      >
+                        {{ product.status === 'active' ? 'Archive' : 'Unarchive' }}
+                      </UiButton>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="products.length === 0">
+                <td colspan="5" class="empty-row">No products found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Plans Table Card -->
+      <section class="info-card wide-card">
+        <div class="card-header">
+          <h3>Plans</h3>
+          <span class="badge">{{ plans.length }}</span>
+        </div>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Plan Key</th>
+                <th>Product</th>
+                <th>Billing</th>
+                <th>Price</th>
+                <th>Entitlements</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="plan in plans" :key="plan.id">
+                <td class="font-medium">
+                  <UiInput v-if="editingPlanId === plan.id" v-model="editPlan.plan_key" class="table-input" />
+                  <span v-else>{{ plan.plan_key }}</span>
+                </td>
+                <td>
+                  <div v-if="editingPlanId === plan.id" class="select-wrapper">
+                    <select v-model="editPlan.product_id" class="form-select table-input">
+                      <option v-for="product in products" :key="product.id" :value="product.id">
+                        {{ product.product_key }}
+                      </option>
+                    </select>
+                  </div>
+                  <span v-else>{{ productKeyById(plan.product_id) }}</span>
+                </td>
+                <td>
+                  <div v-if="editingPlanId === plan.id" class="select-wrapper">
+                    <select v-model="editPlan.billing_cycle" class="form-select table-input">
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                      <option value="one_time">One-time</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+                  <span v-else>{{ plan.billing_cycle }}</span>
+                </td>
+                <td>
+                  <div v-if="editingPlanId === plan.id" class="inline-fields">
+                    <UiInput v-model="editPlan.currency" class="xs-input" />
+                    <UiInput v-model.number="editPlan.amount_minor" type="number" class="sm-input" />
+                  </div>
+                  <span v-else>{{ plan.currency }} {{ (plan.amount_minor / 100).toFixed(2) }}</span>
+                </td>
+                <td class="text-xs">
+                  <UiInput v-if="editingPlanId === plan.id" v-model="editPlan.entitlement_keys" class="table-input" />
+                  <span v-else>{{ plan.entitlement_keys.join(', ') }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" :class="plan.status">{{ plan.status }}</span>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <template v-if="editingPlanId === plan.id">
+                      <UiButton variant="primary" size="sm" @click="savePlanEdit(plan.id)" :loading="loading">Save</UiButton>
+                      <UiButton variant="ghost" size="sm" @click="cancelPlanEdit" :disabled="loading">Cancel</UiButton>
+                    </template>
+                    <template v-else>
+                      <UiButton variant="ghost" size="sm" @click="startPlanEdit(plan)" :disabled="loading">Edit</UiButton>
+                      <UiButton
+                        variant="ghost"
+                        size="sm"
+                        @click="togglePlanStatus(plan)"
+                        :disabled="loading"
+                        :class="{ 'text-danger': plan.status === 'active' }"
+                      >
+                        {{ plan.status === 'active' ? 'Archive' : 'Unarchive' }}
+                      </UiButton>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="plans.length === 0">
+                <td colspan="7" class="empty-row">No plans found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
-  </NuxtLayout>
+  </div>
 </template>
+
+<style scoped>
+.billing-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.header-text h2 {
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: #1f1f1f;
+  margin-bottom: 4px;
+}
+
+.header-text p {
+  color: #5f6368;
+  font-size: 0.875rem;
+}
+
+.header-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.control-input {
+  width: 160px;
+}
+
+.checkbox-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #444746;
+  cursor: pointer;
+  padding-bottom: 4px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 24px;
+}
+
+.info-card {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.wide-card {
+  grid-column: span 2;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-header h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #1f1f1f;
+  margin: 0;
+}
+
+.badge {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+  padding: 2px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.card-desc {
+  font-size: 0.875rem;
+  color: #444746;
+  line-height: 1.5rem;
+  margin-bottom: 24px;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f1f1f;
+  margin-left: 4px;
+}
+
+.select-wrapper {
+  position: relative;
+  height: 3rem;
+}
+
+.form-select {
+  width: 100%;
+  height: 100%;
+  padding: 0 2rem 0 0.875rem;
+  font-size: 1rem;
+  color: #1f1f1f;
+  background-color: white;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  transition: border-color 0.2s;
+  appearance: none;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  outline: none;
+  border: 2px solid #1a73e8;
+  padding: 0 1.9375rem 0 0.8125rem;
+}
+
+.select-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #5f6368;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dadce0;
+  color: #5f6368;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f3f4;
+  color: #1f1f1f;
+  vertical-align: middle;
+}
+
+.font-medium { font-weight: 500; }
+.text-xs { font-size: 0.75rem; }
+.text-danger { color: #d93025; }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.active { background-color: #e6f4ea; color: #137333; }
+.status-badge.archived { background-color: #fce8e6; color: #d93025; }
+
+.table-input {
+  min-width: 120px;
+}
+
+.xs-input { width: 60px; }
+.sm-input { width: 100px; }
+
+.inline-fields {
+  display: flex;
+  gap: 8px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.empty-row {
+  text-align: center;
+  color: #5f6368;
+  padding: 32px !important;
+}
+
+.error-banner {
+  background-color: #fce8e6;
+  color: #d93025;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .wide-card {
+    grid-column: span 1;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 
 <script setup lang="ts">
 type ProductItem = {
