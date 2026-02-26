@@ -3,7 +3,9 @@
     <header class="topbar">
       <div class="brand">leeguoo 账号</div>
       <div class="top-actions">
-        <UiButton unstyled type="button" class="icon-btn" aria-label="help" @click="goSection('help')">?</UiButton>
+        <NuxtLink to="/help">
+          <UiButton unstyled type="button" class="icon-btn" aria-label="help">?</UiButton>
+        </NuxtLink>
         <UiButton unstyled type="button" class="icon-btn" aria-label="apps" @click="goSection('linked')">⋮</UiButton>
         <div class="mini-avatar">
           <img
@@ -92,10 +94,10 @@
     </div>
 
     <footer class="bottom-links">
-      <a href="/account?section=privacy" @click.prevent="goSection('privacy')">隐私权</a>
-      <a href="/account?section=terms" @click.prevent="goSection('terms')">条款</a>
-      <a href="/account?section=help" @click.prevent="goSection('help')">帮助</a>
-      <a href="/account?section=about" @click.prevent="goSection('about')">关于</a>
+      <NuxtLink to="/privacy">隐私权</NuxtLink>
+      <NuxtLink to="/terms">条款</NuxtLink>
+      <NuxtLink to="/help">帮助</NuxtLink>
+      <NuxtLink to="/about">关于</NuxtLink>
       <UiButton unstyled type="button" class="logout-btn" @click="logout">退出登录</UiButton>
     </footer>
   </div>
@@ -122,7 +124,7 @@ type RefreshPayload = {
   access_token?: string
 }
 
-type AccountSection = 'home' | 'profile' | 'security' | 'password' | 'linked' | 'privacy' | 'share' | 'billing' | 'help' | 'terms' | 'about'
+type AccountSection = 'home' | 'profile' | 'security' | 'password' | 'linked' | 'privacy' | 'share' | 'billing'
 
 const ACCOUNT_SECTIONS: AccountSection[] = [
   'home',
@@ -133,9 +135,6 @@ const ACCOUNT_SECTIONS: AccountSection[] = [
   'privacy',
   'share',
   'billing',
-  'help',
-  'terms',
-  'about',
 ]
 
 const config = useRuntimeConfig()
@@ -267,33 +266,6 @@ const activeSection = computed(() => {
         { label: '邮箱', value: profile.value?.email || '-' },
         { label: 'Locale', value: locale },
         { label: 'Global Account', value: gaid },
-      ],
-    }
-  }
-  if (activeNav.value === 'help') {
-    return {
-      title: '帮助',
-      desc: '常见问题与账号支持入口先以说明形式先行，后续将接入工单与反馈入口。',
-      meta: [
-        { label: '反馈渠道', value: '计划中' },
-        { label: '优先级', value: '高' },
-      ],
-    }
-  }
-  if (activeNav.value === 'terms') {
-    return {
-      title: '服务条款',
-      desc: '服务条款页已进入落地流程，当前提供当前版本指引和状态说明。',
-      meta: [{ label: '状态', value: '开发中' }],
-    }
-  }
-  if (activeNav.value === 'about') {
-    return {
-      title: '关于',
-      desc: '这是账号中心一期形态，优先支持可点交互；真实可配置项持续迭代中。',
-      meta: [
-        { label: '版本', value: 'Phase-1' },
-        { label: '更新策略', value: '计划内滚动交付' },
       ],
     }
   }
