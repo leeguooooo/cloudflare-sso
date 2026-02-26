@@ -3,7 +3,10 @@ import {
   defineEventHandler,
   deleteCookie,
   getCookie,
+  getRequestHeader,
   getQuery,
+  getRequestURL,
+  H3Event,
   sendRedirect,
   setCookie,
 } from 'h3'
@@ -37,6 +40,14 @@ const resolveContinuePath = (raw: unknown) => {
   if (!value.startsWith('/')) return ''
   if (value.startsWith('//')) return ''
   return value
+}
+
+const isSecureCookie = (event: H3Event) => {
+  const forwardedProto = getRequestHeader(event, 'x-forwarded-proto')?.split(',')[0].trim().toLowerCase()
+  if (forwardedProto) {
+    return forwardedProto === 'https'
+  }
+  return getRequestURL(event).protocol === 'https:'
 }
 
 const buildLoginPath = (input: { message: string; continuePath?: string; clientId?: string }) => {
@@ -187,7 +198,7 @@ export default defineEventHandler(async (event) => {
 
     setCookie(event, 'sso_refresh_token', tokens.refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: isSecureCookie(event),
       sameSite: 'lax',
       path: '/',
       expires: new Date(tokens.refreshTokenExpiresAt * 1000),
