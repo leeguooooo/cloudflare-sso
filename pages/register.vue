@@ -24,21 +24,6 @@
         :disabled="loading"
       />
 
-      <div class="form-group">
-        <label class="form-label">Language</label>
-        <div class="select-wrapper">
-          <select v-model="form.locale" class="form-select" :disabled="loading">
-            <option value="en">English (US)</option>
-            <option value="zh">简体中文</option>
-          </select>
-          <div class="select-icon">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M7 10l5 5 5-5z" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
       <div v-if="message" class="alert" :class="{ 'alert-success': success, 'alert-error': !success }">
         {{ message }}
       </div>
@@ -66,6 +51,7 @@ definePageMeta({
 
 const config = useRuntimeConfig()
 const route = useRoute()
+const { locale } = useI18n()
 const loading = ref(false)
 const message = ref('')
 const success = ref(false)
@@ -74,7 +60,6 @@ const output = ref<Record<string, unknown> | null>(null)
 const form = reactive({
   email: 'demo@example.com',
   password: 'Passw0rd!',
-  locale: 'en',
 })
 
 const resolveClientId = () => {
@@ -108,7 +93,7 @@ const handleSubmit = async () => {
         email: form.email,
         password: form.password,
         client_id: clientId,
-        locale: form.locale,
+        locale: typeof locale.value === 'string' ? locale.value : 'en',
       },
     })
     output.value = data as Record<string, unknown>
@@ -155,57 +140,6 @@ const handleSubmit = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.form-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-neutral-800);
-  margin-left: 0.25rem;
-}
-
-.select-wrapper {
-  position: relative;
-  height: 3rem;
-}
-
-.form-select {
-  width: 100%;
-  height: 100%;
-  padding: 0 2rem 0 0.875rem;
-  font-size: 1rem;
-  color: var(--color-neutral-900);
-  background-color: white;
-  border: 1px solid var(--color-neutral-300);
-  border-radius: 4px;
-  transition: border-color 0.2s;
-  appearance: none;
-  cursor: pointer;
-}
-
-.form-select:hover:not(:disabled) {
-  border-color: var(--color-neutral-900);
-}
-
-.form-select:focus {
-  outline: none;
-  border: 2px solid var(--color-primary-600);
-  padding: 0 1.9375rem 0 0.8125rem;
-}
-
-.select-icon {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: #444746;
 }
 
 .form-actions {

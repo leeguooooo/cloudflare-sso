@@ -66,6 +66,9 @@
             <p v-if="message" class="message" :class="{ success }">{{ message }}</p>
 
             <div class="form-actions">
+              <NuxtLink :to="registerPath" class="create-account-link">
+                Create account
+              </NuxtLink>
               <UiButton
                 variant="ghost"
                 type="button"
@@ -140,6 +143,20 @@ const resolveContinuePath = () => {
   if (raw.startsWith('//')) return ''
   return raw
 }
+
+const registerPath = computed(() => {
+  const query = new URLSearchParams()
+  const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
+  if (queryClientId) {
+    query.set('client_id', queryClientId)
+  }
+  const continuePath = resolveContinuePath()
+  if (continuePath) {
+    query.set('continue', continuePath)
+  }
+  const queryString = query.toString()
+  return queryString ? `/register?${queryString}` : '/register'
+})
 
 const resolveClientId = () => {
   const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
@@ -373,8 +390,21 @@ onMounted(() => {
 
 .form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 24px;
+}
+
+.create-account-link {
+  color: #1a73e8;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 8px 4px;
+}
+
+.create-account-link:hover {
+  text-decoration: underline;
 }
 
 .message {
