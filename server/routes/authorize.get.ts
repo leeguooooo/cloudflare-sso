@@ -4,6 +4,7 @@ import { getDb } from '../utils/env'
 import { ensureClientManagementSchema } from '../utils/identity'
 import { verifyJwt } from '../utils/jwt'
 import { nowInSeconds, randomId } from '../utils/crypto'
+import { normalizeRedirectUriForMatch } from '../utils/redirect-uri'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -13,7 +14,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const clientId = String(query.client_id || '')
-  const redirectUri = String(query.redirect_uri || '')
+  const redirectUriRaw = String(query.redirect_uri || '')
+  const redirectUri = normalizeRedirectUriForMatch(redirectUriRaw)
   const scope = String(query.scope || 'openid profile email')
   const state = query.state ? String(query.state) : undefined
   const nonce = query.nonce ? String(query.nonce) : undefined
@@ -40,7 +42,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Client disabled' })
   }
 
-  const allowedRedirects = JSON.parse(client.redirect_uris || '[]') as string[]
+  const allowedRedirects = (JSON.parse(client.redirect_uris || '[]') as string[]).map((item) =>
+    normalizeRedirectUriForMatch(item),
+  )
   if (!allowedRedirects.includes(redirectUri)) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid redirect_uri' })
   }
@@ -111,7 +115,7 @@ export default defineEventHandler(async (event) => {
     )
     .run()
 
-  const redirect = new URL(redirectUri)
+  const redirect = new URL(redirectUriRaw.trim())
   redirect.searchParams.set('code', code)
   if (state) redirect.searchParams.set('state', state)
   return sendRedirect(event, redirect.toString(), 302)

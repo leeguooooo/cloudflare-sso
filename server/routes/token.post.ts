@@ -5,6 +5,7 @@ import { nowInSeconds, base64UrlEncode } from '../utils/crypto'
 import { getUserRolesForClient } from '../utils/access'
 import { ensureClientManagementSchema } from '../utils/identity'
 import { writeAuditLog } from '../utils/audit'
+import { normalizeRedirectUriForMatch } from '../utils/redirect-uri'
 
 const hashVerifier = async (verifier: string) => {
   const data = new TextEncoder().encode(verifier)
@@ -47,7 +48,8 @@ export default defineEventHandler(async (event) => {
 
   if (grantType === 'authorization_code') {
     const code = typeof body.code === 'string' ? body.code : undefined
-    const redirectUri = typeof body.redirect_uri === 'string' ? body.redirect_uri : undefined
+    const redirectUri =
+      typeof body.redirect_uri === 'string' ? normalizeRedirectUriForMatch(body.redirect_uri) : undefined
     const codeVerifier = typeof body.code_verifier === 'string' ? body.code_verifier : undefined
     if (!code || !redirectUri || !codeVerifier) {
       throw createError({ statusCode: 400, statusMessage: 'code, redirect_uri, code_verifier are required' })
@@ -82,7 +84,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Authorization code expired' })
     }
     if (authCode.client_id !== client.id) throw createError({ statusCode: 400, statusMessage: 'Client mismatch' })
-    if (authCode.redirect_uri !== redirectUri) {
+    if (normalizeRedirectUriForMatch(authCode.redirect_uri) !== redirectUri) {
       throw createError({ statusCode: 400, statusMessage: 'redirect_uri mismatch' })
     }
     if (authCode.code_challenge) {
