@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@leeguoo/design-tokens':
+        specifier: ~0.2.0
+        version: 0.2.0
+      '@leeguoo/leeguoo-ui-vue':
+        specifier: ~0.2.0
+        version: 0.2.0(vue@3.5.25(typescript@5.9.3))
       '@nuxtjs/i18n':
         specifier: ^9.0.0
         version: 9.5.6(@vue/compiler-dom@3.5.25)(eslint@9.39.1(jiti@2.6.1))(magicast@0.5.1)(rollup@4.53.3)(vue@3.5.25(typescript@5.9.3))
@@ -799,6 +805,14 @@ packages:
 
   '@kwsites/promise-deferred@1.1.1':
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
+
+  '@leeguoo/design-tokens@0.2.0':
+    resolution: {integrity: sha512-U+1gO+ZNqdbk4X0IUnaa6A3OlpAGJPy/bjEk7NbDXsB/toGtleS017//pCgtktEc6HlObp1tAxc4En5cNTCYhg==}
+
+  '@leeguoo/leeguoo-ui-vue@0.2.0':
+    resolution: {integrity: sha512-5ek0wM/FpdB8E0IyRV4gqtg0mfl9sFSppsa9defeWDa5fy1QCVpOpYV4nOnHw6KYkefGQcxl7MXZcDS4j24M2w==}
+    peerDependencies:
+      vue: ^3.4.0
 
   '@mapbox/node-pre-gyp@2.0.3':
     resolution: {integrity: sha512-uwPAhccfFJlsfCxMYTwOdVfOz3xqyj8xYL3zJj8f0pb30tLohnnFPhLuqp4/qoEz8sNxe4SESZedcBojRefIzg==}
@@ -4768,6 +4782,12 @@ snapshots:
       - supports-color
 
   '@kwsites/promise-deferred@1.1.1': {}
+
+  '@leeguoo/design-tokens@0.2.0': {}
+
+  '@leeguoo/leeguoo-ui-vue@0.2.0(vue@3.5.25(typescript@5.9.3))':
+    dependencies:
+      vue: 3.5.25(typescript@5.9.3)
 
   '@mapbox/node-pre-gyp@2.0.3':
     dependencies:
