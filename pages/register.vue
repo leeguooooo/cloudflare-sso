@@ -5,6 +5,20 @@
       <p class="subtitle">Enter your details to get started</p>
     </div>
 
+    <div class="oauth-section">
+      <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialSignup('google')">
+        Continue with Google
+      </button>
+      <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialSignup('github')">
+        Continue with GitHub
+      </button>
+      <button class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
+        WeChat (planned)
+      </button>
+    </div>
+
+    <div class="oauth-divider">Or create with email</div>
+
     <form @submit.prevent="handleSubmit" class="register-form">
       <UiInput
         v-model="form.email"
@@ -29,7 +43,7 @@
       </div>
 
       <div class="form-actions">
-        <NuxtLink to="/login" class="btn-link">
+        <NuxtLink :to="loginPath" class="btn-link">
           Sign in instead
         </NuxtLink>
         <UiButton type="submit" variant="primary" :loading="loading">
@@ -37,10 +51,6 @@
         </UiButton>
       </div>
     </form>
-
-    <div v-if="output" class="debug-tokens">
-      <pre>{{ JSON.stringify(output, null, 2) }}</pre>
-    </div>
   </div>
 </template>
 
@@ -55,11 +65,42 @@ const { locale } = useI18n()
 const loading = ref(false)
 const message = ref('')
 const success = ref(false)
-const output = ref<Record<string, unknown> | null>(null)
+type SocialProvider = 'google' | 'github'
 
 const form = reactive({
   email: 'demo@example.com',
   password: 'Passw0rd!',
+})
+
+const resolveContinuePath = () => {
+  const raw = typeof route.query.continue === 'string' ? route.query.continue : ''
+  if (!raw.startsWith('/')) return ''
+  if (raw.startsWith('//')) return ''
+  return raw
+}
+
+const buildLoginPath = (options?: { prefillEmail?: string; registered?: boolean }) => {
+  const query = new URLSearchParams()
+  const clientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
+  if (clientId) {
+    query.set('client_id', clientId)
+  }
+  const continuePath = resolveContinuePath()
+  if (continuePath) {
+    query.set('continue', continuePath)
+  }
+  if (options?.prefillEmail) {
+    query.set('email', options.prefillEmail)
+  }
+  if (options?.registered) {
+    query.set('registered', '1')
+  }
+  const queryString = query.toString()
+  return queryString ? `/login?${queryString}` : '/login'
+}
+
+const loginPath = computed(() => {
+  return buildLoginPath()
 })
 
 const resolveClientId = () => {
@@ -74,7 +115,13 @@ const resolveClientId = () => {
   }
 
   const configuredDefault = typeof config.public.defaultClientId === 'string' ? config.public.defaultClientId.trim() : ''
-  return configuredDefault || 'demo-web'
+  if (configuredDefault) return configuredDefault
+
+  const hostname = process.client ? window.location.hostname.toLowerCase() : ''
+  if (hostname === 'account.misonote.com' || hostname.endsWith('.misonote.com')) {
+    return 'misonote-app-web'
+  }
+  return 'demo-web'
 }
 
 const handleSubmit = async () => {
@@ -83,11 +130,8 @@ const handleSubmit = async () => {
   success.value = false
   try {
     const clientId = resolveClientId()
-    if (!clientId) {
-      throw new Error('Missing client_id')
-    }
 
-    const data = await $fetch(`${config.public.apiBase}/auth/register`, {
+    await $fetch(`${config.public.apiBase}/auth/register`, {
       method: 'POST',
       body: {
         email: form.email,
@@ -96,18 +140,38 @@ const handleSubmit = async () => {
         locale: typeof locale.value === 'string' ? locale.value : 'en',
       },
     })
-    output.value = data as Record<string, unknown>
-    message.value = 'Account created successfully. You can now sign in.'
-    success.value = true
     if (process.client) {
       localStorage.setItem('sso_last_email', form.email)
     }
+    await navigateTo(buildLoginPath({ prefillEmail: form.email, registered: true }))
   } catch (err: any) {
     const detail = err?.data?.message || err?.message || 'Registration failed'
     message.value = detail
+    success.value = false
   } finally {
     loading.value = false
   }
+}
+
+const startSocialSignup = (provider: SocialProvider) => {
+  if (!process.client || loading.value) return
+
+  const clientId = resolveClientId()
+  if (!clientId) {
+    message.value = 'Missing client_id'
+    success.value = false
+    return
+  }
+
+  const query = new URLSearchParams()
+  query.set('provider', provider)
+  query.set('client_id', clientId)
+  const continuePath = resolveContinuePath()
+  if (continuePath) {
+    query.set('continue', continuePath)
+  }
+
+  window.location.href = `${config.public.apiBase}/auth/oauth/start?${query.toString()}`
 }
 </script>
 
@@ -134,6 +198,42 @@ const handleSubmit = async () => {
   color: #444746;
   font-size: 1rem;
   line-height: 1.5rem;
+}
+
+.oauth-section {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.oauth-btn {
+  min-width: 170px;
+  height: 42px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1f1f1f;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 16px;
+  transition: background-color 0.2s;
+}
+
+.oauth-btn:hover:not(:disabled) {
+  background: #f7f9fc;
+}
+
+.oauth-btn-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.oauth-divider {
+  margin-bottom: 12px;
+  color: #5f6368;
+  font-size: 0.8125rem;
 }
 
 .register-form {
@@ -180,12 +280,4 @@ const handleSubmit = async () => {
   color: #137333;
 }
 
-.debug-tokens {
-  margin-top: 24px;
-  padding: 12px;
-  background-color: #f1f3f4;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  overflow-x: auto;
-}
 </style>

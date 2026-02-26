@@ -86,6 +86,21 @@
               </UiButton>
             </div>
           </form>
+
+          <div class="oauth-section">
+            <p class="oauth-title">Or continue with</p>
+            <div class="oauth-buttons">
+              <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('google')">
+                Google
+              </button>
+              <button class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('github')">
+                GitHub
+              </button>
+              <button class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
+                WeChat (planned)
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -118,6 +133,7 @@ const message = ref('')
 const success = ref(false)
 const showForm = ref(false)
 const rememberedEmail = ref('')
+type SocialProvider = 'google' | 'github'
 
 const form = reactive({
   email: 'demo@example.com',
@@ -170,7 +186,13 @@ const resolveClientId = () => {
   }
 
   const configuredDefault = typeof config.public.defaultClientId === 'string' ? config.public.defaultClientId.trim() : ''
-  return configuredDefault || 'demo-web'
+  if (configuredDefault) return configuredDefault
+
+  const hostname = process.client ? window.location.hostname.toLowerCase() : ''
+  if (hostname === 'account.misonote.com' || hostname.endsWith('.misonote.com')) {
+    return 'misonote-app-web'
+  }
+  return 'demo-web'
 }
 
 const toggleForm = (open: boolean) => {
@@ -198,9 +220,6 @@ const handleSubmit = async () => {
   success.value = false
   try {
     const clientId = resolveClientId()
-    if (!clientId) {
-      throw new Error('Missing client_id')
-    }
 
     const data = await $fetch(`${config.public.apiBase}/auth/login`, {
       method: 'POST',
@@ -231,9 +250,49 @@ const handleSubmit = async () => {
   }
 }
 
+const startSocialLogin = (provider: SocialProvider) => {
+  if (!process.client || loading.value) return
+
+  const clientId = resolveClientId()
+  if (!clientId) {
+    message.value = 'Missing client_id'
+    success.value = false
+    return
+  }
+
+  const query = new URLSearchParams()
+  query.set('provider', provider)
+  query.set('client_id', clientId)
+  const continuePath = resolveContinuePath()
+  if (continuePath) {
+    query.set('continue', continuePath)
+  }
+
+  window.location.href = `${config.public.apiBase}/auth/oauth/start?${query.toString()}`
+}
+
 onMounted(() => {
   if (!process.client) return
   rememberedEmail.value = localStorage.getItem('sso_last_email') || ''
+
+  const registered = route.query.registered === '1'
+  const prefillEmail = typeof route.query.email === 'string' ? route.query.email.trim() : ''
+  if (prefillEmail) {
+    form.email = prefillEmail
+    showForm.value = true
+  }
+  if (registered) {
+    message.value = 'Account created successfully. Please sign in.'
+    success.value = true
+    showForm.value = true
+  }
+
+  const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
+  if (oauthError) {
+    message.value = oauthError
+    success.value = false
+    showForm.value = true
+  }
 
   if (!rememberedEmail.value) {
     showForm.value = true
@@ -386,6 +445,45 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.oauth-section {
+  margin-top: 18px;
+}
+
+.oauth-title {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: #444746;
+}
+
+.oauth-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oauth-btn {
+  min-width: 120px;
+  height: 40px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1f1f1f;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 16px;
+  transition: background-color 0.2s;
+}
+
+.oauth-btn:hover:not(:disabled) {
+  background: #f7f9fc;
+}
+
+.oauth-btn-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .form-actions {
