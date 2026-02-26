@@ -25,7 +25,7 @@
               type="button"
               class="row account-row"
               :disabled="loading"
-              @click="prefillRemembered"
+              @click="tryResumeRememberedSession"
             >
               <div class="avatar">{{ rememberedInitial }}</div>
               <div class="account-meta">
@@ -146,6 +146,14 @@ const showForm = ref(false)
 const rememberedEmail = ref('')
 type SocialProvider = 'google' | 'github'
 
+type UserInfoPayload = {
+  email: string
+}
+
+type RefreshPayload = {
+  access_token?: string
+}
+
 const form = reactive({
   email: '',
   password: '',
@@ -212,12 +220,6 @@ const toggleForm = (open: boolean) => {
   success.value = false
 }
 
-const prefillRemembered = () => {
-  if (!rememberedEmail.value) return
-  form.email = rememberedEmail.value
-  toggleForm(true)
-}
-
 const removeRemembered = () => {
   rememberedEmail.value = ''
   if (process.client) {
@@ -261,6 +263,59 @@ const handleSubmit = async () => {
   }
 }
 
+const tryResumeRememberedSession = async () => {
+  if (!process.client || loading.value) return
+  if (!rememberedEmail.value) {
+    toggleForm(true)
+    return
+  }
+
+  loading.value = true
+  message.value = ''
+  success.value = false
+
+  try {
+    let token = localStorage.getItem('sso_access_token') || ''
+    if (!token) {
+      try {
+        const refreshData = await $fetch<RefreshPayload>(`${config.public.apiBase}/auth/refresh`, {
+          method: 'POST',
+          body: {},
+        })
+        token = refreshData?.access_token || ''
+        if (token) localStorage.setItem('sso_access_token', token)
+      } catch {
+        token = ''
+      }
+    }
+
+    if (!token) {
+      form.email = rememberedEmail.value
+      toggleForm(true)
+      return
+    }
+
+    const profile = await $fetch<UserInfoPayload>(`${config.public.apiBase}/userinfo`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const targetEmail = profile?.email || ''
+    if (!targetEmail || targetEmail.toLowerCase() !== rememberedEmail.value.toLowerCase()) {
+      form.email = rememberedEmail.value
+      toggleForm(true)
+      return
+    }
+
+    const continuePath = resolveContinuePath()
+    await navigateTo(continuePath || '/account')
+  } catch {
+    localStorage.removeItem('sso_access_token')
+    form.email = rememberedEmail.value
+    toggleForm(true)
+  } finally {
+    loading.value = false
+  }
+}
+
 const startSocialLogin = (provider: SocialProvider) => {
   if (!process.client || loading.value) return
 
@@ -298,7 +353,7 @@ onMounted(() => {
     showForm.value = true
   }
 
-  const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
+const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
   if (oauthError) {
     message.value = oauthError
     success.value = false

@@ -5,7 +5,15 @@
       <div class="top-actions">
         <UiButton unstyled type="button" class="icon-btn" aria-label="help">?</UiButton>
         <UiButton unstyled type="button" class="icon-btn" aria-label="apps">⋮</UiButton>
-        <div class="mini-avatar">{{ initials }}</div>
+        <div class="mini-avatar">
+          <img
+            v-if="profile?.avatar_url"
+            :src="profile?.avatar_url"
+            :alt="`${displayName} avatar`"
+            class="mini-avatar-image"
+          />
+          <span v-else>{{ initials }}</span>
+        </div>
       </div>
     </header>
 
@@ -31,7 +39,13 @@
       <main class="center-panel">
         <div class="profile-block fade-in">
           <div class="hero-avatar">
-            {{ initials }}
+            <img
+              v-if="profile?.avatar_url"
+              :src="profile?.avatar_url"
+              :alt="`${displayName} avatar`"
+              class="hero-avatar-image"
+            />
+            <span v-else>{{ initials }}</span>
             <span class="camera-badge">◉</span>
           </div>
           <h1>{{ displayName }}</h1>
@@ -87,6 +101,8 @@ type UserInfoPayload = {
   sub: string
   gaid?: string
   email: string
+  name?: string
+  avatar_url?: string
   locale?: string
   tid: string
   roles?: string[]
@@ -118,6 +134,8 @@ const navItems = [
 const quickActions = ['我的密码', '设备', '密码管理工具', '我的活动记录', '邮箱']
 
 const displayName = computed(() => {
+  const name = (profile.value?.name || '').trim()
+  if (name) return name
   const email = profile.value?.email || ''
   if (!email) return '账户用户'
   return email.split('@')[0]
@@ -304,6 +322,13 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.mini-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
 .body-wrap {
   flex: 1;
   display: flex;
@@ -369,6 +394,13 @@ onMounted(() => {
   display: grid;
   place-items: center;
   position: relative;
+}
+
+.hero-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
 }
 
 .camera-badge {

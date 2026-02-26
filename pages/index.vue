@@ -48,6 +48,39 @@
 definePageMeta({
   layout: 'auth',
 })
+
+type RefreshPayload = {
+  access_token?: string
+}
+
+const config = useRuntimeConfig()
+
+const tryResumeSession = async () => {
+  let token = localStorage.getItem('sso_access_token') || ''
+  if (!token) {
+    try {
+      const refreshData = await $fetch<RefreshPayload>(`${config.public.apiBase}/auth/refresh`, {
+        method: 'POST',
+        body: {},
+      })
+      token = refreshData?.access_token || ''
+      if (token) {
+        localStorage.setItem('sso_access_token', token)
+      }
+    } catch {
+      token = ''
+    }
+  }
+  return !!token
+}
+
+onMounted(async () => {
+  if (!process.client) return
+  const token = await tryResumeSession()
+  if (token) {
+    await navigateTo('/account')
+  }
+})
 </script>
 
 <style scoped>
