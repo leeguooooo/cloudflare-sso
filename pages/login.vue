@@ -16,17 +16,8 @@
 
     <!-- wordmark -->
     <NuxtLink to="/" class="wordmark">
-      <span class="wordmark-bob">
-        <img
-          v-show="!wordmarkFailed"
-          class="wm-img"
-          src="https://img.leeguoo.com/media/a1b1c64c-0f4a-46b7-bc51-956b9985ab42/wordmark.png"
-          alt="misonote"
-          @error="wordmarkFailed = true"
-        >
-        <span v-show="wordmarkFailed" class="wm-fallback">
-          <span style="color:#ff5447;">m</span><span style="color:#3f6fe0;">i</span><span style="color:#36a85b;">s</span><span style="color:#e0a32a;">o</span><span style="color:#ff5447;">n</span><span style="color:#3f6fe0;">o</span><span style="color:#36a85b;">t</span><span style="color:#e0a32a;">e</span>
-        </span>
+      <span class="wordmark-bob wm-fallback">
+        <span style="color:#ff5447;">m</span><span style="color:#3f6fe0;">i</span><span style="color:#36a85b;">s</span><span style="color:#e0a32a;">o</span><span style="color:#ff5447;">n</span><span style="color:#3f6fe0;">o</span><span style="color:#36a85b;">t</span><span style="color:#e0a32a;">e</span>
       </span>
     </NuxtLink>
 
