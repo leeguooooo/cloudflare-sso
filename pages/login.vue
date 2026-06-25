@@ -1,134 +1,86 @@
 <template>
-  <div class="signin-page">
-    <main class="signin-main">
-      <UiCard
-        class="signin-card"
-        :style="{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '32px',
-          padding: '48px 40px',
-          minHeight: '400px',
-        }"
-      >
-        <div class="left-panel">
-          <UiLogo size="lg" mode="icon" />
-          <h1>Sign in</h1>
-          <p>to continue to leeguoo Identity</p>
-        </div>
+  <div class="miso-page" data-miso>
+    <!-- hand-drawn "boil" filters -->
+    <svg aria-hidden="true" class="miso-filters">
+      <filter id="rough0"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="2" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" /></filter>
+      <filter id="rough1"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" /></filter>
+      <filter id="rough2"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="12" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" /></filter>
+      <filter id="roughHi"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="3" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G" /></filter>
+    </svg>
 
-        <div class="right-panel">
-          <div v-if="!showForm" class="account-list">
-            <UiButton
-              v-if="rememberedEmail"
-              unstyled
-              type="button"
-              class="row account-row"
-              :disabled="loading"
-              @click="tryResumeRememberedSession"
-            >
-              <div class="avatar">{{ rememberedInitial }}</div>
-              <div class="account-meta">
-                <strong>{{ rememberedName }}</strong>
-                <small>{{ rememberedEmail }}</small>
-              </div>
-              <span class="signed-out">Signed out</span>
-            </UiButton>
+    <!-- floating doodle decorations -->
+    <svg class="deco deco-star" viewBox="0 0 24 24" width="38" height="38"><path d="M12 1 L14.5 8.5 L22 9.5 L16 14.5 L18 22 L12 17.5 L6 22 L8 14.5 L2 9.5 L9.5 8.5 Z" /></svg>
+    <svg class="deco deco-spiral" viewBox="0 0 40 40" width="44" height="44"><path d="M20 20 m0 -2 a2 2 0 1 1 -2 2 a5 5 0 1 0 5 -5 a8 8 0 1 0 -8 8 a11 11 0 1 0 11 -11" /></svg>
+    <svg class="deco deco-bolt" viewBox="0 0 24 24" width="24" height="24"><path d="M13 2 L4 14 L11 14 L9 22 L20 9 L13 9 Z" /></svg>
+    <svg class="deco deco-cloud" viewBox="0 0 50 30" width="54" height="34"><path d="M10 22 a7 7 0 0 1 0 -13 a9 9 0 0 1 17 -2 a7 7 0 0 1 5 15 z" /></svg>
 
-            <UiButton unstyled type="button" class="row" :disabled="loading" @click="toggleForm(true)">
-              <div class="row-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M20 21a8 8 0 1 0-16 0" />
-                </svg>
-              </div>
-              <span>Use another account</span>
-            </UiButton>
+    <!-- wordmark -->
+    <NuxtLink to="/" class="wordmark">
+      <span class="wordmark-bob">
+        <span class="wm" style="color:#ff5447;">m</span><span class="wm" style="color:#3f6fe0;">i</span><span class="wm" style="color:#36a85b;">s</span><span class="wm" style="color:#e0a32a;">o</span><span class="wm" style="color:#ff5447;">n</span><span class="wm" style="color:#3f6fe0;">o</span><span class="wm" style="color:#36a85b;">t</span><span class="wm" style="color:#e0a32a;">e</span>
+      </span>
+    </NuxtLink>
 
-            <UiButton unstyled type="button" class="row" :disabled="loading || !rememberedEmail" @click="removeRemembered">
-              <div class="row-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-              </div>
-              <span>Remove an account</span>
-            </UiButton>
-          </div>
+    <!-- login card -->
+    <div class="miso-card doodle-box">
+      <div class="kicker">✦ account center ✦</div>
+      <h1 class="title">欢迎回来<span class="wave">👋</span></h1>
+      <svg class="title-underline" width="180" height="16" viewBox="0 0 180 16" fill="none">
+        <path d="M6 9 C 40 3, 70 3, 96 8 S 150 14, 174 8" stroke="#ffd23d" stroke-width="5" stroke-linecap="round" />
+      </svg>
+      <p class="subtitle">登录 misonote 账号中心，继续你的折腾。</p>
 
-          <form v-if="showForm" class="login-form" @submit.prevent="handleSubmit">
-            <UiInput
-              v-model="form.email"
-              type="email"
-              label="Email"
-              autocomplete="email"
-              required
-              :disabled="loading"
-            />
-            <UiInput
-              v-model="form.password"
-              type="password"
-              label="Password"
-              autocomplete="current-password"
-              required
-              :disabled="loading"
-            />
+      <!-- OAuth -->
+      <div class="oauth">
+        <button type="button" class="obtn obtn-google doodle-box" :disabled="loading" @click="startSocialLogin('google')">
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1S8.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12S6.8 21.5 12 21.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.06-1.1-.16-1.6z" /></svg>
+          使用 Google 继续
+        </button>
+        <button type="button" class="obtn obtn-github doodle-box" :disabled="loading" @click="startSocialLogin('github')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.36-2.22-.26-4.55-1.14-4.55-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05a9.4 9.4 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.04 10.04 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" /></svg>
+          使用 GitHub 继续
+        </button>
+      </div>
 
-            <p v-if="message" class="message" :class="{ success }">{{ message }}</p>
+      <!-- divider -->
+      <div class="divider"><span class="dline" /><span class="dor">或</span><span class="dline" /></div>
 
-            <div class="form-actions">
-              <NuxtLink :to="registerPath" class="create-account-link">
-                Create account
-              </NuxtLink>
-              <UiButton
-                variant="ghost"
-                type="button"
-                :disabled="loading"
-                @click="toggleForm(false)"
-              >
-                Back
-              </UiButton>
-              <UiButton
-                variant="primary"
-                type="submit"
-                :loading="loading"
-              >
-                Continue
-              </UiButton>
-            </div>
-          </form>
+      <!-- email / password -->
+      <form class="form" @submit.prevent="handleSubmit">
+        <label class="field-label">
+          <span class="flabel">邮箱</span>
+          <span class="field doodle-box">
+            <input v-model="form.email" type="email" required placeholder="you@example.com" autocomplete="email" :disabled="loading" />
+          </span>
+        </label>
 
-          <div class="oauth-section">
-            <p class="oauth-title">Or continue with</p>
-            <div class="oauth-buttons">
-              <UiButton unstyled class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('google')">
-                Google
-              </UiButton>
-              <UiButton unstyled class="oauth-btn" type="button" :disabled="loading" @click="startSocialLogin('github')">
-                GitHub
-              </UiButton>
-              <UiButton unstyled class="oauth-btn oauth-btn-disabled" type="button" disabled title="Coming soon">
-                WeChat (planned)
-              </UiButton>
-            </div>
-          </div>
-        </div>
-      </UiCard>
+        <label class="field-label">
+          <span class="flabel flabel-row">
+            <span>密码</span>
+            <NuxtLink :to="registerPath" class="forgot">忘记了？</NuxtLink>
+          </span>
+          <span class="field doodle-box field-pw">
+            <input v-model="form.password" :type="showPw ? 'text' : 'password'" required placeholder="••••••••" autocomplete="current-password" :disabled="loading" />
+            <button type="button" class="pw-toggle" aria-label="显示密码" @click="togglePw">{{ showPw ? '🙈' : '👁' }}</button>
+          </span>
+        </label>
 
-      <footer class="signin-footer">
-        <UiButton unstyled type="button" class="language-btn">
-          English (United States)
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7 10l5 5 5-5z" />
-          </svg>
-        </UiButton>
-        <nav class="footer-links">
-          <a href="#">Help</a>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
-        </nav>
-      </footer>
-    </main>
+        <p v-if="message" class="miso-msg" :class="{ ok: success }">{{ message }}</p>
+
+        <button type="submit" class="submit doodle-box" :disabled="loading">
+          {{ loading ? '登录中…' : '登录' }}
+          <span class="arrow">→</span>
+        </button>
+      </form>
+
+      <p class="signup">还没有账号？<NuxtLink :to="registerPath" class="signup-link">画一个新的 ✎</NuxtLink></p>
+    </div>
+
+    <!-- status footer -->
+    <div class="status">
+      <span class="dot" />
+      account.leeguoo.com · 端到端加密 · 凑合也很安全
+    </div>
   </div>
 </template>
 
@@ -137,12 +89,24 @@ definePageMeta({
   layout: false,
 })
 
+useHead({
+  link: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Permanent+Marker&family=Noto+Sans+SC:wght@400;500;700&display=swap',
+    },
+  ],
+})
+
 const config = useRuntimeConfig()
 const route = useRoute()
 const loading = ref(false)
 const message = ref('')
 const success = ref(false)
-const showForm = ref(false)
+const showForm = ref(true)
+const showPw = ref(false)
 const rememberedEmail = ref('')
 type SocialProvider = 'google' | 'github'
 
@@ -159,17 +123,9 @@ const form = reactive({
   password: '',
 })
 
-const rememberedName = computed(() => {
-  const email = rememberedEmail.value
-  if (!email) return 'leeguoo User'
-  return email.split('@')[0]
-})
-
-const rememberedInitial = computed(() => {
-  const name = rememberedName.value.trim()
-  if (!name) return 'U'
-  return name.slice(0, 1).toUpperCase()
-})
+const togglePw = () => {
+  showPw.value = !showPw.value
+}
 
 const resolveContinuePath = () => {
   const raw = typeof route.query.continue === 'string' ? route.query.continue : ''
@@ -223,19 +179,6 @@ const resolveClientId = () => {
   return 'demo-web'
 }
 
-const toggleForm = (open: boolean) => {
-  showForm.value = open
-  message.value = ''
-  success.value = false
-}
-
-const removeRemembered = () => {
-  rememberedEmail.value = ''
-  if (process.client) {
-    localStorage.removeItem('sso_last_email')
-  }
-}
-
 const handleSubmit = async () => {
   loading.value = true
   message.value = ''
@@ -275,9 +218,6 @@ const tryResumeRememberedSession = async () => {
   if (!process.client || loading.value) return
 
   loading.value = true
-  message.value = ''
-  success.value = false
-
   try {
     let token = localStorage.getItem('sso_access_token') || ''
     if (!token) {
@@ -293,35 +233,19 @@ const tryResumeRememberedSession = async () => {
       }
     }
 
-    if (!token) {
-      if (rememberedEmail.value) {
-        form.email = rememberedEmail.value
-      }
-      toggleForm(true)
-      return
-    }
+    if (!token) return
 
     const profile = await $fetch<UserInfoPayload>(`${config.public.apiBase}/userinfo`, {
       headers: { authorization: `Bearer ${token}` },
     })
     const targetEmail = (profile?.email || '').trim().toLowerCase()
-    if (!targetEmail) {
-      if (rememberedEmail.value) {
-        form.email = rememberedEmail.value
-      }
-      toggleForm(true)
-      return
-    }
+    if (!targetEmail) return
     rememberedEmail.value = targetEmail
     localStorage.setItem('sso_last_email', targetEmail)
 
     await redirectAfterLogin()
   } catch {
     localStorage.removeItem('sso_access_token')
-    if (rememberedEmail.value) {
-      form.email = rememberedEmail.value
-    }
-    toggleForm(true)
   } finally {
     loading.value = false
   }
@@ -351,329 +275,169 @@ const startSocialLogin = (provider: SocialProvider) => {
 onMounted(() => {
   if (!process.client) return
   rememberedEmail.value = localStorage.getItem('sso_last_email') || ''
+  if (rememberedEmail.value && !form.email) {
+    form.email = rememberedEmail.value
+  }
 
   const registered = route.query.registered === '1'
   const prefillEmail = typeof route.query.email === 'string' ? route.query.email.trim() : ''
   if (prefillEmail) {
     form.email = prefillEmail
-    showForm.value = true
   }
   if (registered) {
     message.value = 'Account created successfully. Please sign in.'
     success.value = true
-    showForm.value = true
   }
 
   const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
   if (oauthError) {
     message.value = oauthError
     success.value = false
-    showForm.value = true
   }
 
   const continuePath = resolveContinuePath()
   if (continuePath.startsWith('/authorize?') && !registered && !prefillEmail && !oauthError) {
     void tryResumeRememberedSession()
-    return
-  }
-
-  if (!rememberedEmail.value) {
-    showForm.value = true
   }
 })
 </script>
 
 <style scoped>
-.signin-page {
+.miso-page {
+  position: relative;
+  background: #fcfbf4;
   min-height: 100vh;
-  background: var(--color-background);
-  color: var(--color-text-primary);
-  font-family: var(--font-family-sans);
+  overflow-x: hidden;
+  color: #1a1a1a;
+  font-family: 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 40px 18px;
 }
 
-.signin-main {
-  width: min(840px, 100%);
+.miso-filters { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* hand-drawn wobbling ink border, shared by card / buttons / fields */
+.doodle-box { position: relative; }
+.doodle-box::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 3px solid #1a1a1a;
+  border-radius: 22px 26px 19px 24px / 24px 19px 26px 22px;
+  animation: boil .44s infinite;
+  pointer-events: none;
 }
 
-.signin-card {
-  background: var(--color-surface);
-  border-radius: 28px;
-  min-height: 400px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-  padding: 48px 40px;
-  border: 1px solid var(--color-border);
-}
+@keyframes boil { 0%,32% { filter: url(#rough0); } 33%,65% { filter: url(#rough1); } 66%,100% { filter: url(#rough2); } }
+@keyframes bob { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
+@keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes drift1 { 0%,100% { transform: translate(0,0) rotate(0deg); } 50% { transform: translate(6px,-11px) rotate(12deg); } }
+@keyframes drift2 { 0%,100% { transform: translate(0,0) rotate(0deg); } 50% { transform: translate(-9px,8px) rotate(-13deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes wiggle { 0%,100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
 
-.left-panel {
-  display: flex;
-  flex-direction: column;
-}
+/* decorations */
+.deco { position: absolute; animation: boil .42s infinite; }
+.deco-star { left: 9%; top: 13%; fill: #ffd23d; stroke: #1a1a1a; stroke-width: 1.4; animation: boil .42s infinite, drift1 6s ease-in-out infinite; }
+.deco-spiral { right: 11%; top: 16%; fill: none; stroke: #ff5447; stroke-width: 2.4; stroke-linecap: round; animation: boil .42s infinite, spin 16s linear infinite; }
+.deco-bolt { right: 8%; bottom: 18%; fill: #3f6fe0; stroke: #1a1a1a; stroke-width: 1.4; animation: boil .42s infinite, wiggle 2.6s ease-in-out infinite; }
+.deco-cloud { left: 7%; bottom: 14%; fill: #d8f0df; stroke: #1a1a1a; stroke-width: 2; animation: boil .42s infinite, drift2 7s ease-in-out infinite; }
 
-.left-panel h1 {
-  margin: 16px 0 8px;
-  font-size: 2.25rem;
-  font-weight: 400;
-  line-height: 2.75rem;
-  color: var(--color-text-primary);
-}
+/* wordmark */
+.wordmark { text-decoration: none; animation: rise .6s cubic-bezier(.2,.9,.3,1.4) .05s both; }
+.wordmark-bob { display: inline-block; animation: bob 4s ease-in-out infinite; font-family: 'ZCOOL KuaiLe', cursive; font-size: clamp(40px, 8vw, 56px); line-height: 1; }
+.wm { display: inline-block; }
 
-.left-panel p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 1rem;
-  line-height: 1.5rem;
-}
-
-.google-logo {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 8px;
-}
-
-.right-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.account-list {
-  display: flex;
-  flex-direction: column;
+/* card */
+.miso-card {
   width: 100%;
+  max-width: 400px;
+  margin-top: 26px;
+  background: #fff;
+  padding: clamp(26px, 5vw, 38px) clamp(22px, 5vw, 34px) clamp(28px, 5vw, 36px);
+  border-radius: 20px;
+  animation: rise .7s cubic-bezier(.2,.9,.3,1.4) .16s both;
 }
 
-.row {
-  width: 100%;
-  height: 56px;
-  border: none;
-  border-bottom: 1px solid var(--color-neutral-200);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  padding: 0 4px;
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.kicker { text-align: center; margin-bottom: 6px; font-family: 'Permanent Marker', cursive; font-size: 13px; color: #ff5447; letter-spacing: 1px; }
+.title { font-family: 'ZCOOL KuaiLe', cursive; font-weight: 400; font-size: clamp(26px, 6vw, 34px); text-align: center; margin: 4px 0 0; line-height: 1.2; }
+.wave { display: inline-block; animation: wiggle 1.8s ease-in-out infinite; transform-origin: 70% 70%; }
+.title-underline { display: block; margin: 8px auto 0; }
+.title-underline path { filter: url(#roughHi); stroke-dasharray: 230; stroke-dashoffset: 230; animation: draw 1s ease .5s forwards; }
+.subtitle { text-align: center; font-size: 14px; color: #57564d; margin: 12px 0 24px; }
+
+/* oauth */
+.oauth { display: flex; flex-direction: column; gap: 12px; }
+.obtn {
+  display: flex; align-items: center; justify-content: center; gap: 11px;
+  width: 100%; font-family: inherit; font-weight: 700; font-size: 15px;
+  padding: 13px 16px; border: none; border-radius: 13px; cursor: pointer;
+  transition: transform .12s;
 }
+.obtn:disabled { opacity: .6; cursor: default; }
+.obtn-google { background: #fff; color: #1a1a1a; }
+.obtn-github { background: #1a1a1a; color: #fff; }
+.obtn:not(:disabled):hover { transform: translateY(-2px) rotate(-1deg); }
+.obtn-github:not(:disabled):hover { transform: translateY(-2px) rotate(1deg); }
+.obtn:active { transform: translateY(0) rotate(0); }
 
-.row:hover {
-  background-color: var(--color-primary-50);
+/* divider */
+.divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; }
+.dline { flex: 1; height: 3px; background: #1a1a1a; border-radius: 3px; filter: url(#rough1); }
+.dor { font-family: 'Permanent Marker', cursive; font-size: 13px; color: #8a887d; }
+
+/* form */
+.form { display: flex; flex-direction: column; gap: 15px; }
+.field-label { display: block; }
+.flabel { display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 7px; }
+.flabel-row { display: flex; align-items: center; justify-content: space-between; }
+.forgot { font-size: 12.5px; color: #3f6fe0; text-decoration: none; font-weight: 600; }
+.forgot:hover { text-decoration: underline; }
+.field { display: block; }
+.field-pw { display: flex; align-items: center; }
+.field input {
+  width: 100%; border: none; outline: none; background: #fff;
+  font-family: inherit; font-size: 15px; color: #1a1a1a; padding: 12px 14px; border-radius: 12px;
 }
+.pw-toggle { flex: none; background: transparent; border: none; cursor: pointer; padding: 0 12px 0 6px; font-size: 18px; line-height: 1; }
 
-.row:first-child {
-  border-top: 1px solid var(--color-neutral-200);
+.miso-msg { margin: 2px 0 -4px; font-size: 13px; color: #ff3a2b; font-weight: 600; text-align: center; }
+.miso-msg.ok { color: #36a85b; }
+
+.submit {
+  margin-top: 4px; width: 100%; background: #ff5447; color: #fff;
+  font-family: 'ZCOOL KuaiLe', cursive; font-size: 21px; padding: 14px 16px;
+  border: none; border-radius: 15px; cursor: pointer;
+  transition: transform .12s, background .15s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
 }
+.submit:not(:disabled):hover { background: #ff3a2b; transform: translateY(-2px); }
+.submit:active { transform: translateY(0); }
+.submit:disabled { opacity: .7; cursor: default; }
+.arrow { display: inline-block; }
 
-.account-row {
-  height: 64px;
+.signup { text-align: center; font-size: 13.5px; color: #57564d; margin: 20px 0 0; }
+.signup-link { color: #3f6fe0; text-decoration: none; font-weight: 700; }
+.signup-link:hover { text-decoration: underline; }
+
+/* status footer */
+.status {
+  margin-top: 22px; display: flex; align-items: center; gap: 9px;
+  font-family: 'Permanent Marker', cursive; font-size: 12.5px; color: #8a887d;
+  animation: rise .7s ease .3s both;
 }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #36a85b; border: 1.5px solid #1a1a1a; animation: blink 1.6s steps(1) infinite; }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background-color: var(--color-primary-600);
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 500;
+@media (max-width: 640px) {
+  .deco { display: none !important; }
 }
-
-.account-meta {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.account-meta strong {
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-.account-meta small {
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  font-weight: 400;
-}
-
-.signed-out {
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  font-weight: 400;
-}
-
-.row-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-}
-
-.login-form {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.oauth-section {
-  margin-top: 18px;
-}
-
-.oauth-title {
-  margin: 0 0 10px;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-}
-
-.oauth-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.oauth-btn {
-  min-width: 120px;
-  height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0 16px;
-  transition: background-color 0.2s;
-}
-
-.oauth-btn:hover:not(:disabled) {
-  background: var(--color-primary-50);
-}
-
-.oauth-btn-disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 24px;
-}
-
-.create-account-link {
-  color: var(--color-primary-600);
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 8px 4px;
-}
-
-.create-account-link:hover {
-  text-decoration: underline;
-}
-
-.message {
-  margin: 8px 0;
-  font-size: 0.75rem;
-  color: #b3261e;
-  padding: 0 4px;
-}
-
-.message.success {
-  color: #137333;
-}
-
-.signin-footer {
-  margin-top: 16px;
-  width: min(840px, 100%);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 8px;
-}
-
-.language-btn {
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-}
-
-.language-btn:hover {
-  background-color: var(--color-primary-50);
-}
-
-.footer-links {
-  display: flex;
-  gap: 24px;
-}
-
-.footer-links a {
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  font-size: 0.75rem;
-  padding: 8px;
-  border-radius: 4px;
-}
-
-.footer-links a:hover {
-  background-color: var(--color-primary-50);
-}
-
-@media (max-width: 900px) {
-  .signin-main {
-    width: min(450px, 100%);
-  }
-
-  .signin-card {
-    grid-template-columns: 1fr;
-    padding: 36px 24px;
-    border-radius: 28px;
-    min-height: auto;
-    text-align: center;
-  }
-
-  .left-panel {
-    align-items: center;
-    margin-bottom: 24px;
-  }
-
-  .google-logo {
-    margin-bottom: 0;
-  }
-
-  .left-panel h1 {
-    font-size: 1.75rem;
-    margin-top: 8px;
-  }
-
-  .signin-footer {
-    width: min(450px, 100%);
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .miso-page *:not(input) { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
 }
 </style>
