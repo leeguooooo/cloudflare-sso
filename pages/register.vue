@@ -153,7 +153,10 @@ const resolveClientId = () => {
   if (configuredDefault) return configuredDefault
 
   const hostname = process.client ? window.location.hostname.toLowerCase() : ''
-  if (hostname === 'account.misonote.com' || hostname.endsWith('.misonote.com')) {
+  if (
+    hostname === 'account.misonote.com' || hostname.endsWith('.misonote.com') ||
+    hostname === 'account.leeguoo.com' || hostname.endsWith('.leeguoo.com')
+  ) {
     return 'misonote-app-web'
   }
   return 'demo-web'
