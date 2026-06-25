@@ -17,7 +17,16 @@
     <!-- wordmark -->
     <NuxtLink to="/" class="wordmark">
       <span class="wordmark-bob">
-        <span class="wm" style="color:#ff5447;">m</span><span class="wm" style="color:#3f6fe0;">i</span><span class="wm" style="color:#36a85b;">s</span><span class="wm" style="color:#e0a32a;">o</span><span class="wm" style="color:#ff5447;">n</span><span class="wm" style="color:#3f6fe0;">o</span><span class="wm" style="color:#36a85b;">t</span><span class="wm" style="color:#e0a32a;">e</span>
+        <img
+          v-show="!wordmarkFailed"
+          class="wm-img"
+          src="https://img.leeguoo.com/media/a1b1c64c-0f4a-46b7-bc51-956b9985ab42/wordmark.png"
+          alt="misonote"
+          @error="wordmarkFailed = true"
+        >
+        <span v-show="wordmarkFailed" class="wm-fallback">
+          <span style="color:#ff5447;">m</span><span style="color:#3f6fe0;">i</span><span style="color:#36a85b;">s</span><span style="color:#e0a32a;">o</span><span style="color:#ff5447;">n</span><span style="color:#3f6fe0;">o</span><span style="color:#36a85b;">t</span><span style="color:#e0a32a;">e</span>
+        </span>
       </span>
     </NuxtLink>
 
@@ -107,6 +116,7 @@ const message = ref('')
 const success = ref(false)
 const showForm = ref(true)
 const showPw = ref(false)
+const wordmarkFailed = ref(false)
 const rememberedEmail = ref('')
 type SocialProvider = 'google' | 'github'
 
@@ -332,6 +342,13 @@ onMounted(() => {
   pointer-events: none;
 }
 
+/* per-element wobble radii + stroke + cadence, matching the design 1:1 */
+.obtn-google::before { border-width: 2.6px; border-radius: 14px 17px 12px 15px / 15px 12px 17px 14px; animation-duration: .42s; }
+.obtn-github::before { border-width: 2.6px; border-radius: 16px 12px 15px 11px / 11px 15px 12px 16px; animation-duration: .42s; }
+.field::before { border-width: 2.5px; border-radius: 12px 15px 11px 14px / 14px 11px 15px 12px; animation-duration: .46s; }
+.field-pw::before { border-radius: 14px 11px 15px 12px / 12px 15px 11px 14px; }
+.submit::before { border-radius: 17px 20px 14px 18px / 18px 14px 20px 17px; animation-duration: .4s; }
+
 @keyframes boil { 0%,32% { filter: url(#rough0); } 33%,65% { filter: url(#rough1); } 66%,100% { filter: url(#rough2); } }
 @keyframes bob { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
 @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
@@ -351,8 +368,10 @@ onMounted(() => {
 
 /* wordmark */
 .wordmark { text-decoration: none; animation: rise .6s cubic-bezier(.2,.9,.3,1.4) .05s both; }
-.wordmark-bob { display: inline-block; animation: bob 4s ease-in-out infinite; font-family: 'ZCOOL KuaiLe', cursive; font-size: clamp(40px, 8vw, 56px); line-height: 1; }
-.wm { display: inline-block; }
+.wordmark-bob { display: inline-block; animation: bob 4s ease-in-out infinite; }
+.wm-img { display: block; height: clamp(48px, 9vw, 64px); width: auto; }
+.wm-fallback { font-family: 'ZCOOL KuaiLe', cursive; font-size: clamp(40px, 8vw, 56px); line-height: 1; }
+.wm-fallback span { display: inline-block; }
 
 /* card */
 .miso-card {
