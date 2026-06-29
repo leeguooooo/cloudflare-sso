@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: cloudflare-sso
 
       - name: Checkout shared packages
         uses: actions/checkout@v4
@@ -21,7 +23,7 @@ jobs:
           repository: cherryport/cherry
           ref: main
           path: cherry
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CHERRY_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -33,21 +35,26 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: cloudflare-sso/pnpm-lock.yaml
           scope: '@leeguoo'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
+        working-directory: cloudflare-sso
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm install --frozen-lockfile
 
       - name: Switch to prod config
+        working-directory: cloudflare-sso
         run: pnpm wrangler:config:prod
 
       - name: Build
+        working-directory: cloudflare-sso
         run: pnpm build
 
       - name: Deploy to Cloudflare Pages
+        working-directory: cloudflare-sso
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm wrangler pages deploy dist --project-name cloudflare-sso
