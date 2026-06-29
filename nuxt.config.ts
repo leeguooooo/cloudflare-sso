@@ -15,6 +15,18 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
       ],
+      script: [
+        // First-party visitor analytics — self-locating beacon posts to the
+        // central collector on blog.leeguoo.com (CORS-allowed for *.leeguoo.com),
+        // so account.leeguoo.com shows up under 站点 in /admin/analytics.
+        { src: 'https://blog.leeguoo.com/scripts/visitor-beacon.js?v=20260629-2', defer: true },
+        // Google Analytics 4 — shared leeguoo property (542876134); segment by hostname.
+        { src: 'https://www.googletagmanager.com/gtag/js?id=G-RCV0Z432Y8', async: true },
+        {
+          innerHTML:
+            "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-RCV0Z432Y8');",
+        },
+      ],
     },
   },
   css: [
