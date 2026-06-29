@@ -11,35 +11,54 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    env:
+      # The build links @leeguoo/* UI packages from the private cherryport/cherry
+      # repo. The default GITHUB_TOKEN can't read it (different org), so the
+      # full smoke test only runs when a CHERRY_TOKEN with read access is set.
+      HAS_CHERRY_TOKEN: ${{ secrets.CHERRY_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: cloudflare-sso
+
+      - name: Skip notice (no CHERRY_TOKEN)
+        if: env.HAS_CHERRY_TOKEN != 'true'
+        run: echo "CHERRY_TOKEN secret is not set; skipping shared-package checkout, install and build. Configure a CHERRY_TOKEN with read access to cherryport/cherry to run the full smoke test."
 
       - name: Checkout shared packages
+        if: env.HAS_CHERRY_TOKEN == 'true'
         uses: actions/checkout@v4
         with:
           repository: cherryport/cherry
           ref: main
           path: cherry
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CHERRY_TOKEN }}
 
       - name: Setup pnpm
+        if: env.HAS_CHERRY_TOKEN == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
       - name: Setup Node.js
+        if: env.HAS_CHERRY_TOKEN == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
+          cache-dependency-path: cloudflare-sso/pnpm-lock.yaml
           scope: "@leeguoo"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
+        if: env.HAS_CHERRY_TOKEN == 'true'
+        working-directory: cloudflare-sso
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: env.HAS_CHERRY_TOKEN == 'true'
+        working-directory: cloudflare-sso
         run: pnpm build
