@@ -11,6 +11,8 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        // Google AdSense site verification (Auto Ads, publisher ca-pub-4085449715128420).
+        { name: 'google-adsense-account', content: 'ca-pub-4085449715128420' },
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
@@ -25,6 +27,12 @@ export default defineNuxtConfig({
         {
           innerHTML:
             "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-RCV0Z432Y8');",
+        },
+        // Google AdSense Auto Ads loader — placement is managed by AdSense, no manual ad units.
+        {
+          src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4085449715128420',
+          async: true,
+          crossorigin: 'anonymous',
         },
       ],
     },
