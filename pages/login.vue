@@ -30,6 +30,18 @@
       </svg>
       <p class="subtitle">登录 misonote 账号中心，继续你的折腾。</p>
 
+      <!-- in-app browser warning (WeChat / QQ / …): Google OAuth 403s here -->
+      <div v-if="showInAppBanner" class="inapp-banner doodle-box" role="alert">
+        <button type="button" class="inapp-close" aria-label="关闭提示" @click="bannerDismissed = true">×</button>
+        <div class="inapp-head"><span class="inapp-emoji">🧭</span> 检测到你在{{ inAppLabel || 'App 内置浏览器' }}里打开</div>
+        <p class="inapp-text">
+          Google 登录会被拦截（Google 安全策略）。请点右上角 <b>···</b> →「在默认浏览器打开」，或直接用下方<b>邮箱密码</b>登录。
+        </p>
+        <button type="button" class="inapp-copy" @click="copyPageLink">
+          {{ linkCopied ? '✓ 已复制，去浏览器粘贴打开' : '复制本页链接' }}
+        </button>
+      </div>
+
       <!-- OAuth -->
       <div class="oauth">
         <button type="button" class="obtn obtn-google doodle-box" :disabled="loading" @click="startSocialLogin('google')">
@@ -100,6 +112,8 @@ useHead({
   ],
 })
 
+import { getInAppBrowserLabel, isInAppBrowser } from '~/utils/in-app-browser'
+
 const config = useRuntimeConfig()
 const route = useRoute()
 const loading = ref(false)
@@ -109,6 +123,14 @@ const showForm = ref(true)
 const showPw = ref(false)
 const wordmarkFailed = ref(false)
 const rememberedEmail = ref('')
+
+// In-app browsers (WeChat / QQ / …) — Google hard-blocks OAuth inside them
+// (403 disallowed_useragent), so we warn and intercept the Google button.
+const inApp = ref(false)
+const inAppLabel = ref('')
+const bannerDismissed = ref(false)
+const linkCopied = ref(false)
+const showInAppBanner = computed(() => inApp.value && !bannerDismissed.value)
 type SocialProvider = 'google' | 'github'
 
 type UserInfoPayload = {
@@ -255,8 +277,45 @@ const tryResumeRememberedSession = async () => {
   }
 }
 
+const copyPageLink = async () => {
+  if (!process.client) return
+  const url = window.location.href
+  try {
+    await navigator.clipboard.writeText(url)
+    linkCopied.value = true
+  } catch {
+    // Older webviews block the async clipboard API — fall back to execCommand.
+    try {
+      const el = document.createElement('textarea')
+      el.value = url
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      linkCopied.value = document.execCommand('copy')
+      document.body.removeChild(el)
+    } catch {
+      linkCopied.value = false
+    }
+  }
+  if (linkCopied.value) {
+    setTimeout(() => {
+      linkCopied.value = false
+    }, 2500)
+  }
+}
+
 const startSocialLogin = (provider: SocialProvider) => {
   if (!process.client || loading.value) return
+
+  // Google OAuth 403s inside embedded webviews — never navigate there, just
+  // re-surface the guidance so the user isn't dumped on Google's error page.
+  if (provider === 'google' && inApp.value) {
+    bannerDismissed.value = false
+    message.value = `Google 登录在${inAppLabel.value || 'App 内置浏览器'}里会被拦截，请用右上角菜单在默认浏览器打开，或用下方邮箱密码登录。`
+    success.value = false
+    return
+  }
 
   const clientId = resolveClientId()
   if (!clientId) {
@@ -278,6 +337,8 @@ const startSocialLogin = (provider: SocialProvider) => {
 
 onMounted(() => {
   if (!process.client) return
+  inApp.value = isInAppBrowser()
+  inAppLabel.value = getInAppBrowserLabel()
   rememberedEmail.value = localStorage.getItem('sso_last_email') || ''
   if (rememberedEmail.value && !form.email) {
     form.email = rememberedEmail.value
@@ -399,6 +460,33 @@ onMounted(() => {
 .obtn:not(:disabled):hover { transform: translateY(-2px) rotate(-1deg); }
 .obtn-github:not(:disabled):hover { transform: translateY(-2px) rotate(1deg); }
 .obtn:active { transform: translateY(0) rotate(0); }
+
+/* in-app browser warning banner */
+.inapp-banner {
+  position: relative;
+  background: #fff6d6;
+  border-radius: 15px 18px 13px 16px / 16px 13px 18px 15px;
+  padding: 14px 16px 15px;
+  margin-bottom: 18px;
+}
+.inapp-banner::before { border-width: 2.6px; border-radius: 15px 18px 13px 16px / 16px 13px 18px 15px; animation-duration: .45s; }
+.inapp-close {
+  position: absolute; top: 6px; right: 10px;
+  background: transparent; border: none; cursor: pointer;
+  font-size: 20px; line-height: 1; color: #8a887d; padding: 2px 4px;
+}
+.inapp-close:hover { color: #1a1a1a; }
+.inapp-head { font-family: 'ZCOOL KuaiLe', cursive; font-size: 16px; color: #1a1a1a; padding-right: 18px; }
+.inapp-emoji { margin-right: 4px; }
+.inapp-text { font-size: 13px; line-height: 1.55; color: #57564d; margin: 7px 0 11px; }
+.inapp-text b { color: #ff5447; font-weight: 700; }
+.inapp-copy {
+  font-family: inherit; font-weight: 700; font-size: 13px;
+  background: #1a1a1a; color: #fff; border: none; cursor: pointer;
+  padding: 8px 14px; border-radius: 11px; transition: transform .12s;
+}
+.inapp-copy:hover { transform: translateY(-1px) rotate(-1deg); }
+.inapp-copy:active { transform: translateY(0) rotate(0); }
 
 /* divider */
 .divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; }
