@@ -17,9 +17,9 @@
       </UiCard>
       <footer class="auth-footer">
         <nav class="footer-links">
-          <a href="#">Help</a>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <NuxtLink to="/help">Help</NuxtLink>
+          <NuxtLink to="/privacy">Privacy</NuxtLink>
+          <NuxtLink to="/terms">Terms</NuxtLink>
         </nav>
       </footer>
     </div>

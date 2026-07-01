@@ -32,6 +32,8 @@ type OAuthStatePayload = {
   provider: string
   client_id: string
   continue: string
+  intent?: 'login' | 'link'
+  link_global_account_id?: string
   created_at: number
 }
 
@@ -62,6 +64,20 @@ const buildLoginPath = (input: { message: string; continuePath?: string; clientI
   }
   const query = params.toString()
   return query ? `/login?${query}` : '/login'
+}
+
+const buildContinuePathWithMessage = (continuePath: string, key: string, value: string) => {
+  const safePath = resolveContinuePath(continuePath)
+  if (!safePath) return ''
+  const url = new URL(safePath, 'https://account.local')
+  url.searchParams.set(key, value)
+  return `${url.pathname}${url.search}`
+}
+
+const resolveProvisionEmail = (provider: string, subject: string, email?: string) => {
+  const normalized = typeof email === 'string' ? email.trim().toLowerCase() : ''
+  if (normalized) return normalized
+  return ''
 }
 
 const renderOAuthBridgeHtml = (input: { accessToken: string; email: string; redirectPath: string }) => {
@@ -137,30 +153,40 @@ export default defineEventHandler(async (event) => {
   }
 
   const continuePath = resolveContinuePath(parsedState.continue)
+  const isLinkIntent = parsedState.intent === 'link' && !!parsedState.link_global_account_id
 
   try {
     await ensureGlobalIdentitySchema(event)
     const client = await getClientByPublicId(event, parsedState.client_id)
     const profile = await getOAuthIdentityProfile(event, { provider, code })
 
-    let globalAccount = await findGlobalAccountByExternalIdentity(event, provider, profile.subject)
-
-    if (!globalAccount && profile.email) {
-      globalAccount = await findGlobalAccountByEmail(event, profile.email)
-    }
-
-    if (!globalAccount) {
-      if (!profile.email) {
-        throw createError({ statusCode: 400, statusMessage: 'Provider account email is required for first sign-in' })
+    let globalAccount = null as Awaited<ReturnType<typeof findGlobalAccountById>> | null
+    if (isLinkIntent) {
+      globalAccount = await findGlobalAccountById(event, String(parsedState.link_global_account_id))
+      if (!globalAccount) {
+        throw createError({ statusCode: 404, statusMessage: 'Current account no longer exists' })
       }
-      const env = getEnv(event)
-      const passwordHash = await hashPassword(`oauth-${provider}-${randomId(32)}`, env.PASSWORD_PEPPER || '')
-      const globalAccountId = await createGlobalAccount(event, {
-        email: profile.email,
-        passwordHash,
-        locale: 'en',
-      })
-      globalAccount = await findGlobalAccountById(event, globalAccountId)
+    } else {
+      globalAccount = await findGlobalAccountByExternalIdentity(event, provider, profile.subject)
+
+      if (!globalAccount && profile.email) {
+        globalAccount = await findGlobalAccountByEmail(event, profile.email)
+      }
+
+      if (!globalAccount) {
+        const provisionEmail = resolveProvisionEmail(provider, profile.subject, profile.email)
+        if (!provisionEmail) {
+          throw createError({ statusCode: 400, statusMessage: 'Provider account email is required for first sign-in' })
+        }
+        const env = getEnv(event)
+        const passwordHash = await hashPassword(`oauth-${provider}-${randomId(32)}`, env.PASSWORD_PEPPER || '')
+        const globalAccountId = await createGlobalAccount(event, {
+          email: provisionEmail,
+          passwordHash,
+          locale: 'en',
+        })
+        globalAccount = await findGlobalAccountById(event, globalAccountId)
+      }
     }
 
     if (!globalAccount) {
@@ -208,8 +234,9 @@ export default defineEventHandler(async (event) => {
     await writeAuditLog(event, {
       tenantId: provisioned.user.tenant_id,
       userId: provisioned.user.id,
-      action: 'auth.oauth_login',
+      action: isLinkIntent ? 'account.linked.oauth_link' : 'auth.oauth_login',
       payload: {
+        intent: isLinkIntent ? 'link' : 'login',
         provider,
         provider_subject: profile.subject,
         global_account_id: provisioned.user.global_account_id || null,
@@ -221,7 +248,10 @@ export default defineEventHandler(async (event) => {
     const html = renderOAuthBridgeHtml({
       accessToken: tokens.accessToken,
       email: provisioned.user.email,
-      redirectPath: continuePath || '/account',
+      redirectPath:
+        (isLinkIntent
+          ? buildContinuePathWithMessage(continuePath || '/account?section=linked', 'linked', provider)
+          : continuePath) || '/account',
     })
     return new Response(html, {
       headers: {
@@ -231,6 +261,12 @@ export default defineEventHandler(async (event) => {
     })
   } catch (error) {
     deleteCookie(event, 'sso_oauth_state', { path: '/' })
+    if (isLinkIntent) {
+      const backToAccount =
+        buildContinuePathWithMessage(continuePath || '/account?section=linked', 'link_error', getErrorMessage(error)) ||
+        '/account?section=linked'
+      return sendRedirect(event, backToAccount, 302)
+    }
     return sendRedirect(
       event,
       buildLoginPath({

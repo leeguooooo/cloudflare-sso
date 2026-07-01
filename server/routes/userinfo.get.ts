@@ -22,8 +22,11 @@ export default defineEventHandler(async (event) => {
         u.email,
         u.locale,
         u.tenant_id,
+        ga.display_name,
+        ga.avatar_url,
         gei.profile_json
       FROM users u
+      LEFT JOIN global_accounts ga ON ga.id = u.global_account_id
       LEFT JOIN global_external_identities gei
         ON gei.global_account_id = u.global_account_id
        AND gei.updated_at = (
@@ -34,7 +37,15 @@ export default defineEventHandler(async (event) => {
       WHERE u.id = ?
     `)
     .bind(sub)
-    .first<{ id: string; email: string; locale?: string; tenant_id: string; profile_json?: string | null }>()
+    .first<{
+      id: string
+      email: string
+      locale?: string
+      tenant_id: string
+      display_name?: string | null
+      avatar_url?: string | null
+      profile_json?: string | null
+    }>()
   if (!user) throw createError({ statusCode: 404, statusMessage: 'User not found' })
 
   const clientId = payload.aud as string | undefined
@@ -51,10 +62,15 @@ export default defineEventHandler(async (event) => {
   })() as Record<string, unknown>
 
   const profileName =
-    typeof externalProfile.name === 'string' && externalProfile.name.trim()
+    typeof user.display_name === 'string' && user.display_name.trim()
+      ? user.display_name.trim()
+      : typeof externalProfile.name === 'string' && externalProfile.name.trim()
       ? externalProfile.name.trim()
       : undefined
-  const profileAvatar = typeof externalProfile.avatar_url === 'string' && externalProfile.avatar_url.trim()
+  const profileAvatar =
+    typeof user.avatar_url === 'string' && user.avatar_url.trim()
+      ? user.avatar_url.trim()
+      : typeof externalProfile.avatar_url === 'string' && externalProfile.avatar_url.trim()
     ? externalProfile.avatar_url.trim()
     : typeof externalProfile.picture === 'string' && externalProfile.picture.trim()
       ? externalProfile.picture.trim()
@@ -67,6 +83,7 @@ export default defineEventHandler(async (event) => {
     locale: user.locale,
     tid: user.tenant_id,
     gaid: typeof payload.gaid === 'string' ? payload.gaid : undefined,
+    client_id: clientId,
     name: profileName,
     avatar_url: profileAvatar,
     roles: roles.map((r) => r.name),

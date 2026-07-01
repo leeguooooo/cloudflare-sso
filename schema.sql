@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS global_accounts (
   email TEXT NOT NULL,
   normalized_email TEXT GENERATED ALWAYS AS (lower(email)) VIRTUAL,
   password_hash TEXT NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
   locale TEXT DEFAULT 'en',
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'locked', 'disabled')),
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,

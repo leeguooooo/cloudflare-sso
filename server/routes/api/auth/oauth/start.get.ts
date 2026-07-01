@@ -1,13 +1,27 @@
-import { H3Event, createError, defineEventHandler, getQuery, getRequestHeader, getRequestURL, sendRedirect, setCookie } from 'h3'
+import {
+  H3Event,
+  createError,
+  defineEventHandler,
+  getCookie,
+  getQuery,
+  getRequestHeader,
+  getRequestURL,
+  sendRedirect,
+  setCookie,
+} from 'h3'
 import { randomId } from '../../../../utils/crypto'
 import { ensureGlobalIdentitySchema, getClientByPublicId } from '../../../../utils/identity'
 import { buildOAuthAuthorizeUrl, parseOAuthProvider } from '../../../../utils/oauth'
+import { getSessionByRefreshToken } from '../../../../utils/auth'
+import { getDb } from '../../../../utils/env'
 
 type StartState = {
   state: string
   provider: string
   client_id: string
   continue: string
+  intent?: 'login' | 'link'
+  link_global_account_id?: string
   created_at: number
 }
 
@@ -49,6 +63,13 @@ const buildLoginRedirect = (input: { clientId: string; continuePath: string; mes
   return `/login?${params.toString()}`
 }
 
+const buildAccountRedirect = (continuePath: string, message: string) => {
+  const safePath = resolveContinuePath(continuePath) || '/account?section=linked'
+  const url = new URL(safePath, 'https://account.local')
+  url.searchParams.set('link_error', message)
+  return `${url.pathname}${url.search}`
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const provider = parseOAuthProvider(query.provider)
@@ -61,12 +82,37 @@ export default defineEventHandler(async (event) => {
   const client = await getClientByPublicId(event, clientId)
   const state = randomId(24)
   const continuePath = resolveContinuePath(query.continue)
+  const intent = query.intent === 'link' ? 'link' : 'login'
+
+  let linkGlobalAccountId = ''
+  if (intent === 'link') {
+    const refreshToken = getCookie(event, 'sso_refresh_token') || ''
+    if (!refreshToken) {
+      throw createError({ statusCode: 401, statusMessage: 'Sign in required before linking provider' })
+    }
+    const session = await getSessionByRefreshToken(event, refreshToken)
+    if (!session?.user_id) {
+      throw createError({ statusCode: 401, statusMessage: 'Session expired, please sign in again' })
+    }
+
+    const db = getDb(event)
+    const current = await db
+      .prepare(`SELECT global_account_id FROM users WHERE id = ? AND tenant_id = ?`)
+      .bind(session.user_id, session.tenant_id)
+      .first<{ global_account_id?: string | null }>()
+    if (!current?.global_account_id) {
+      throw createError({ statusCode: 400, statusMessage: 'Cannot link provider for this account' })
+    }
+    linkGlobalAccountId = current.global_account_id
+  }
 
   const statePayload: StartState = {
     state,
     provider,
     client_id: client.client_id,
     continue: continuePath,
+    intent,
+    link_global_account_id: linkGlobalAccountId || undefined,
     created_at: Math.floor(Date.now() / 1000),
   }
 
@@ -82,6 +128,9 @@ export default defineEventHandler(async (event) => {
     const authorizeUrl = buildOAuthAuthorizeUrl(event, provider, state)
     return sendRedirect(event, authorizeUrl, 302)
   } catch (error) {
+    if (intent === 'link') {
+      return sendRedirect(event, buildAccountRedirect(continuePath, getErrorMessage(error)), 302)
+    }
     return sendRedirect(
       event,
       buildLoginRedirect({

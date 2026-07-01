@@ -79,7 +79,11 @@ const getProviderConfig = (event: H3Event, provider: OAuthProvider): ProviderCon
     }
   }
 
-  throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is planned but not enabled yet' })
+  if (provider === 'wechat') {
+    throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is TODO and not enabled yet' })
+  }
+
+  throw createError({ statusCode: 400, statusMessage: 'Unsupported provider' })
 }
 
 export const buildOAuthAuthorizeUrl = (event: H3Event, provider: OAuthProvider, state: string) => {
@@ -107,7 +111,11 @@ export const buildOAuthAuthorizeUrl = (event: H3Event, provider: OAuthProvider, 
     return url.toString()
   }
 
-  throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is planned but not enabled yet' })
+  if (provider === 'wechat') {
+    throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is TODO and not enabled yet' })
+  }
+
+  throw createError({ statusCode: 400, statusMessage: 'Unsupported provider' })
 }
 
 const requestJson = async <T>(response: Response) => {
@@ -256,5 +264,8 @@ export const getOAuthIdentityProfile = async (
   if (input.provider === 'google') {
     return exchangeGoogleCode(event, input.code)
   }
-  throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is planned but not enabled yet' })
+  if (input.provider === 'wechat') {
+    throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is TODO and not enabled yet' })
+  }
+  throw createError({ statusCode: 400, statusMessage: 'Unsupported provider' })
 }

@@ -6,10 +6,13 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - 单仓全栈：Nuxt SPA + Nitro Functions（Pages Functions）即 Workers 端点
 - OIDC: `/.well-known/openid-configuration`、`/authorize`、`/token`、`/userinfo`、`/jwks.json`
 - 认证：注册、登录、刷新、登出，Refresh Token 存 D1，Access/ID Token 为 RS256
-- 第三方登录：GitHub / Google OAuth（微信预留规划中）
+- 第三方登录：GitHub / Google OAuth（WeChat 记为 TODO）
 - 多租户：tenant + client 隔离，客户端重定向白名单
 - i18n：内置 EN / 简体，登录/注册页可切换
 - 部署：一条命令部署到 Cloudflare Pages，支持多账号 wrangler 切换
+
+## TODO
+- [ ] WeChat OAuth 登录/绑定（当前入口保留为 TODO，后端返回未启用）
 
 ## 新增（统一登录简化方案，Phase 1）
 - 全局账号模型：`global_accounts` 作为统一凭据源，`users.global_account_id` 做租户映射
@@ -139,3 +142,4 @@ pnpm dev
 - `OAUTH_GOOGLE_REDIRECT_URI`：可选，Google 回调地址（默认 `${origin}/api/auth/oauth/callback?provider=google`）
 
 更多细节见 `docs/DEPLOY.md` 与 `docs/WRANGLER_CONFIG.md`。
+账号中心回归清单见 `docs/ACCOUNT_CENTER_QA_CHECKLIST.md`。

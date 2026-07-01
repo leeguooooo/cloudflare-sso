@@ -13,6 +13,8 @@ export type GlobalAccountRecord = {
   id: string
   email: string
   password_hash: string
+  display_name?: string | null
+  avatar_url?: string | null
   locale?: string
   status: string
 }
@@ -41,6 +43,31 @@ const hasDuplicateColumnError = (error: unknown) => {
   return message.toLowerCase().includes('duplicate column name')
 }
 
+const readTableColumns = async (db: D1Database, tableName: 'clients') => {
+  const result = await db.prepare(`PRAGMA table_info(${tableName})`).all<{ name: string }>()
+  return new Set((result.results || []).map((column) => column.name).filter(Boolean))
+}
+
+const addColumnIfMissing = async (
+  db: D1Database,
+  columns: Set<string>,
+  tableName: 'clients',
+  columnName: string,
+  definition: string,
+) => {
+  if (columns.has(columnName)) return
+
+  try {
+    await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`).run()
+    columns.add(columnName)
+  } catch (error) {
+    if (!hasDuplicateColumnError(error)) {
+      throw error
+    }
+    columns.add(columnName)
+  }
+}
+
 export const ensureGlobalIdentitySchema = async (event: H3Event) => {
   const db = getDb(event)
   await db
@@ -58,6 +85,22 @@ export const ensureGlobalIdentitySchema = async (event: H3Event) => {
     )
     .run()
   await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_global_accounts_email_unique ON global_accounts(normalized_email)`).run()
+
+  try {
+    await db.prepare(`ALTER TABLE global_accounts ADD COLUMN display_name TEXT`).run()
+  } catch (error) {
+    if (!hasDuplicateColumnError(error)) {
+      throw error
+    }
+  }
+
+  try {
+    await db.prepare(`ALTER TABLE global_accounts ADD COLUMN avatar_url TEXT`).run()
+  } catch (error) {
+    if (!hasDuplicateColumnError(error)) {
+      throw error
+    }
+  }
 
   try {
     await db.prepare(`ALTER TABLE users ADD COLUMN global_account_id TEXT`).run()
@@ -92,30 +135,16 @@ export const ensureGlobalIdentitySchema = async (event: H3Event) => {
 
 export const ensureClientManagementSchema = async (event: H3Event) => {
   const db = getDb(event)
-  try {
-    await db.prepare(`ALTER TABLE clients ADD COLUMN status TEXT DEFAULT 'active'`).run()
-  } catch (error) {
-    if (!hasDuplicateColumnError(error)) {
-      throw error
-    }
-  }
+  const columns = await readTableColumns(db, 'clients')
 
-  try {
-    await db.prepare(`ALTER TABLE clients ADD COLUMN updated_at INTEGER`).run()
-  } catch (error) {
-    if (!hasDuplicateColumnError(error)) {
-      throw error
-    }
-  }
+  await addColumnIfMissing(db, columns, 'clients', 'status', `status TEXT DEFAULT 'active'`)
+  await addColumnIfMissing(db, columns, 'clients', 'updated_at', `updated_at INTEGER`)
 
   await db.prepare(`UPDATE clients SET status = 'active' WHERE status IS NULL OR status = ''`).run()
-  await db
-    .prepare(
-      `UPDATE clients
-       SET updated_at = COALESCE(updated_at, created_at, strftime('%s', 'now'))
-       WHERE updated_at IS NULL`,
-    )
-    .run()
+  const updatedAtFallback = columns.has('created_at')
+    ? `COALESCE(updated_at, created_at, strftime('%s', 'now'))`
+    : `COALESCE(updated_at, strftime('%s', 'now'))`
+  await db.prepare(`UPDATE clients SET updated_at = ${updatedAtFallback} WHERE updated_at IS NULL`).run()
 }
 
 export const getClientByPublicId = async (event: H3Event, clientPublicId: string) => {
@@ -144,7 +173,11 @@ export const ensureTenantExists = async (event: H3Event, tenantId: string, tenan
 export const findGlobalAccountByEmail = async (event: H3Event, email: string) => {
   const db = getDb(event)
   return db
-    .prepare(`SELECT id, email, password_hash, locale, status FROM global_accounts WHERE normalized_email = lower(?)`)
+    .prepare(
+      `SELECT id, email, password_hash, display_name, avatar_url, locale, status
+       FROM global_accounts
+       WHERE normalized_email = lower(?)`,
+    )
     .bind(email)
     .first<GlobalAccountRecord>()
 }
@@ -152,7 +185,11 @@ export const findGlobalAccountByEmail = async (event: H3Event, email: string) =>
 export const findGlobalAccountById = async (event: H3Event, id: string) => {
   const db = getDb(event)
   return db
-    .prepare(`SELECT id, email, password_hash, locale, status FROM global_accounts WHERE id = ?`)
+    .prepare(
+      `SELECT id, email, password_hash, display_name, avatar_url, locale, status
+       FROM global_accounts
+       WHERE id = ?`,
+    )
     .bind(id)
     .first<GlobalAccountRecord>()
 }
@@ -165,7 +202,7 @@ export const findGlobalAccountByExternalIdentity = async (
   const db = getDb(event)
   return db
     .prepare(
-      `SELECT ga.id, ga.email, ga.password_hash, ga.locale, ga.status
+      `SELECT ga.id, ga.email, ga.password_hash, ga.display_name, ga.avatar_url, ga.locale, ga.status
        FROM global_external_identities gei
        JOIN global_accounts ga ON ga.id = gei.global_account_id
        WHERE gei.provider = ? AND gei.subject = ?`,

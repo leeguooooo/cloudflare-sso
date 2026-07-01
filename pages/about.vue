@@ -1,13 +1,29 @@
 <template>
   <div class="legal-page">
     <UiCard class="legal-card">
-      <h1>关于平台</h1>
-      <p>leeguoo Identity 是面向多应用统一身份的统一登录与账号管理入口。</p>
+      <h1>关于 leeguoo Identity</h1>
+      <p>leeguoo Identity 是面向多应用的统一身份与授权入口。</p>
+
+      <h2>当前能力</h2>
       <ul>
-        <li>当前版本为第一阶段：账户中心导航、统一身份鉴权、基础订阅能力已接入。</li>
-        <li>当前目标：提升跨应用账号一致性并统一安全策略与会话模型。</li>
-        <li>未来版本将持续补齐密码、第三方关联、权限与订阅运营管理能力。</li>
+        <li>邮箱密码登录、Google/GitHub 第三方登录入口（WeChat 记为 TODO）。</li>
+        <li>统一账号中心：资料管理、密码变更、会话管理、第三方绑定。</li>
+        <li>多租户角色权限模型与订阅权益联动。</li>
       </ul>
+
+      <h2>设计目标</h2>
+      <ul>
+        <li>一个全局账号贯通多个应用租户，减少重复注册和重复登录。</li>
+        <li>通过统一会话、审计与权限模型提升安全与运维效率。</li>
+        <li>通过标准 OAuth/OIDC 接口降低业务系统接入成本。</li>
+      </ul>
+
+      <h2>版本信息</h2>
+      <ul>
+        <li>站点版本：Identity Program 2026Q1</li>
+        <li>最后更新：2026-03-03</li>
+      </ul>
+
       <NuxtLink to="/account" class="legal-back-link">返回账号中心</NuxtLink>
     </UiCard>
   </div>
@@ -23,21 +39,26 @@
 }
 
 .legal-card {
-  width: min(820px, 95%);
-  padding: 20px;
+  width: min(860px, 95%);
+  padding: 24px;
 }
 
-.legal-back-link {
-  display: inline-block;
-  margin-top: 12px;
+.legal-card h2 {
+  margin: 18px 0 8px;
+  font-size: 1rem;
 }
 
 .legal-card ul {
-  margin: 14px 0 0 0;
+  margin: 8px 0 0;
   padding-left: 18px;
 }
 
 .legal-card li {
   margin: 6px 0;
+}
+
+.legal-back-link {
+  display: inline-block;
+  margin-top: 14px;
 }
 </style>
