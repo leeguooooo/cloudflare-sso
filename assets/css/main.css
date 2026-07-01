@@ -27,6 +27,7 @@
   --color-text-secondary: var(--lg-color-text-secondary);
   --color-text-tertiary: var(--lg-color-text-tertiary);
   --color-border: var(--lg-color-border);
+  --color-danger: var(--lg-color-danger);
 
   --radius-sm: var(--lg-radius-sm);
   --radius-md: var(--lg-radius-md);

@@ -58,10 +58,10 @@ useHead({
 </script>
 
 <style scoped>
-.miso-page { position: relative; background: #fcfbf4; min-height: 100vh; overflow-x: hidden; color: #1a1a1a; font-family: 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; align-items: center; padding: 48px 18px; }
+.miso-page { position: relative; background: var(--color-background); min-height: 100vh; overflow-x: hidden; color: var(--color-text-primary); font-family: var(--font-family-sans); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; align-items: center; padding: 48px 18px; }
 .miso-filters { position: absolute; width: 0; height: 0; overflow: hidden; }
 .doodle-box { position: relative; }
-.doodle-box::before { content: ''; position: absolute; inset: -3px; border: 3px solid #1a1a1a; border-radius: 22px 26px 19px 24px / 24px 19px 26px 22px; animation: boil .44s infinite; pointer-events: none; }
+.doodle-box::before { content: ''; position: absolute; inset: -3px; border: 3px solid var(--color-border); border-radius: 22px 26px 19px 24px / 24px 19px 26px 22px; animation: boil .44s infinite; pointer-events: none; }
 @keyframes boil { 0%,32% { filter: url(#rough0); } 33%,65% { filter: url(#rough1); } 66%,100% { filter: url(#rough2); } }
 @keyframes bob { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-6px) rotate(1.5deg); } }
 @keyframes rise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -70,26 +70,26 @@ useHead({
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
 .deco { position: absolute; }
-.deco-star { left: 8%; top: 12%; fill: #ffd23d; stroke: #1a1a1a; stroke-width: 1.4; animation: boil .42s infinite, drift1 6s ease-in-out infinite; }
-.deco-cloud { right: 8%; bottom: 12%; fill: #d8f0df; stroke: #1a1a1a; stroke-width: 2; animation: boil .42s infinite, drift2 7s ease-in-out infinite; }
+.deco-star { left: 8%; top: 12%; fill: #ffd23d; stroke: var(--color-border); stroke-width: 1.4; animation: boil .42s infinite, drift1 6s ease-in-out infinite; }
+.deco-cloud { right: 8%; bottom: 12%; fill: #d8f0df; stroke: var(--color-border); stroke-width: 2; animation: boil .42s infinite, drift2 7s ease-in-out infinite; }
 .wordmark { text-decoration: none; animation: rise .6s cubic-bezier(.2,.9,.3,1.4) .05s both; }
 .wordmark-bob { display: inline-block; animation: bob 4s ease-in-out infinite; font-family: 'ZCOOL KuaiLe', cursive; font-size: clamp(36px, 7vw, 48px); line-height: 1; }
 .wordmark-bob span { display: inline-block; }
-.miso-card { width: 100%; max-width: 640px; margin-top: 24px; background: #fff; padding: clamp(24px, 4vw, 34px); border-radius: 20px; animation: rise .7s cubic-bezier(.2,.9,.3,1.4) .16s both; }
-.kicker { text-align: center; font-family: 'Permanent Marker', cursive; font-size: 12px; color: #ff5447; letter-spacing: 1px; }
+.miso-card { width: 100%; max-width: 640px; margin-top: 24px; background: var(--color-surface); padding: clamp(24px, 4vw, 34px); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); animation: rise .7s cubic-bezier(.2,.9,.3,1.4) .16s both; }
+.kicker { text-align: center; font-family: 'Permanent Marker', cursive; font-size: 12px; color: var(--color-primary-600); letter-spacing: 1px; }
 .title { font-family: 'ZCOOL KuaiLe', cursive; font-weight: 400; font-size: clamp(24px, 5vw, 30px); text-align: center; margin: 4px 0 0; }
 .title-underline { display: block; margin: 6px auto 0; }
 .title-underline path { filter: url(#roughHi); stroke-dasharray: 200; stroke-dashoffset: 200; animation: draw 1s ease .5s forwards; }
-.lead { text-align: center; font-size: 14px; color: #57564d; margin: 12px 0 20px; }
-.miso-card h2 { font-family: 'ZCOOL KuaiLe', cursive; font-weight: 400; font-size: 18px; margin: 20px 0 8px; color: #1a1a1a; }
+.lead { text-align: center; font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 12px 0 20px; }
+.miso-card h2 { font-family: 'ZCOOL KuaiLe', cursive; font-weight: 400; font-size: var(--font-size-lg); margin: 20px 0 8px; color: var(--color-text-primary); }
 .miso-card ul { margin: 0; padding-left: 20px; }
-.miso-card li { margin: 7px 0; font-size: 14px; line-height: 1.6; color: #2a2a2a; }
-.miso-card a { color: #3f6fe0; font-weight: 600; text-decoration: none; }
-.miso-card a:hover { text-decoration: underline; }
-.effective { margin-top: 18px; font-size: 13px; color: #8a887d; }
-.back { display: inline-block; margin-top: 10px; color: #ff5447 !important; font-weight: 700; font-size: 14px; }
-.status { margin-top: 22px; display: flex; align-items: center; gap: 9px; font-family: 'Permanent Marker', cursive; font-size: 12.5px; color: #8a887d; animation: rise .7s ease .3s both; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: #36a85b; border: 1.5px solid #1a1a1a; animation: blink 1.6s steps(1) infinite; }
+.miso-card li { margin: 7px 0; font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary); }
+.miso-card a { color: var(--color-primary-600); font-weight: 600; text-decoration: none; }
+.miso-card a:hover { color: var(--color-primary-700); text-decoration: underline; }
+.effective { margin-top: 18px; font-size: 13px; color: var(--color-text-tertiary); }
+.back { display: inline-block; margin-top: 10px; color: var(--color-primary-600) !important; font-weight: 700; font-size: var(--font-size-sm); }
+.status { margin-top: 22px; display: flex; align-items: center; gap: 9px; font-family: 'Permanent Marker', cursive; font-size: 12.5px; color: var(--color-text-tertiary); animation: rise .7s ease .3s both; }
+.dot { width: 9px; height: 9px; border-radius: var(--radius-full); background: var(--color-primary-600); border: 1.5px solid var(--color-border); animation: blink 1.6s steps(1) infinite; }
 @media (max-width: 640px) { .deco { display: none !important; } }
 @media (prefers-reduced-motion: reduce) { .miso-page * { animation-duration: .001s !important; animation-iteration-count: 1 !important; } }
 </style>
