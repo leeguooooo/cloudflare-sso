@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --fix",
     "wrangler:config:prod": "node scripts/use-wrangler-config.mjs prod",
     "deploy": "pnpm deploy:prod",
-    "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso",
+    "deploy:prod": "pnpm wrangler:config:prod && pnpm build && wrangler pages deploy dist --project-name cloudflare-sso --branch main",
     "logs:prod": "pnpm wrangler:config:prod && wrangler pages deployment tail --project-name cloudflare-sso --environment production --format pretty",
     "setup:pages": "node scripts/setup-pages-config.mjs",
     "setup:pages:sh": "./scripts/setup-pages.sh",
