@@ -77,13 +77,17 @@ export default defineEventHandler(async (event) => {
     userId = ''
     tenantId = ''
     tenantSwitch = true
-    // Drop the foreign session so the login page cannot silently resume it and bounce back here.
-    deleteCookie(event, 'sso_refresh_token', { path: '/' })
   }
 
   if (!userId || !tenantId) {
     if (prompt === 'none') {
+      // Silent probe: never touch the session, it still belongs to another live client.
       throw createError({ statusCode: 401, statusMessage: 'login_required' })
+    }
+    if (tenantSwitch) {
+      // Interactive re-auth: drop the foreign session so the login page cannot silently
+      // resume it and bounce right back here.
+      deleteCookie(event, 'sso_refresh_token', { path: '/' })
     }
     const requestUrl = getRequestURL(event)
     const continuePath = `${requestUrl.pathname}${requestUrl.search}`
