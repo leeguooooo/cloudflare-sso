@@ -360,8 +360,15 @@ onMounted(() => {
     success.value = false
   }
 
+  // /authorize sends reauth=1 when the stored session belongs to another tenant's client:
+  // resuming it would just bounce back to /authorize forever.
+  const reauth = route.query.reauth === '1'
+  if (reauth) {
+    localStorage.removeItem('sso_access_token')
+  }
+
   const continuePath = resolveContinuePath()
-  if (continuePath.startsWith('/authorize?') && !registered && !prefillEmail && !oauthError) {
+  if (continuePath.startsWith('/authorize?') && !registered && !prefillEmail && !oauthError && !reauth) {
     void tryResumeRememberedSession()
   }
 })

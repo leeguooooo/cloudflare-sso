@@ -1,4 +1,4 @@
-import { createError, defineEventHandler, getCookie, getQuery, getRequestHeader, getRequestIP, getRequestURL, sendRedirect } from 'h3'
+import { createError, defineEventHandler, deleteCookie, getCookie, getQuery, getRequestHeader, getRequestIP, getRequestURL, sendRedirect } from 'h3'
 import { getSessionByRefreshToken } from '../utils/auth'
 import { getDb } from '../utils/env'
 import { ensureClientManagementSchema } from '../utils/identity'
@@ -68,18 +68,27 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // The session cookie is shared across every client on this host, so a user who last
+  // signed in through another tenant's client arrives here with a foreign session.
+  // Accounts are global (per-tenant users are provisioned on login), so treat this as
+  // "not signed in for this client" and re-authenticate instead of dead-ending.
+  let tenantSwitch = false
+  if (userId && tenantId && tenantId !== client.tenant_id) {
+    userId = ''
+    tenantId = ''
+    tenantSwitch = true
+    // Drop the foreign session so the login page cannot silently resume it and bounce back here.
+    deleteCookie(event, 'sso_refresh_token', { path: '/' })
+  }
+
   if (!userId || !tenantId) {
     if (prompt === 'none') {
       throw createError({ statusCode: 401, statusMessage: 'login_required' })
     }
     const requestUrl = getRequestURL(event)
     const continuePath = `${requestUrl.pathname}${requestUrl.search}`
-    const loginPath = `/login?continue=${encodeURIComponent(continuePath)}&client_id=${encodeURIComponent(clientId)}`
+    const loginPath = `/login?continue=${encodeURIComponent(continuePath)}&client_id=${encodeURIComponent(clientId)}${tenantSwitch ? '&reauth=1' : ''}`
     return sendRedirect(event, loginPath, 302)
-  }
-
-  if (tenantId !== client.tenant_id) {
-    throw createError({ statusCode: 403, statusMessage: 'Client and user tenant mismatch' })
   }
 
   const user = await db
