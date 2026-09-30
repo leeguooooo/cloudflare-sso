@@ -12,63 +12,64 @@
     <svg class="deco deco-bolt" viewBox="0 0 24 24" width="24" height="24"><path d="M13 2 L4 14 L11 14 L9 22 L20 9 L13 9 Z" /></svg>
     <svg class="deco deco-cloud" viewBox="0 0 50 30" width="54" height="34"><path d="M10 22 a7 7 0 0 1 0 -13 a9 9 0 0 1 17 -2 a7 7 0 0 1 5 15 z" /></svg>
 
-    <NuxtLink to="/" class="wordmark">
+    <NuxtLink v-if="!nativeClient" to="/" class="wordmark">
       <span class="wordmark-bob">
         <span style="color:#ff5447;">m</span><span style="color:#3f6fe0;">i</span><span style="color:#36a85b;">s</span><span style="color:#e0a32a;">o</span><span style="color:#ff5447;">n</span><span style="color:#3f6fe0;">o</span><span style="color:#36a85b;">t</span><span style="color:#e0a32a;">e</span>
       </span>
     </NuxtLink>
 
     <div class="miso-card doodle-box">
-      <div class="kicker">✦ new account ✦</div>
-      <h1 class="title">画一个新账号<span class="wave">🎨</span></h1>
+      <div class="kicker">{{ t.registerKicker }}</div>
+      <h1 class="title">{{ t.registerTitle }}<span class="wave">🎨</span></h1>
       <svg class="title-underline" width="200" height="16" viewBox="0 0 200 16" fill="none">
         <path d="M6 9 C 50 3, 90 3, 116 8 S 170 14, 194 8" stroke="#ffd23d" stroke-width="5" stroke-linecap="round" />
       </svg>
-      <p class="subtitle">注册一个 misonote 身份，解锁全部应用。</p>
+      <p class="subtitle">{{ subtitle }}</p>
 
-      <div class="oauth">
+      <!-- OAuth (hidden for native App Store clients — Guideline 4.8) -->
+      <div v-if="!socialHidden" class="oauth">
         <button type="button" class="obtn obtn-google doodle-box" :disabled="loading" @click="startSocialSignup('google')">
           <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1S8.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12S6.8 21.5 12 21.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.06-1.1-.16-1.6z" /></svg>
-          使用 Google 注册
+          {{ t.googleSignup }}
         </button>
         <button type="button" class="obtn obtn-github doodle-box" :disabled="loading" @click="startSocialSignup('github')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.36-2.22-.26-4.55-1.14-4.55-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05a9.4 9.4 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.04 10.04 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" /></svg>
-          使用 GitHub 注册
+          {{ t.githubSignup }}
         </button>
       </div>
 
-      <div class="divider"><span class="dline" /><span class="dor">或</span><span class="dline" /></div>
+      <div v-if="!socialHidden" class="divider"><span class="dline" /><span class="dor">{{ t.or }}</span><span class="dline" /></div>
 
       <form class="form" @submit.prevent="handleSubmit">
         <label class="field-label">
-          <span class="flabel">邮箱</span>
+          <span class="flabel">{{ t.email }}</span>
           <span class="field doodle-box">
             <input v-model="form.email" type="email" required placeholder="you@example.com" autocomplete="email" :disabled="loading" />
           </span>
         </label>
 
         <label class="field-label">
-          <span class="flabel">密码</span>
+          <span class="flabel">{{ t.password }}</span>
           <span class="field doodle-box field-pw">
             <input v-model="form.password" :type="showPw ? 'text' : 'password'" required placeholder="••••••••" autocomplete="new-password" :disabled="loading" />
-            <button type="button" class="pw-toggle" aria-label="显示密码" @click="togglePw">{{ showPw ? '🙈' : '👁' }}</button>
+            <button type="button" class="pw-toggle" :aria-label="t.showPassword" @click="togglePw">{{ showPw ? '🙈' : '👁' }}</button>
           </span>
         </label>
 
         <p v-if="message" class="miso-msg" :class="{ ok: success }">{{ message }}</p>
 
         <button type="submit" class="submit doodle-box" :disabled="loading">
-          {{ loading ? '创建中…' : '注册' }}
+          {{ loading ? t.submittingRegister : t.submitRegister }}
           <span class="arrow">→</span>
         </button>
       </form>
 
-      <p class="signup">已有账号？<NuxtLink :to="loginPath" class="signup-link">去登录 →</NuxtLink></p>
+      <p class="signup">{{ t.haveAccount }} <NuxtLink :to="loginPath" class="signup-link">{{ t.toLogin }}</NuxtLink></p>
     </div>
 
     <div class="status">
       <span class="dot" />
-      account.leeguoo.com · 端到端加密 · 凑合也很安全
+      {{ t.footer }}
     </div>
   </div>
 </template>
@@ -89,9 +90,22 @@ useHead({
   ],
 })
 
+import { AUTH_COPY, clientAppName, detectAuthLocale, formatCopy, hideSocialLogin, isNativeStoreClient, requestedClientId, safeContinuePath, type AuthLocale } from '~/utils/auth-client'
+
 const config = useRuntimeConfig()
 const route = useRoute()
-const { locale } = useI18n()
+
+// Native App Store clients: email/password only, no social buttons (Guideline 4.8).
+const extraNativeIds = typeof config.public.nativeStoreClientIds === 'string' ? config.public.nativeStoreClientIds : ''
+const socialHidden = computed(() => hideSocialLogin(route.query, extraNativeIds))
+const nativeClient = computed(() => isNativeStoreClient(requestedClientId(route.query), extraNativeIds))
+const pageLocale = ref<AuthLocale>(detectAuthLocale(route.query, process.client ? navigator.languages || [navigator.language] : []))
+const t = computed(() => AUTH_COPY[pageLocale.value])
+const subtitle = computed(() => {
+  const app = clientAppName(requestedClientId(route.query))
+  return app ? formatCopy(t.value.registerSubtitleApp, { app }) : t.value.registerSubtitle
+})
+useHead({ htmlAttrs: { lang: () => (pageLocale.value === 'zh' ? 'zh-CN' : pageLocale.value) } })
 const loading = ref(false)
 const message = ref('')
 const success = ref(false)
@@ -107,12 +121,7 @@ const togglePw = () => {
   showPw.value = !showPw.value
 }
 
-const resolveContinuePath = () => {
-  const raw = typeof route.query.continue === 'string' ? route.query.continue : ''
-  if (!raw.startsWith('/')) return ''
-  if (raw.startsWith('//')) return ''
-  return raw
-}
+const resolveContinuePath = () => safeContinuePath(route.query.continue)
 
 const buildLoginPath = (options?: { prefillEmail?: string; registered?: boolean }) => {
   const query = new URLSearchParams()
@@ -175,7 +184,7 @@ const handleSubmit = async () => {
         email: form.email,
         password: form.password,
         client_id: clientId,
-        locale: typeof locale.value === 'string' ? locale.value : 'en',
+        locale: pageLocale.value,
       },
     })
     if (process.client) {
@@ -192,7 +201,7 @@ const handleSubmit = async () => {
 }
 
 const startSocialSignup = (provider: SocialProvider) => {
-  if (!process.client || loading.value) return
+  if (!process.client || loading.value || socialHidden.value) return
 
   const clientId = resolveClientId()
   if (!clientId) {
@@ -342,6 +351,13 @@ const startSocialSignup = (provider: SocialProvider) => {
 @media (max-width: 640px) {
   .deco { display: none !important; }
 }
+/* The display fonts only cover Latin + Simplified Chinese; use the system sans for ja/ko. */
+:lang(ja) .title, :lang(ko) .title, :lang(ja) .submit, :lang(ko) .submit {
+  font-family: var(--font-family-sans);
+  font-weight: 700;
+  word-break: keep-all;
+}
+:lang(ja) .title, :lang(ko) .title { font-size: clamp(24px, 5.6vw, 30px); }
 @media (prefers-reduced-motion: reduce) {
   .miso-page *:not(input) { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
 }
