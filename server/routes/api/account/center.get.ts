@@ -3,6 +3,8 @@ import { getDb } from '../../../utils/env'
 import { requireAccountUserContext } from '../../../utils/account'
 
 type LinkedIdentityRow = {
+  id: string
+  is_private_email?: number | null
   provider: string
   subject: string
   email?: string | null
@@ -40,7 +42,7 @@ export default defineEventHandler(async (event) => {
   const linkedRows = ctx.globalAccount?.id
     ? await db
         .prepare(
-          `SELECT provider, subject, email, profile_json, created_at, updated_at
+          `SELECT id, provider, subject, email, profile_json, is_private_email, created_at, updated_at
            FROM global_external_identities
            WHERE global_account_id = ?
            ORDER BY updated_at DESC`,
@@ -193,7 +195,9 @@ export default defineEventHandler(async (event) => {
           : null
 
     return {
+      id: row.id,
       provider: row.provider,
+      is_private_email: row.is_private_email === 1,
       subject: row.subject,
       email: row.email || null,
       name: typeof profile.name === 'string' ? profile.name : null,

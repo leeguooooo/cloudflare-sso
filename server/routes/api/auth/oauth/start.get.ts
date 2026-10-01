@@ -1,75 +1,22 @@
-import {
-  H3Event,
-  createError,
-  defineEventHandler,
-  getCookie,
-  getQuery,
-  getRequestHeader,
-  getRequestURL,
-  sendRedirect,
-  setCookie,
-} from 'h3'
+import { createError, defineEventHandler, getCookie, getQuery, getRequestURL, sendRedirect, setCookie } from 'h3'
 import { randomId } from '../../../../utils/crypto'
 import { ensureGlobalIdentitySchema, getClientByPublicId } from '../../../../utils/identity'
 import { buildOAuthAuthorizeUrl, parseOAuthProvider } from '../../../../utils/oauth'
 import { getSessionByRefreshToken } from '../../../../utils/auth'
 import { getDb } from '../../../../utils/env'
+import { appleRedirectUri, buildAppleAuthorizeUrl, requireAppleConfig } from '../../../../utils/apple'
+import { buildLoginPath, errorMessageOf, isSecureRequest, safeContinue, withQuery } from '../../../../utils/oauth-complete'
+import { createOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS } from '../../../../utils/oauth-state'
+import { getProviderAvailability } from '../../../../utils/provider-policy'
+import { isRecentAuth, REAUTH_REQUIRED } from '../../../../utils/sign-in-methods'
 
-type StartState = {
-  state: string
-  provider: string
-  client_id: string
-  continue: string
-  intent?: 'login' | 'link'
-  link_global_account_id?: string
-  created_at: number
-}
-
-const resolveContinuePath = (raw: unknown) => {
-  const value = typeof raw === 'string' ? raw.trim() : ''
-  if (!value.startsWith('/')) return ''
-  if (value.startsWith('//')) return ''
-  return value
-}
-
-const getErrorMessage = (error: unknown) => {
-  if (error && typeof error === 'object' && 'statusMessage' in error && typeof error.statusMessage === 'string') {
-    return error.statusMessage
-  }
-  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-    return error.message
-  }
-  return 'OAuth sign-in failed'
-}
-
-const isSecureCookie = (event: H3Event) => {
-  const forwardedProto = getRequestHeader(event, 'x-forwarded-proto')?.split(',')[0].trim().toLowerCase()
-  if (forwardedProto) {
-    return forwardedProto === 'https'
-  }
-  return getRequestURL(event).protocol === 'https:'
-}
-
-const buildLoginRedirect = (input: { clientId: string; continuePath: string; message: string }) => {
-  const params = new URLSearchParams()
-  params.set('oauth_error', input.message)
-  if (input.clientId) {
-    params.set('client_id', input.clientId)
-  }
-  const continuePath = resolveContinuePath(input.continuePath)
-  if (continuePath) {
-    params.set('continue', continuePath)
-  }
-  return `/login?${params.toString()}`
-}
-
-const buildAccountRedirect = (continuePath: string, message: string) => {
-  const safePath = resolveContinuePath(continuePath) || '/account?section=linked'
-  const url = new URL(safePath, 'https://account.local')
-  url.searchParams.set('link_error', message)
-  return `${url.pathname}${url.search}`
-}
-
+/**
+ * GET /api/auth/oauth/start?provider=apple|google|github&client_id=…[&continue=…][&intent=link][&siwa=1]
+ *
+ * intent=login: the provider must be offered to this client (provider-policy).
+ * intent=link: requires the refresh cookie of a session signed in within the last
+ * 15 minutes; the account to link to is stored server side with the state.
+ */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const provider = parseOAuthProvider(query.provider)
@@ -80,64 +27,73 @@ export default defineEventHandler(async (event) => {
 
   await ensureGlobalIdentitySchema(event)
   const client = await getClientByPublicId(event, clientId)
-  const state = randomId(24)
-  const continuePath = resolveContinuePath(query.continue)
+  const continuePath = safeContinue(query.continue)
   const intent = query.intent === 'link' ? 'link' : 'login'
-
-  let linkGlobalAccountId = ''
-  if (intent === 'link') {
-    const refreshToken = getCookie(event, 'sso_refresh_token') || ''
-    if (!refreshToken) {
-      throw createError({ statusCode: 401, statusMessage: 'Sign in required before linking provider' })
-    }
-    const session = await getSessionByRefreshToken(event, refreshToken)
-    if (!session?.user_id) {
-      throw createError({ statusCode: 401, statusMessage: 'Session expired, please sign in again' })
-    }
-
-    const db = getDb(event)
-    const current = await db
-      .prepare(`SELECT global_account_id FROM users WHERE id = ? AND tenant_id = ?`)
-      .bind(session.user_id, session.tenant_id)
-      .first<{ global_account_id?: string | null }>()
-    if (!current?.global_account_id) {
-      throw createError({ statusCode: 400, statusMessage: 'Cannot link provider for this account' })
-    }
-    linkGlobalAccountId = current.global_account_id
-  }
-
-  const statePayload: StartState = {
-    state,
-    provider,
-    client_id: client.client_id,
-    continue: continuePath,
-    intent,
-    link_global_account_id: linkGlobalAccountId || undefined,
-    created_at: Math.floor(Date.now() / 1000),
-  }
-
-  setCookie(event, 'sso_oauth_state', JSON.stringify(statePayload), {
-    httpOnly: true,
-    secure: isSecureCookie(event),
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 600,
-  })
+  const linkBack = (message: string) => withQuery(continuePath || '/account?section=linked', { link_error: message })
 
   try {
-    const authorizeUrl = buildOAuthAuthorizeUrl(event, provider, state)
+    let linkGlobalAccountId = ''
+    if (intent === 'link') {
+      const refreshToken = getCookie(event, 'sso_refresh_token') || ''
+      const session = refreshToken ? await getSessionByRefreshToken(event, refreshToken) : null
+      if (!session?.user_id) {
+        throw createError({ statusCode: 401, statusMessage: 'Sign in required before linking provider' })
+      }
+      if (!isRecentAuth(Number((session as { created_at?: number }).created_at || 0))) {
+        return sendRedirect(event, linkBack(REAUTH_REQUIRED), 302)
+      }
+      const current = await getDb(event)
+        .prepare(`SELECT global_account_id FROM users WHERE id = ? AND tenant_id = ?`)
+        .bind(session.user_id, session.tenant_id)
+        .first<{ global_account_id?: string | null }>()
+      if (!current?.global_account_id) {
+        throw createError({ statusCode: 400, statusMessage: 'Cannot link provider for this account' })
+      }
+      linkGlobalAccountId = current.global_account_id
+      if (provider === 'apple' && !getProviderAvailability(event, { clientId: client.client_id, siwaPreview: true }).apple) {
+        throw createError({ statusCode: 403, statusMessage: 'Sign in with Apple is not available yet' })
+      }
+    } else {
+      const available = getProviderAvailability(event, { clientId: client.client_id, siwaPreview: query.siwa === '1' })
+      if (provider === 'wechat' || !available[provider as 'apple' | 'google' | 'github']) {
+        throw createError({ statusCode: 403, statusMessage: 'This sign-in method is not available here' })
+      }
+    }
+
+    const nonce = provider === 'apple' ? randomId(24) : undefined
+    const statePayload = await createOAuthState(event, {
+      provider,
+      client_id: client.client_id,
+      continue: continuePath,
+      intent,
+      link_global_account_id: linkGlobalAccountId || undefined,
+      nonce,
+    })
+
+    setCookie(event, OAUTH_STATE_COOKIE, statePayload.state, {
+      httpOnly: true,
+      secure: isSecureRequest(event),
+      sameSite: 'lax',
+      path: '/',
+      maxAge: OAUTH_STATE_TTL_SECONDS,
+    })
+
+    const authorizeUrl =
+      provider === 'apple'
+        ? buildAppleAuthorizeUrl(requireAppleConfig(event), {
+            redirectUri: appleRedirectUri(event, getRequestURL(event).origin),
+            state: statePayload.state,
+            nonce: nonce || '',
+          })
+        : buildOAuthAuthorizeUrl(event, provider, statePayload.state)
     return sendRedirect(event, authorizeUrl, 302)
   } catch (error) {
     if (intent === 'link') {
-      return sendRedirect(event, buildAccountRedirect(continuePath, getErrorMessage(error)), 302)
+      return sendRedirect(event, linkBack(errorMessageOf(error)), 302)
     }
     return sendRedirect(
       event,
-      buildLoginRedirect({
-        message: getErrorMessage(error),
-        clientId: client.client_id,
-        continuePath,
-      }),
+      buildLoginPath({ message: errorMessageOf(error), clientId: client.client_id, continuePath }),
       302,
     )
   }

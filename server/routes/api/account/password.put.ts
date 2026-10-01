@@ -3,6 +3,7 @@ import { getDb, getEnv } from '../../../utils/env'
 import { requireAccountUserContext } from '../../../utils/account'
 import { hashPassword, verifyPassword } from '../../../utils/crypto'
 import { writeAuditLog } from '../../../utils/audit'
+import { requireRecentAuth } from '../../../utils/sign-in-methods'
 
 type PasswordBody = {
   current_password?: string
@@ -29,31 +30,41 @@ export default defineEventHandler(async (event) => {
   const body = (await readBody(event).catch(() => ({}))) as PasswordBody
   const currentPassword = typeof body.current_password === 'string' ? body.current_password : ''
   const newPassword = typeof body.new_password === 'string' ? validateNewPassword(body.new_password) : ''
-  if (!currentPassword || !newPassword) {
-    throw createError({ statusCode: 400, statusMessage: 'current_password and new_password are required' })
-  }
-  if (currentPassword === newPassword) {
-    throw createError({ statusCode: 400, statusMessage: 'new_password must be different from current_password' })
-  }
 
   const db = getDb(event)
   const account = await db
-    .prepare(`SELECT id, password_hash FROM global_accounts WHERE id = ?`)
+    .prepare(`SELECT id, password_hash, password_set FROM global_accounts WHERE id = ?`)
     .bind(ctx.globalAccount.id)
-    .first<{ id: string; password_hash: string }>()
+    .first<{ id: string; password_hash: string; password_set?: number | null }>()
   if (!account?.id) {
     throw createError({ statusCode: 404, statusMessage: 'Global account not found' })
   }
-
   const env = getEnv(event)
-  const verified = await verifyPassword(currentPassword, account.password_hash, env.PASSWORD_PEPPER || '')
-  if (!verified) {
-    throw createError({ statusCode: 401, statusMessage: 'Current password is incorrect' })
+  // An account created by a social sign-in has no password the user knows: it may SET
+  // one (email + password then becomes another sign-in method) after a recent sign-in.
+  const settingFirstPassword = account.password_set !== 1
+
+  if (settingFirstPassword) {
+    if (!newPassword) {
+      throw createError({ statusCode: 400, statusMessage: 'new_password is required' })
+    }
+    await requireRecentAuth(event, ctx)
+  } else {
+    if (!currentPassword || !newPassword) {
+      throw createError({ statusCode: 400, statusMessage: 'current_password and new_password are required' })
+    }
+    if (currentPassword === newPassword) {
+      throw createError({ statusCode: 400, statusMessage: 'new_password must be different from current_password' })
+    }
+    const verified = await verifyPassword(currentPassword, account.password_hash, env.PASSWORD_PEPPER || '')
+    if (!verified) {
+      throw createError({ statusCode: 401, statusMessage: 'Current password is incorrect' })
+    }
   }
 
   const nextHash = await hashPassword(newPassword, env.PASSWORD_PEPPER || '')
   await db
-    .prepare(`UPDATE global_accounts SET password_hash = ?, updated_at = strftime('%s', 'now') WHERE id = ?`)
+    .prepare(`UPDATE global_accounts SET password_hash = ?, password_set = 1, updated_at = strftime('%s', 'now') WHERE id = ?`)
     .bind(nextHash, account.id)
     .run()
   await db
@@ -98,7 +109,7 @@ export default defineEventHandler(async (event) => {
   await writeAuditLog(event, {
     tenantId: ctx.user.tenant_id,
     userId: ctx.user.id,
-    action: 'account.password.update',
+    action: settingFirstPassword ? 'account.password.set' : 'account.password.update',
     payload: {
       revoked_other_sessions: true,
       session_id: ctx.currentSessionId || null,
@@ -107,6 +118,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     ok: true,
-    message: 'Password updated successfully',
+    message: settingFirstPassword ? 'Password set successfully' : 'Password updated successfully',
   }
 })

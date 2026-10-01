@@ -15,6 +15,29 @@ type EnvBindings = {
   OAUTH_GOOGLE_CLIENT_SECRET?: string
   OAUTH_GOOGLE_REDIRECT_URI?: string
   DEFAULT_CLIENT_ID?: string
+  /** Sign in with Apple: "1" = on for every client, "test" = only when the page URL has ?siwa=1, else off. */
+  SIWA_ENABLED?: string
+  /** "1" = show Google / GitHub to native App Store clients too (only ever when Apple is available). */
+  STORE_CLIENTS_SOCIAL_LOGIN?: string
+  /** Extra comma-separated client ids treated as native App Store clients (server side). */
+  NATIVE_STORE_CLIENT_IDS?: string
+  APPLE_TEAM_ID?: string
+  APPLE_SERVICES_ID?: string
+  APPLE_KEY_ID?: string
+  /** Contents of the AuthKey_XXXX.p8 file (PKCS#8 PEM). */
+  APPLE_PRIVATE_KEY?: string
+  /** Comma-separated App IDs whose server-to-server notifications are accepted (default com.paste.native). */
+  APPLE_APP_IDS?: string
+  /** Optional override of the redirect URI registered on the Services ID. */
+  APPLE_REDIRECT_URI?: string
+  /** Test-only override of https://appleid.apple.com (local mock provider). */
+  APPLE_AUTH_BASE_URL?: string
+  /** Served at /.well-known/apple-developer-domain-association.txt when set. */
+  APPLE_DOMAIN_ASSOCIATION?: string
+  /** Comma-separated base URLs of connected apps' account hooks (…/merge, …/delete are appended). */
+  ACCOUNT_HOOK_URLS?: string
+  /** Shared bearer secret sent to the account hooks. */
+  ACCOUNT_HOOK_SECRET?: string
 }
 
 export const getEnv = (event: H3Event): EnvBindings => {

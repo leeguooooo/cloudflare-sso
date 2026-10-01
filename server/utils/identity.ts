@@ -17,6 +17,7 @@ export type GlobalAccountRecord = {
   avatar_url?: string | null
   locale?: string
   status: string
+  password_set?: number | null
 }
 
 export type GlobalExternalIdentityRecord = {
@@ -131,6 +132,90 @@ export const ensureGlobalIdentitySchema = async (event: H3Event) => {
     )
     .run()
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_global_external_identities_account ON global_external_identities(global_account_id)`).run()
+  await ensureLinkingSchema(db)
+}
+
+const addColumn = async (db: D1Database, table: string, definition: string) => {
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${definition}`).run()
+  } catch (error) {
+    if (!hasDuplicateColumnError(error)) throw error
+  }
+}
+
+let linkingSchemaReady: Promise<void> | null = null
+
+/**
+ * Sign-in methods / account linking (2026-10). Additive and idempotent:
+ * - global_accounts.password_set: whether the account has a password the user chose.
+ *   Accounts created by a social sign-in got a random, unknowable password. Backfill:
+ *   an account whose first linked identity was created within 30 s of the account
+ *   itself was created by that sign-in (password_set = 0); every other account = 1.
+ * - global_external_identities: Apple-specific flags and the provider refresh token
+ *   (Apple requires revoking it when the account is deleted).
+ * - oauth_states: server-side OAuth state (the cookie only carries the random state).
+ * - account_merges: merge proposals and their progress (retryable, idempotent).
+ * Run once per isolate.
+ */
+export const ensureLinkingSchema = (db: D1Database): Promise<void> => {
+  if (!linkingSchemaReady) {
+    linkingSchemaReady = (async () => {
+      await addColumn(db, 'global_accounts', 'password_set INTEGER')
+      await db
+        .prepare(
+          `UPDATE global_accounts
+           SET password_set = CASE WHEN EXISTS (
+             SELECT 1 FROM global_external_identities gei
+             WHERE gei.global_account_id = global_accounts.id
+               AND gei.created_at - global_accounts.created_at BETWEEN -5 AND 30
+           ) THEN 0 ELSE 1 END
+           WHERE password_set IS NULL`,
+        )
+        .run()
+      await addColumn(db, 'global_external_identities', 'email_verified INTEGER')
+      await addColumn(db, 'global_external_identities', 'is_private_email INTEGER')
+      await addColumn(db, 'global_external_identities', 'email_disabled INTEGER')
+      await addColumn(db, 'global_external_identities', 'refresh_token TEXT')
+      await addColumn(db, 'global_external_identities', 'consent_revoked_at INTEGER')
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            payload_json TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+          )`,
+        )
+        .run()
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS account_merges (
+            id TEXT PRIMARY KEY,
+            from_global_account_id TEXT NOT NULL,
+            to_global_account_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'proposed',
+            error TEXT,
+            detail_json TEXT DEFAULT '{}' NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+            updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+          )`,
+        )
+        .run()
+      await db.prepare(`CREATE INDEX IF NOT EXISTS idx_account_merges_to ON account_merges(to_global_account_id, status)`).run()
+    })().catch((error) => {
+      linkingSchemaReady = null
+      throw error
+    })
+  }
+  return linkingSchemaReady
+}
+
+/** Test hook: forget that the schema was ensured in this isolate. */
+export const resetLinkingSchemaMemo = () => {
+  linkingSchemaReady = null
 }
 
 export const ensureClientManagementSchema = async (event: H3Event) => {
@@ -174,7 +259,7 @@ export const findGlobalAccountByEmail = async (event: H3Event, email: string) =>
   const db = getDb(event)
   return db
     .prepare(
-      `SELECT id, email, password_hash, display_name, avatar_url, locale, status
+      `SELECT id, email, password_hash, display_name, avatar_url, locale, status, password_set
        FROM global_accounts
        WHERE normalized_email = lower(?)`,
     )
@@ -186,7 +271,7 @@ export const findGlobalAccountById = async (event: H3Event, id: string) => {
   const db = getDb(event)
   return db
     .prepare(
-      `SELECT id, email, password_hash, display_name, avatar_url, locale, status
+      `SELECT id, email, password_hash, display_name, avatar_url, locale, status, password_set
        FROM global_accounts
        WHERE id = ?`,
     )
@@ -202,7 +287,7 @@ export const findGlobalAccountByExternalIdentity = async (
   const db = getDb(event)
   return db
     .prepare(
-      `SELECT ga.id, ga.email, ga.password_hash, ga.display_name, ga.avatar_url, ga.locale, ga.status
+      `SELECT ga.id, ga.email, ga.password_hash, ga.display_name, ga.avatar_url, ga.locale, ga.status, ga.password_set
        FROM global_external_identities gei
        JOIN global_accounts ga ON ga.id = gei.global_account_id
        WHERE gei.provider = ? AND gei.subject = ?`,
@@ -260,16 +345,19 @@ export const createGlobalAccount = async (
     email: string
     passwordHash: string
     locale?: string
+    /** false when the password is a random placeholder (social sign-up). Default true. */
+    passwordSet?: boolean
+    displayName?: string | null
   },
 ) => {
   const db = getDb(event)
   const id = crypto.randomUUID()
   await db
     .prepare(
-      `INSERT INTO global_accounts (id, email, password_hash, locale, status)
-       VALUES (?, ?, ?, ?, 'active')`,
+      `INSERT INTO global_accounts (id, email, password_hash, locale, status, password_set, display_name)
+       VALUES (?, ?, ?, ?, 'active', ?, ?)`,
     )
-    .bind(id, input.email, input.passwordHash, input.locale || 'en')
+    .bind(id, input.email, input.passwordHash, input.locale || 'en', input.passwordSet === false ? 0 : 1, input.displayName || null)
     .run()
   return id
 }

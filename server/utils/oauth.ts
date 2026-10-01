@@ -1,7 +1,7 @@
 import { createError, getRequestURL, H3Event } from 'h3'
 import { getEnv } from './env'
 
-export type OAuthProvider = 'github' | 'google' | 'wechat'
+export type OAuthProvider = 'github' | 'google' | 'wechat' | 'apple'
 
 type ProviderConfig = {
   provider: OAuthProvider
@@ -16,10 +16,15 @@ export type OAuthIdentityProfile = {
   email?: string
   name?: string
   avatarUrl?: string
+  /** The provider vouches that the user controls `email`. */
+  emailVerified?: boolean
+  isPrivateEmail?: boolean
+  /** Provider refresh token worth keeping (Apple: needed to revoke on deletion). */
+  refreshToken?: string
   profile: Record<string, unknown>
 }
 
-const PROVIDERS: OAuthProvider[] = ['github', 'google', 'wechat']
+const PROVIDERS: OAuthProvider[] = ['github', 'google', 'wechat', 'apple']
 
 const normalizeEmail = (email: string | null | undefined) => {
   const value = (email || '').trim().toLowerCase()
@@ -170,22 +175,29 @@ const exchangeGithubCode = async (event: H3Event, code: string) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing GitHub subject' })
   }
 
-  let email = normalizeEmail(typeof userPayload.email === 'string' ? userPayload.email : undefined)
-  if (!email) {
-    const emailResponse = await fetch('https://api.github.com/user/emails', {
-      headers: {
-        accept: 'application/vnd.github+json',
-        authorization: `Bearer ${accessToken}`,
-        'user-agent': 'cloudflare-sso',
-      },
-    })
-    const emailPayload = await requestJson<Array<{ email?: string; verified?: boolean; primary?: boolean }>>(emailResponse)
-    if (emailResponse.ok && Array.isArray(emailPayload)) {
-      const preferred =
-        emailPayload.find((item) => item.primary && item.verified) ||
-        emailPayload.find((item) => item.verified) ||
-        emailPayload.find((item) => item.email)
-      email = normalizeEmail(preferred?.email)
+  // Always read /user/emails: it is the only place GitHub says whether an address is verified.
+  const publicEmail = normalizeEmail(typeof userPayload.email === 'string' ? userPayload.email : undefined)
+  let email = publicEmail
+  let emailVerified = false
+  const emailResponse = await fetch('https://api.github.com/user/emails', {
+    headers: {
+      accept: 'application/vnd.github+json',
+      authorization: `Bearer ${accessToken}`,
+      'user-agent': 'cloudflare-sso',
+    },
+  })
+  const emailPayload = await requestJson<Array<{ email?: string; verified?: boolean; primary?: boolean }>>(emailResponse)
+  if (emailResponse.ok && Array.isArray(emailPayload)) {
+    const verified = emailPayload.filter((item) => item.verified && item.email)
+    const publicVerified = publicEmail ? verified.find((item) => normalizeEmail(item.email) === publicEmail) : undefined
+    const preferred =
+      publicVerified ||
+      verified.find((item) => item.primary) ||
+      verified[0] ||
+      (publicEmail ? undefined : emailPayload.find((item) => item.email))
+    if (preferred) {
+      email = normalizeEmail(preferred.email)
+      emailVerified = Boolean(preferred.verified)
     }
   }
 
@@ -193,6 +205,7 @@ const exchangeGithubCode = async (event: H3Event, code: string) => {
     provider: 'github',
     subject,
     email,
+    emailVerified,
     name: typeof userPayload.name === 'string' ? userPayload.name : undefined,
     avatarUrl: typeof userPayload.avatar_url === 'string' ? userPayload.avatar_url : undefined,
     profile: userPayload,
@@ -245,6 +258,7 @@ const exchangeGoogleCode = async (event: H3Event, code: string) => {
     provider: 'google',
     subject,
     email: normalizeEmail(typeof userPayload.email === 'string' ? userPayload.email : undefined),
+    emailVerified: userPayload.email_verified === true || userPayload.email_verified === 'true',
     name: typeof userPayload.name === 'string' ? userPayload.name : undefined,
     avatarUrl: typeof userPayload.picture === 'string' ? userPayload.picture : undefined,
     profile: userPayload,

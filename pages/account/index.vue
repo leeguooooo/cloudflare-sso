@@ -205,7 +205,11 @@
           </div>
 
           <div v-else-if="activeNav === 'password'" class="form-grid">
+            <p v-if="methods && !methods.has_password" class="block-hint">
+              这个账号是通过第三方登录创建的，还没有密码。设置后可以用 {{ methods.email }} 和密码登录。
+            </p>
             <UiInput
+              v-if="!methods || methods.has_password"
               v-model="passwordForm.current_password"
               type="password"
               label="当前密码"
@@ -228,39 +232,79 @@
             />
             <p class="block-hint">密码长度至少 8 位，修改后会自动撤销其他设备会话。</p>
             <div class="inline-actions">
-              <UiButton variant="primary" :loading="changingPassword" @click="changePassword">更新密码</UiButton>
+              <UiButton variant="primary" :loading="changingPassword" @click="changePassword">{{ methods && !methods.has_password ? '设置密码' : '更新密码' }}</UiButton>
             </div>
           </div>
 
           <div v-else-if="activeNav === 'linked'" class="section-stack">
-            <div class="stack-block">
-              <h3>第三方账号</h3>
-              <p class="block-hint">可绑定 Google / GitHub 作为登录方式，WeChat 正在排期。</p>
-              <div class="provider-grid">
-                <div v-for="provider in providerCards" :key="provider.key" class="provider-card">
-                  <div>
-                    <strong>{{ provider.label }}</strong>
-                    <p v-if="provider.todo">待接入（TODO）</p>
-                    <p v-if="provider.connected">已绑定 {{ provider.connectedEmail || provider.subject || '' }}</p>
-                    <p v-else-if="!provider.todo">未绑定</p>
+            <!-- merge proposal: the provider just linked already belonged to another account -->
+            <div v-if="mergeId" class="stack-block merge-block">
+              <h3>合并账号</h3>
+              <p v-if="mergeLoading" class="block-hint">正在读取另一个账号的信息…</p>
+              <template v-else-if="merge">
+                <template v-if="merge.status === 'done'">
+                  <p class="block-hint">两个账号已经合并，之后用任意一种登录方式都会进入这个账号。</p>
+                  <div class="inline-actions"><UiButton variant="ghost" size="sm" @click="closeMerge">好的</UiButton></div>
+                </template>
+                <template v-else-if="!merge.actionable">
+                  <p class="block-hint">{{ merge.status === 'refused' ? (merge.error || '无法合并这两个账号。') : '这个合并请求已经过期。如需合并，请重新绑定该登录方式。' }}</p>
+                  <div class="inline-actions"><UiButton variant="ghost" size="sm" @click="closeMerge">关闭</UiButton></div>
+                </template>
+                <template v-else>
+                  <p class="block-hint">
+                    你刚刚验证的 {{ providerName(merge.provider) }} 账号已经属于另一个 leeguoo 账号
+                    <strong>{{ merge.other?.email }}</strong>（创建于 {{ formatDate(merge.other?.created_at) }}）。
+                    确认这两个账号都是你的，就可以把它合并到当前账号 <strong>{{ merge.current?.email }}</strong>。
+                  </p>
+                  <ul class="merge-list">
+                    <li>另一个账号的登录方式会转到当前账号：{{ otherMethodsText }}。</li>
+                    <li>它在已连接应用中的数据会合并到当前账号<span v-if="appDataText">（{{ appDataText }}）</span>；同名分组会合并成一个，收藏和已删除记录保持原样。</li>
+                    <li v-if="merge.password_note === 'adopt_other_password'">当前账号还没有密码：合并后可以用 {{ merge.other?.email }} 和它原来的密码登录这个账号。</li>
+                    <li v-else-if="merge.password_note === 'other_password_stops'">两个账号都有密码：合并后 {{ merge.other?.email }} 的邮箱密码登录会停用，请用当前账号的方式登录。</li>
+                    <li>另一个账号随后会被删除，并在所有设备上退出登录。此操作无法撤销。</li>
+                  </ul>
+                  <p v-for="(app, index) in refusedApps" :key="index" class="merge-refusal">{{ app.message }}</p>
+                  <p v-if="merge.status === 'failed' && merge.error" class="merge-refusal">上次合并没有完成：{{ merge.error }}。可以重试，已完成的部分不会重复执行。</p>
+                  <div class="inline-actions">
+                    <UiButton variant="primary" :loading="merging" :disabled="refusedApps.length > 0" @click="confirmMerge">
+                      {{ merge.status === 'failed' ? '重试合并' : '确认合并' }}
+                    </UiButton>
+                    <UiButton variant="ghost" :disabled="merging" @click="cancelMerge">取消</UiButton>
                   </div>
-                  <div class="provider-actions">
+                </template>
+              </template>
+            </div>
+
+            <div class="stack-block">
+              <h3>登录方式</h3>
+              <p class="block-hint">下面任意一种方式都能登录这个账号，至少要保留一种。</p>
+              <div v-if="methods && !methods.recent_auth" class="reauth-row">
+                <span>为了安全，绑定、解绑、设置密码前需要你在 15 分钟内登录过。</span>
+                <UiButton variant="ghost" size="sm" @click="reauthenticate">重新验证身份</UiButton>
+              </div>
+              <div class="list-wrap">
+                <div v-for="row in methodRows" :key="row.key" class="list-item">
+                  <div>
+                    <strong>{{ row.label }}</strong>
+                    <p>{{ row.detail }}</p>
+                  </div>
+                  <div class="list-actions">
                     <UiButton
-                      v-if="provider.connected && !provider.todo"
+                      v-if="row.action === 'unlink'"
                       variant="ghost"
                       size="sm"
-                      :loading="unlinkingProvider === provider.key"
-                      @click="unlinkProvider(provider.key)"
+                      :disabled="row.isLast"
+                      :title="row.isLast ? '这是唯一的登录方式，不能移除' : ''"
+                      :loading="unlinkingProvider === row.key"
+                      @click="unlinkIdentity(row)"
                     >
                       解绑
                     </UiButton>
-                    <UiButton
-                      v-else-if="!provider.todo"
-                      variant="primary"
-                      size="sm"
-                      @click="startLinkProvider(provider.key)"
-                    >
+                    <UiButton v-else-if="row.action === 'link'" variant="primary" size="sm" @click="startLinkProvider(row.provider)">
                       绑定
+                    </UiButton>
+                    <UiButton v-else-if="row.action === 'password'" variant="ghost" size="sm" @click="goSection('password')">
+                      {{ methods?.has_password ? '修改密码' : '设置密码' }}
                     </UiButton>
                   </div>
                 </div>
@@ -513,7 +557,7 @@ const navItems: Array<{ key: AccountSection; label: string; icon: string; color:
   { key: 'profile', label: '个人信息', icon: '◍', color: '#a8ddb5' },
   { key: 'security', label: '安全性与登录', icon: '⌁', color: '#9dd7ff' },
   { key: 'password', label: 'leeguoo 密码', icon: '•••', color: '#8ab4f8' },
-  { key: 'linked', label: '第三方关联', icon: '◎', color: '#97d5f7' },
+  { key: 'linked', label: '登录方式', icon: '◎', color: '#97d5f7' },
   { key: 'privacy', label: '数据和隐私设置', icon: '◌', color: '#ccb3f7' },
   { key: 'share', label: '用户和分享', icon: '◔', color: '#f6b2de' },
   { key: 'billing', label: '付费和订阅', icon: '▣', color: '#f7c089' },
@@ -566,7 +610,7 @@ const sectionTitle = computed(() => {
   if (activeNav.value === 'profile') return '个人信息'
   if (activeNav.value === 'security') return '安全性与登录'
   if (activeNav.value === 'password') return '密码设置'
-  if (activeNav.value === 'linked') return '第三方关联'
+  if (activeNav.value === 'linked') return '登录方式'
   if (activeNav.value === 'privacy') return '数据和隐私设置'
   if (activeNav.value === 'share') return '用户和分享'
   if (activeNav.value === 'billing') return '付费和订阅'
@@ -577,31 +621,194 @@ const sectionDesc = computed(() => {
   if (activeNav.value === 'profile') return '管理显示名称、邮箱和区域设置。'
   if (activeNav.value === 'security') return '查看设备会话与近期账号活动。'
   if (activeNav.value === 'password') return '修改密码并管理密码安全策略。'
-  if (activeNav.value === 'linked') return '绑定或解绑第三方登录账号。'
+  if (activeNav.value === 'linked') return '绑定 Apple、Google、GitHub 或设置密码；把重复的账号合并成一个。'
   if (activeNav.value === 'privacy') return '查看与导出账号数据。'
   if (activeNav.value === 'share') return '查看跨应用会话和访问范围。'
   if (activeNav.value === 'billing') return '查看订阅与权益状态。'
   return '同一邮箱一次登录，可自动开通到不同应用租户。'
 })
 
-const providerCards = computed(() => {
-  const linkedMap = new Map((center.value?.linked_identities || []).map((item) => [item.provider, item]))
-  return [
-    { key: 'google', label: 'Google' },
-    { key: 'github', label: 'GitHub' },
-    { key: 'wechat', label: 'WeChat' },
-  ].map((provider) => {
-    const linked = linkedMap.get(provider.key)
-    return {
-      key: provider.key,
-      label: provider.label,
-      todo: provider.key === 'wechat',
-      connected: !!linked,
-      connectedEmail: linked?.email || null,
-      subject: linked?.subject || null,
+type SignInMethodsPayload = {
+  email: string
+  has_password: boolean
+  recent_auth: boolean
+  linkable: { apple: boolean; google: boolean; github: boolean }
+  methods: Array<
+    | { kind: 'password'; email: string }
+    | { kind: 'provider'; id: string; provider: string; email: string | null; is_private_email: boolean; email_disabled: boolean; consent_revoked: boolean; name: string | null }
+  >
+}
+
+type MergePayload = {
+  id: string
+  status: string
+  error: string | null
+  provider: string
+  actionable: boolean
+  other: { email: string; created_at: number; has_password: boolean; sign_in_methods: Array<{ provider: string; email: string | null }>; apps: string[] } | null
+  current: { email: string; has_password: boolean } | null
+  password_note: 'adopt_other_password' | 'other_password_stops' | null
+  apps: Array<{ ok: boolean; code: string | null; message: string | null; data: Record<string, unknown> | null }>
+}
+
+const PROVIDER_NAMES: Record<string, string> = { apple: 'Apple', google: 'Google', github: 'GitHub' }
+const providerName = (provider: string) => PROVIDER_NAMES[provider] || provider
+
+const methods = ref<SignInMethodsPayload | null>(null)
+const merge = ref<MergePayload | null>(null)
+const mergeLoading = ref(false)
+const merging = ref(false)
+const mergeId = computed(() => (typeof route.query.merge === 'string' ? route.query.merge : ''))
+
+type MethodRow = { key: string; label: string; detail: string; action: 'unlink' | 'link' | 'password' | ''; provider: string; id?: string; isLast?: boolean }
+
+const methodRows = computed<MethodRow[]>(() => {
+  const payload = methods.value
+  if (!payload) return []
+  const total = payload.methods.length
+  const rows: MethodRow[] = [
+    {
+      key: 'password',
+      label: '邮箱和密码',
+      detail: payload.has_password ? payload.email : '未设置密码',
+      action: 'password',
+      provider: 'password',
+    },
+  ]
+  for (const provider of ['apple', 'google', 'github']) {
+    const linked = payload.methods.filter((m) => m.kind === 'provider' && m.provider === provider) as Array<
+      Extract<SignInMethodsPayload['methods'][number], { kind: 'provider' }>
+    >
+    for (const item of linked) {
+      const notes = [
+        item.is_private_email ? '隐藏邮箱' : '',
+        item.email_disabled ? '邮件转发已关闭' : '',
+        item.consent_revoked ? '已在 Apple 设置中停用，再次登录即可恢复' : '',
+      ].filter(Boolean)
+      rows.push({
+        key: item.id,
+        id: item.id,
+        provider,
+        label: providerName(provider),
+        detail: `已绑定 ${item.email || item.name || ''}${notes.length ? `（${notes.join('，')}）` : ''}`,
+        action: 'unlink',
+        isLast: total <= 1,
+      })
     }
-  })
+    if (!linked.length && payload.linkable[provider as 'apple' | 'google' | 'github']) {
+      rows.push({ key: `link-${provider}`, provider, label: providerName(provider), detail: '未绑定', action: 'link' })
+    }
+  }
+  return rows
 })
+
+const otherMethodsText = computed(() => {
+  const other = merge.value?.other
+  if (!other) return ''
+  const parts = other.sign_in_methods.map((m) => `${providerName(m.provider)}${m.email ? ` ${m.email}` : ''}`)
+  if (other.has_password) parts.unshift(`${other.email} 的密码`)
+  return parts.join('、') || '无'
+})
+
+const appDataText = computed(() =>
+  (merge.value?.apps || [])
+    .filter((app) => app.ok && app.data)
+    .map((app) => {
+      const data = app.data || {}
+      const name = typeof data.app === 'string' ? data.app : '应用'
+      const clips = Number(data.clips || 0)
+      const tags = Number(data.tags || 0)
+      return `${name}：${clips} 条记录、${tags} 个分组`
+    })
+    .join('；'),
+)
+
+const refusedApps = computed(() =>
+  (merge.value?.apps || [])
+    .filter((app) => !app.ok)
+    .map((app) => ({
+      message:
+        app.code === 'E2EE_MERGE_REFUSED'
+          ? 'Pastyx：至少一个账号开启了端到端加密。加密的内容只能在你的设备上解密，服务器无法把它转到另一个账号。请先在 Pastyx 里关闭两个账号的端到端加密，再回来合并。'
+          : app.message || '一个已连接的应用暂时无法合并，请稍后再试。',
+    })),
+)
+
+const formatDate = (timestamp?: number | null) => (timestamp ? new Date(timestamp * 1000).toLocaleDateString('zh-CN') : '--')
+
+const loadMethods = async () => {
+  try {
+    methods.value = await withAuthFetch<SignInMethodsPayload>(`${config.public.apiBase}/account/sign-in-methods`)
+  } catch {
+    methods.value = null
+  }
+}
+
+const loadMerge = async () => {
+  if (!mergeId.value) {
+    merge.value = null
+    return
+  }
+  mergeLoading.value = true
+  try {
+    merge.value = await withAuthFetch<MergePayload>(`${config.public.apiBase}/account/merge/${encodeURIComponent(mergeId.value)}`)
+  } catch (err: any) {
+    notice.value = err?.data?.message || err?.message || '读取合并请求失败'
+    merge.value = null
+  } finally {
+    mergeLoading.value = false
+  }
+}
+
+const closeMerge = async () => {
+  const nextQuery = { ...route.query }
+  delete nextQuery.merge
+  merge.value = null
+  await router.replace({ path: route.path, query: nextQuery })
+}
+
+const confirmMerge = async () => {
+  if (!mergeId.value) return
+  merging.value = true
+  notice.value = ''
+  try {
+    await withAuthFetch(`${config.public.apiBase}/account/merge/${encodeURIComponent(mergeId.value)}`, { method: 'POST' })
+    notice.value = '账号已合并'
+    await Promise.all([loadMerge(), loadMethods(), loadCenter()])
+  } catch (err: any) {
+    notice.value = explainError(err, '合并失败')
+    await loadMerge()
+  } finally {
+    merging.value = false
+  }
+}
+
+const cancelMerge = async () => {
+  if (mergeId.value) {
+    await withAuthFetch(`${config.public.apiBase}/account/merge/${encodeURIComponent(mergeId.value)}`, { method: 'DELETE' }).catch(() => undefined)
+  }
+  notice.value = '已取消合并，两个账号都保持不变'
+  await closeMerge()
+}
+
+const explainError = (err: any, fallback: string) => {
+  const message = err?.data?.statusMessage || err?.data?.message || err?.statusMessage || err?.message || ''
+  if (message === 'reauth_required') return '为了安全，请先点「重新验证身份」重新登录，再完成这个操作。'
+  if (message === 'last_method') return '这是唯一的登录方式，不能移除。请先绑定其他方式或设置密码。'
+  return message || fallback
+}
+
+const reauthenticate = async () => {
+  const email = methods.value?.email || center.value?.profile.email || ''
+  try {
+    await $fetch(`${config.public.apiBase}/auth/logout`, { method: 'POST', body: {} })
+  } finally {
+    clearAccessToken()
+    const query = new URLSearchParams({ continue: '/account?section=linked' })
+    if (email && !email.endsWith('.invalid')) query.set('email', email)
+    await navigateTo(`/login?${query.toString()}`)
+  }
+}
 
 const searchTargets = computed(() => {
   const navTargets = navItems.map((item) => ({
@@ -719,10 +926,10 @@ const consumeQueryNotice = async () => {
   const linked = typeof route.query.linked === 'string' ? route.query.linked : ''
   const linkError = typeof route.query.link_error === 'string' ? route.query.link_error : ''
   if (linked) {
-    notice.value = `第三方账号已绑定：${linked}`
+    notice.value = `已绑定 ${providerName(linked)}`
   }
   if (linkError) {
-    notice.value = `第三方绑定失败：${linkError}`
+    notice.value = linkError === 'reauth_required' ? explainError({ message: linkError }, '') : `绑定失败：${linkError}`
   }
   if (!linked && !linkError) return
 
@@ -823,8 +1030,9 @@ const saveProfile = async () => {
 }
 
 const changePassword = async () => {
-  if (!passwordForm.current_password || !passwordForm.new_password) {
-    notice.value = '请填写当前密码和新密码'
+  const settingFirst = Boolean(methods.value && !methods.value.has_password)
+  if ((!settingFirst && !passwordForm.current_password) || !passwordForm.new_password) {
+    notice.value = settingFirst ? '请填写新密码' : '请填写当前密码和新密码'
     return
   }
   if (passwordForm.new_password !== passwordForm.confirm_password) {
@@ -845,10 +1053,10 @@ const changePassword = async () => {
     passwordForm.current_password = ''
     passwordForm.new_password = ''
     passwordForm.confirm_password = ''
-    notice.value = '密码已更新，其他设备会话已撤销'
-    await loadCenter()
+    notice.value = settingFirst ? '密码已设置，其他设备会话已撤销' : '密码已更新，其他设备会话已撤销'
+    await Promise.all([loadCenter(), loadMethods()])
   } catch (err: any) {
-    notice.value = err?.data?.message || err?.message || '修改密码失败'
+    notice.value = explainError(err, '修改密码失败')
   } finally {
     changingPassword.value = false
   }
@@ -881,8 +1089,8 @@ const revokeSession = async (sessionId: string) => {
 
 const startLinkProvider = (provider: string) => {
   if (!process.client) return
-  if (provider === 'wechat') {
-    notice.value = 'WeChat 登录正在排期（TODO）'
+  if (methods.value && !methods.value.recent_auth) {
+    notice.value = explainError({ message: 'reauth_required' }, '')
     return
   }
   const clientId = resolveClientId()
@@ -895,17 +1103,18 @@ const startLinkProvider = (provider: string) => {
   window.location.href = `${config.public.apiBase}/auth/oauth/start?${query.toString()}`
 }
 
-const unlinkProvider = async (provider: string) => {
-  unlinkingProvider.value = provider
+const unlinkIdentity = async (row: MethodRow) => {
+  if (!row.id || row.isLast) return
+  unlinkingProvider.value = row.key
   notice.value = ''
   try {
-    await withAuthFetch(`${config.public.apiBase}/account/linked?provider=${encodeURIComponent(provider)}`, {
+    await withAuthFetch(`${config.public.apiBase}/account/linked?id=${encodeURIComponent(row.id)}`, {
       method: 'DELETE',
     })
-    notice.value = `已解绑 ${provider}`
-    await loadCenter()
+    notice.value = `已解绑 ${row.label}`
+    await Promise.all([loadCenter(), loadMethods()])
   } catch (err: any) {
-    notice.value = err?.data?.message || err?.message || '解绑失败'
+    notice.value = explainError(err, '解绑失败')
   } finally {
     unlinkingProvider.value = ''
   }
@@ -973,8 +1182,14 @@ const logout = async () => {
   }
 }
 
+watch(mergeId, () => {
+  void loadMerge()
+})
+
 onMounted(() => {
   void loadCenter()
+  void loadMethods()
+  void loadMerge()
   document.addEventListener('click', handleDocumentClick)
 })
 
@@ -984,6 +1199,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.merge-block { border: 2px solid var(--color-primary-600); border-radius: 14px; padding: 14px 16px; }
+.merge-list { margin: 8px 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--color-text-secondary); }
+.merge-refusal { color: var(--color-danger, #c5221f); font-size: 13px; font-weight: 600; margin: 6px 0; }
+.reauth-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--color-text-secondary); background: var(--color-primary-50); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
 .account-shell {
   min-height: 100vh;
   font-family: var(--font-family-sans);

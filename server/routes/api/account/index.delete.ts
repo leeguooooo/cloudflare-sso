@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, deleteCookie, getQuery } from 'h3'
-import { getDb } from '../../../utils/env'
+import { getDb, getEnv } from '../../../utils/env'
+import { readAppleConfig, revokeAppleToken } from '../../../utils/apple'
 import { requireAccountUserContext } from '../../../utils/account'
 import { writeAuditLog } from '../../../utils/audit'
 import {
@@ -44,6 +45,27 @@ export default defineEventHandler(async (event) => {
 
   if (getQuery(event).check === '1') {
     return { ok: true, deletable: true }
+  }
+
+  // Sign in with Apple: revoke the user's Apple tokens when the account goes
+  // (App Store Review Guideline 5.1.1(v)). Best effort — never blocks the deletion.
+  if (globalAccountId) {
+    const appleConfig = readAppleConfig(getEnv(event))
+    const appleRows = appleConfig
+      ? (
+          await db
+            .prepare(
+              `SELECT refresh_token FROM global_external_identities
+               WHERE global_account_id = ? AND provider = 'apple' AND refresh_token IS NOT NULL`,
+            )
+            .bind(globalAccountId)
+            .all<{ refresh_token: string }>()
+            .catch(() => ({ results: [] as { refresh_token: string }[] }))
+        ).results || []
+      : []
+    for (const row of appleRows) {
+      await revokeAppleToken(appleConfig!, row.refresh_token).catch(() => false)
+    }
   }
 
   const statements = buildAccountDeletionStatements(userIds, globalAccountId, tables)

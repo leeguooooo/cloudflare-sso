@@ -26,19 +26,23 @@
       </svg>
       <p class="subtitle">{{ subtitle }}</p>
 
-      <!-- OAuth (hidden for native App Store clients — Guideline 4.8) -->
-      <div v-if="!socialHidden" class="oauth">
-        <button type="button" class="obtn obtn-google doodle-box" :disabled="loading" @click="startSocialSignup('google')">
+      <!-- Sign-up providers, decided server side (/api/auth/providers); Apple first (Guideline 4.8). -->
+      <div v-if="anySocial" class="oauth">
+        <button v-if="providers.apple" type="button" class="obtn obtn-apple" :disabled="loading" @click="startSocialSignup('apple')">
+          <svg class="apple-logo" width="17" height="20" viewBox="0 0 814 1000" aria-hidden="true"><path fill="currentColor" d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z" /></svg>
+          <span>{{ t.appleSignup }}</span>
+        </button>
+        <button v-if="providers.google" type="button" class="obtn obtn-google doodle-box" :disabled="loading" @click="startSocialSignup('google')">
           <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1S8.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12S6.8 21.5 12 21.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.06-1.1-.16-1.6z" /></svg>
           {{ t.googleSignup }}
         </button>
-        <button type="button" class="obtn obtn-github doodle-box" :disabled="loading" @click="startSocialSignup('github')">
+        <button v-if="providers.github" type="button" class="obtn obtn-github doodle-box" :disabled="loading" @click="startSocialSignup('github')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.36-2.22-.26-4.55-1.14-4.55-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05a9.4 9.4 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.04 10.04 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" /></svg>
           {{ t.githubSignup }}
         </button>
       </div>
 
-      <div v-if="!socialHidden" class="divider"><span class="dline" /><span class="dor">{{ t.or }}</span><span class="dline" /></div>
+      <div v-if="anySocial" class="divider"><span class="dline" /><span class="dor">{{ t.or }}</span><span class="dline" /></div>
 
       <form class="form" @submit.prevent="handleSubmit">
         <label class="field-label">
@@ -90,14 +94,16 @@ useHead({
   ],
 })
 
-import { AUTH_COPY, clientAppName, detectAuthLocale, formatCopy, hideSocialLogin, isNativeStoreClient, requestedClientId, safeContinuePath, type AuthLocale } from '~/utils/auth-client'
+import { AUTH_COPY, clientAppName, detectAuthLocale, formatCopy, isNativeStoreClient, requestedClientId, safeContinuePath, type AuthLocale, type ProviderAvailability } from '~/utils/auth-client'
 
 const config = useRuntimeConfig()
 const route = useRoute()
 
 // Native App Store clients: email/password only, no social buttons (Guideline 4.8).
 const extraNativeIds = typeof config.public.nativeStoreClientIds === 'string' ? config.public.nativeStoreClientIds : ''
-const socialHidden = computed(() => hideSocialLogin(route.query, extraNativeIds))
+const providers = ref<ProviderAvailability>({ apple: false, google: false, github: false })
+const anySocial = computed(() => providers.value.apple || providers.value.google || providers.value.github)
+const siwaPreview = route.query.siwa === '1'
 const nativeClient = computed(() => isNativeStoreClient(requestedClientId(route.query), extraNativeIds))
 const pageLocale = ref<AuthLocale>(detectAuthLocale(route.query, process.client ? navigator.languages || [navigator.language] : []))
 const t = computed(() => AUTH_COPY[pageLocale.value])
@@ -110,7 +116,7 @@ const loading = ref(false)
 const message = ref('')
 const success = ref(false)
 const showPw = ref(false)
-type SocialProvider = 'google' | 'github'
+type SocialProvider = 'apple' | 'google' | 'github'
 
 const form = reactive({
   email: '',
@@ -201,7 +207,7 @@ const handleSubmit = async () => {
 }
 
 const startSocialSignup = (provider: SocialProvider) => {
-  if (!process.client || loading.value || socialHidden.value) return
+  if (!process.client || loading.value || !providers.value[provider]) return
 
   const clientId = resolveClientId()
   if (!clientId) {
@@ -217,9 +223,21 @@ const startSocialSignup = (provider: SocialProvider) => {
   if (continuePath) {
     query.set('continue', continuePath)
   }
+  if (siwaPreview) query.set('siwa', '1')
 
   window.location.href = `${config.public.apiBase}/auth/oauth/start?${query.toString()}`
 }
+
+onMounted(async () => {
+  const fallback = { apple: false, google: !nativeClient.value, github: !nativeClient.value }
+  try {
+    const query = new URLSearchParams({ client_id: resolveClientId() })
+    if (siwaPreview) query.set('siwa', '1')
+    providers.value = await $fetch<ProviderAvailability>(`${config.public.apiBase}/auth/providers?${query.toString()}`)
+  } catch {
+    providers.value = fallback
+  }
+})
 </script>
 
 <style scoped>
@@ -294,6 +312,14 @@ const startSocialSignup = (provider: SocialProvider) => {
 .subtitle { text-align: center; font-size: 14px; color: var(--color-text-secondary); margin: 12px 0 24px; }
 
 .oauth { display: flex; flex-direction: column; gap: 12px; }
+/* Sign in with Apple — Apple HIG: black button, white logo + title in the system font. */
+.obtn-apple {
+  background: #000 !important; color: #fff !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif !important;
+  font-weight: 600 !important; letter-spacing: -0.01em; border-radius: 13px; min-height: 48px;
+}
+.obtn-apple .apple-logo { flex: none; margin-top: -2px; }
+.obtn-apple:not(:disabled):hover { transform: translateY(-2px) !important; background: #1a1a1a !important; }
 .obtn {
   display: flex; align-items: center; justify-content: center; gap: 11px;
   width: 100%; font-family: inherit; font-weight: 700; font-size: 15px;

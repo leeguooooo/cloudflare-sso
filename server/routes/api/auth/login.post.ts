@@ -77,8 +77,8 @@ export default defineEventHandler(async (event) => {
     const globalAccountId = crypto.randomUUID()
     await db
       .prepare(
-        `INSERT INTO global_accounts (id, email, password_hash, locale, status)
-         VALUES (?, ?, ?, ?, 'active')`,
+        `INSERT INTO global_accounts (id, email, password_hash, locale, status, password_set)
+         VALUES (?, ?, ?, ?, 'active', 1)`,
       )
       .bind(globalAccountId, legacyUser.email, globalPasswordHash, legacyUser.locale || 'en')
       .run()
