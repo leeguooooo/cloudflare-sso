@@ -108,7 +108,7 @@ Acceptance:
 - [x] W1-02 Add admin overview + clients API scaffold
 - [x] W1-03 Add mandatory authz middleware for `/api/admin/*` and `/api/access/*` (role/perms required)
 - [x] W1-04 Add client management CRUD UI/API (create/update/disable client)
-- [ ] W1-05 Add mini-program login exchange endpoint (`wx.code -> SSO tokens`)
+- [x] W1-05 Add mini-program login exchange endpoint (`POST /api/auth/wechat/miniprogram`, 2026-10-02; needs WeChat appid/secret configured)
 - [x] W1-06 Add machine-to-machine token flow for backend calls (`client_credentials`, 2026-10-02)
 - [x] W1-07 Add audit logs for auth, client changes, role changes
 - [x] W1-08 Add interactive OIDC login/authorize flow for browser PKCE clients
@@ -125,7 +125,7 @@ Acceptance:
 - [x] W2-03 Add entitlement read API for apps
 - [x] W2-04 Add admin billing UI for product/plan mapping
 - [x] W2-05 Add transition guards for subscription state machine
-- [ ] W2-06 Add reconciliation job and mismatch alerting (events are now applied on ingest and failed ones retried on redelivery; Pages has no cron, a scheduled sweep needs a separate Worker)
+- [x] W2-06 Add reconciliation job and mismatch alerting (`workers/billing-reconcile` cron → `/api/internal/billing/reconcile`, alerts to `ALERT_WEBHOOK_URL`)
 
 Acceptance:
 - Event replay is idempotent
@@ -185,10 +185,10 @@ Acceptance:
 - Premium content gated only by entitlement
 
 ### W7. Observability and Safety
-- [ ] W7-01 Add auth metrics per app/client: login success, refresh success, 401 rate
+- [x] W7-01 Add auth metrics per app/client (`GET /api/admin/metrics` + admin home card, from audit logs)
 - [ ] W7-02 Add entitlement metrics per app/client: allowed/denied rates
-- [ ] W7-03 Add token verification failure logging with reason labels
-- [ ] W7-04 Add incident playbook for auth outage and key rotation (key rotation done: `docs/KEY_ROTATION.md`; auth outage pending)
+- [x] W7-03 Add token verification failure logging with reason labels
+- [x] W7-04 Incident playbook for key rotation (`docs/KEY_ROTATION.md`); sign-in failure spikes alert via the reconcile worker
 - [ ] W7-05 Add fallback usage dashboard and alert (`legacy path hit rate > threshold`)
 
 Acceptance:

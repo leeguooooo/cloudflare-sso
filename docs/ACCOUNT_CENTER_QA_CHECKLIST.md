@@ -61,3 +61,16 @@
 ## Pass Criteria
 - All items above pass without JS errors.
 - No placeholder texts like `-`, `开发中`, `待接入`, `TODO`.
+
+## Email & password reset (when email sending is configured)
+1. Login page shows "Forgot?" → `/forgot-password`; submitting any email shows the same confirmation.
+2. The mailed link opens `/reset-password`; a new password works, the old one does not, other devices are signed out.
+3. Profile shows 已验证/未验证; "发送验证邮件" → link → badge flips to 已验证.
+4. "更改邮箱" asks for a recent sign-in, mails the NEW address; the email changes only after the link is opened.
+
+## Admin
+1. `/admin/users`: search, disable (user is signed out immediately), enable, sign out everywhere; own row cannot be disabled.
+2. `/admin/billing`: subscriptions and events lists with status filters; transitions only offer valid moves; manual entitlement grant.
+3. `/admin`: sign-in activity card (7 days).
+4. `/admin/access`: roles and permissions load for the tenant from the token.
+

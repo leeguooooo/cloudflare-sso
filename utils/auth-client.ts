@@ -67,6 +67,14 @@ export const hideSocialLogin = (query: QueryLike, extra?: string | readonly stri
 
 export type ProviderAvailability = { apple: boolean; google: boolean; github: boolean }
 
+/** /api/auth/providers response: the per-client buttons plus server capabilities. */
+export type ProviderResponse = ProviderAvailability & {
+  /** Email sending is configured, so "forgot password" can mail a reset link. */
+  password_reset?: boolean
+  /** WeChat website sign-in is configured. */
+  wechat?: boolean
+}
+
 export type ProviderPolicyInput = {
   clientId: string
   /** All four Apple secrets are present. */
@@ -159,6 +167,29 @@ export type AuthCopy = {
   accountExistsBody: string // {provider} {email}
   accountExistsAction: string
   appleUnavailable: string
+  wechat: string
+  wechatSignup: string
+  forgotKicker: string
+  forgotTitle: string
+  forgotSubtitle: string
+  forgotSubmit: string
+  forgotSubmitting: string
+  forgotSent: string
+  tooMany: string
+  backToLogin: string
+  resetKicker: string
+  resetTitle: string
+  resetSubtitle: string
+  newPassword: string
+  confirmPassword: string
+  resetSubmit: string
+  resetSubmitting: string
+  resetDone: string
+  resetInvalid: string
+  requestNew: string
+  passwordTooShort: string
+  passwordMismatch: string
+  genericError: string
 }
 
 export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
@@ -197,6 +228,29 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     accountExistsBody: '{email} is already registered, but this {provider} sign-in is not linked to it yet. For your security we never link accounts automatically. Sign in with the method you used before, then open Account → Sign-in methods and link {provider}.',
     accountExistsAction: 'Sign in with your existing method',
     appleUnavailable: 'Sign in with Apple is not available right now.',
+    wechat: 'Continue with WeChat',
+    wechatSignup: 'Sign up with WeChat',
+    forgotKicker: '✦ password reset ✦',
+    forgotTitle: 'Forgot your password?',
+    forgotSubtitle: 'Enter your account email and we\'ll send you a reset link.',
+    forgotSubmit: 'Send reset link',
+    forgotSubmitting: 'Sending…',
+    forgotSent: 'If that email is registered, a reset link is on its way. It expires in 30 minutes.',
+    tooMany: 'Too many attempts. Please try again later.',
+    backToLogin: '← Back to sign in',
+    resetKicker: '✦ new password ✦',
+    resetTitle: 'Choose a new password',
+    resetSubtitle: 'Use at least 8 characters.',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm new password',
+    resetSubmit: 'Update password',
+    resetSubmitting: 'Updating…',
+    resetDone: 'Password updated. Sign in with your new password.',
+    resetInvalid: 'This reset link is invalid or has expired.',
+    requestNew: 'Request a new link',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    passwordMismatch: 'Passwords do not match.',
+    genericError: 'Something went wrong. Please try again.',
   },
   zh: {
     loginKicker: '✦ account center ✦',
@@ -233,6 +287,29 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     accountExistsBody: '{email} 已经注册过，但还没有绑定这个 {provider} 账号。为了你的账号安全，我们不会自动合并。请先用原来的方式登录，再到「账号中心 → 登录方式」绑定 {provider}。',
     accountExistsAction: '用原来的方式登录',
     appleUnavailable: '暂时无法使用通过 Apple 登录。',
+    wechat: '使用微信登录',
+    wechatSignup: '使用微信注册',
+    forgotKicker: '✦ password reset ✦',
+    forgotTitle: '忘记密码了？',
+    forgotSubtitle: '输入账号邮箱，我们会发一封重置密码的邮件给你。',
+    forgotSubmit: '发送重置邮件',
+    forgotSubmitting: '发送中…',
+    forgotSent: '如果该邮箱已注册，你会收到一封重置邮件（30 分钟内有效）。',
+    tooMany: '尝试次数太多，请稍后再试。',
+    backToLogin: '← 返回登录',
+    resetKicker: '✦ new password ✦',
+    resetTitle: '设置新密码',
+    resetSubtitle: '至少 8 个字符。',
+    newPassword: '新密码',
+    confirmPassword: '再次输入新密码',
+    resetSubmit: '更新密码',
+    resetSubmitting: '更新中…',
+    resetDone: '密码已更新，请用新密码登录。',
+    resetInvalid: '重置链接无效或已过期。',
+    requestNew: '重新申请',
+    passwordTooShort: '密码至少 8 个字符。',
+    passwordMismatch: '两次输入的密码不一致。',
+    genericError: '出了点问题，请稍后再试。',
   },
   ja: {
     loginKicker: '✦ account center ✦',
@@ -269,6 +346,29 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     accountExistsBody: '{email} は登録済みですが、この {provider} アカウントはまだリンクされていません。安全のため、アカウントを自動でリンクすることはありません。以前の方法でサインインしてから、「アカウント → ログイン方法」で {provider} をリンクしてください。',
     accountExistsAction: '以前の方法でサインイン',
     appleUnavailable: '現在 Apple でサインインは利用できません。',
+    wechat: 'WeChat で続ける',
+    wechatSignup: 'WeChat で登録',
+    forgotKicker: '✦ password reset ✦',
+    forgotTitle: 'パスワードをお忘れですか？',
+    forgotSubtitle: 'アカウントのメールアドレスを入力すると、再設定用のリンクをお送りします。',
+    forgotSubmit: '再設定リンクを送信',
+    forgotSubmitting: '送信中…',
+    forgotSent: 'このメールアドレスが登録されていれば、再設定リンクを送信しました（30 分間有効）。',
+    tooMany: '試行回数が多すぎます。しばらくしてからお試しください。',
+    backToLogin: '← サインインに戻る',
+    resetKicker: '✦ new password ✦',
+    resetTitle: '新しいパスワードを設定',
+    resetSubtitle: '8 文字以上で入力してください。',
+    newPassword: '新しいパスワード',
+    confirmPassword: '新しいパスワード（確認）',
+    resetSubmit: 'パスワードを更新',
+    resetSubmitting: '更新中…',
+    resetDone: 'パスワードを更新しました。新しいパスワードでサインインしてください。',
+    resetInvalid: 'この再設定リンクは無効か、有効期限が切れています。',
+    requestNew: 'リンクを再送信',
+    passwordTooShort: 'パスワードは 8 文字以上にしてください。',
+    passwordMismatch: 'パスワードが一致しません。',
+    genericError: '問題が発生しました。もう一度お試しください。',
   },
   ko: {
     loginKicker: '✦ account center ✦',
@@ -305,6 +405,29 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     accountExistsBody: "{email}은(는) 이미 가입되어 있지만 이 {provider} 계정은 아직 연결되지 않았습니다. 보안을 위해 계정을 자동으로 연결하지 않습니다. 이전에 사용한 방법으로 로그인한 다음 '계정 → 로그인 방법'에서 {provider}을(를) 연결하세요.",
     accountExistsAction: '기존 방법으로 로그인',
     appleUnavailable: '지금은 Apple로 로그인을 사용할 수 없습니다.',
+    wechat: 'WeChat으로 계속하기',
+    wechatSignup: 'WeChat으로 가입',
+    forgotKicker: '✦ password reset ✦',
+    forgotTitle: '비밀번호를 잊으셨나요?',
+    forgotSubtitle: '계정 이메일을 입력하면 비밀번호 재설정 링크를 보내 드립니다.',
+    forgotSubmit: '재설정 링크 보내기',
+    forgotSubmitting: '보내는 중…',
+    forgotSent: '가입된 이메일이라면 재설정 링크를 보냈습니다(30분 동안 유효).',
+    tooMany: '시도 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.',
+    backToLogin: '← 로그인으로 돌아가기',
+    resetKicker: '✦ new password ✦',
+    resetTitle: '새 비밀번호 설정',
+    resetSubtitle: '8자 이상 입력하세요.',
+    newPassword: '새 비밀번호',
+    confirmPassword: '새 비밀번호 확인',
+    resetSubmit: '비밀번호 변경',
+    resetSubmitting: '변경 중…',
+    resetDone: '비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요.',
+    resetInvalid: '재설정 링크가 유효하지 않거나 만료되었습니다.',
+    requestNew: '새 링크 요청',
+    passwordTooShort: '비밀번호는 8자 이상이어야 합니다.',
+    passwordMismatch: '비밀번호가 일치하지 않습니다.',
+    genericError: '문제가 발생했습니다. 다시 시도하세요.',
   },
 }
 

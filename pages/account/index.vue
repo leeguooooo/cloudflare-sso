@@ -20,6 +20,7 @@
           <div v-if="appsOpen && isAdmin" class="apps-menu">
             <NuxtLink to="/portal" @click="appsOpen = false">用户门户</NuxtLink>
             <NuxtLink to="/admin" @click="appsOpen = false">管理后台</NuxtLink>
+            <NuxtLink to="/admin/users" @click="appsOpen = false">用户管理</NuxtLink>
             <NuxtLink to="/admin/apps" @click="appsOpen = false">应用管理</NuxtLink>
             <NuxtLink to="/admin/billing" @click="appsOpen = false">订阅管理</NuxtLink>
           </div>
@@ -134,11 +135,61 @@
               placeholder="输入显示名称"
               :disabled="savingProfile"
             />
-            <UiInput
-              :model-value="center?.profile.email || ''"
-              label="邮箱"
-              disabled
-            />
+            <div class="email-field">
+              <UiInput
+                :model-value="center?.profile.email || ''"
+                label="邮箱"
+                disabled
+              />
+              <div class="email-meta">
+                <UiBadge
+                  :variant="center?.profile.email_verified ? 'success' : 'neutral'"
+                  :label="center?.profile.email_verified ? '已验证' : '未验证'"
+                />
+                <UiButton
+                  v-if="center?.email_enabled && !center?.profile.email_verified"
+                  variant="ghost"
+                  size="sm"
+                  :loading="sendingVerify"
+                  @click="sendVerifyEmail"
+                >
+                  发送验证邮件
+                </UiButton>
+                <UiButton
+                  v-if="center?.email_enabled && !emailChangeOpen"
+                  variant="ghost"
+                  size="sm"
+                  @click="openEmailChange"
+                >
+                  更改邮箱
+                </UiButton>
+              </div>
+              <div v-if="emailChangeOpen" class="email-change">
+                <UiInput
+                  v-model="newEmail"
+                  label="新邮箱"
+                  type="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  :disabled="changingEmail"
+                />
+                <p class="block-hint">我们会向新邮箱发送确认链接，点击后才会生效；在此之前仍使用当前邮箱登录。</p>
+                <template v-if="emailChangeReauth">
+                  <p class="merge-refusal">为了安全，更改邮箱前需要你重新登录一次。</p>
+                  <div class="inline-actions">
+                    <UiButton variant="primary" size="sm" @click="reauthenticate('/account?section=profile')">重新登录</UiButton>
+                    <UiButton variant="ghost" size="sm" @click="closeEmailChange">取消</UiButton>
+                  </div>
+                </template>
+                <template v-else>
+                  <p v-if="emailChangeError" class="merge-refusal">{{ emailChangeError }}</p>
+                  <div class="inline-actions">
+                    <UiButton variant="primary" size="sm" :loading="changingEmail" :disabled="!newEmail.trim()" @click="submitEmailChange">发送确认链接</UiButton>
+                    <UiButton variant="ghost" size="sm" :disabled="changingEmail" @click="closeEmailChange">取消</UiButton>
+                  </div>
+                </template>
+              </div>
+            </div>
             <UiInput
               v-model="profileForm.locale"
               label="Locale"
@@ -320,7 +371,7 @@
           <div v-else-if="activeNav === 'privacy'" class="section-stack">
             <div class="stack-block">
               <h3>数据与隐私</h3>
-              <p class="block-hint">下载本页显示的账号信息（个人资料、登录方式、会话、活动记录、订阅），JSON 格式。各应用里的内容（如剪贴板记录）不包含在内。</p>
+              <p class="block-hint">下载你的账号信息：资料、登录方式、会话、活动记录、订阅与权益，JSON 格式。各应用里的内容（如剪贴板记录）不包含在内。</p>
               <div class="summary-grid">
                 <div class="summary-item">
                   <span class="summary-label">邮箱</span>
@@ -489,6 +540,8 @@ type AccountCenterPayload = {
     gaid?: string | null
     client_id?: string | null
     email: string
+    /** A linked provider (or an emailed link) confirmed the address. */
+    email_verified?: boolean
     locale?: string | null
     name?: string | null
     avatar_url?: string | null
@@ -564,6 +617,8 @@ type AccountCenterPayload = {
       updated_at: number
     }>
   }
+  /** Email sending is configured (verification, email change, password reset). */
+  email_enabled?: boolean
 }
 
 type RefreshPayload = {
@@ -600,6 +655,12 @@ const unlinkingProvider = ref('')
 const revokingSessionId = ref('')
 const revokingBulk = ref('')
 const exportingData = ref(false)
+const sendingVerify = ref(false)
+const emailChangeOpen = ref(false)
+const emailChangeReauth = ref(false)
+const newEmail = ref('')
+const changingEmail = ref(false)
+const emailChangeError = ref('')
 
 type DeleteStep = 'idle' | 'blocked' | 'reauth' | 'confirm'
 const deleteStep = ref<DeleteStep>('idle')
@@ -989,21 +1050,96 @@ const populateProfileForm = () => {
   profileForm.locale = center.value?.profile.locale || 'en'
 }
 
+const EMAIL_LINK_ERRORS: Record<string, string> = {
+  invalid_or_expired_token: '链接无效或已过期，请重新发送。',
+  'Email already in use': '这个邮箱已被其他账号使用。',
+}
+
 const consumeQueryNotice = async () => {
-  const linked = typeof route.query.linked === 'string' ? route.query.linked : ''
-  const linkError = typeof route.query.link_error === 'string' ? route.query.link_error : ''
+  const queryText = (key: string) => (typeof route.query[key] === 'string' ? String(route.query[key]) : '')
+  const linked = queryText('linked')
+  const linkError = queryText('link_error')
+  const emailVerified = queryText('email_verified')
+  const emailChanged = queryText('email_changed')
+  const emailError = queryText('email_error')
   if (linked) {
     notice.value = `已绑定 ${providerName(linked)}`
   }
   if (linkError) {
     notice.value = linkError === 'reauth_required' ? explainError({ message: linkError }, '') : `绑定失败：${linkError}`
   }
-  if (!linked && !linkError) return
+  if (emailVerified) notice.value = '邮箱已验证'
+  if (emailChanged) notice.value = `邮箱已更改为 ${center.value?.profile.email || '新邮箱'}`
+  if (emailError) notice.value = `邮箱确认失败：${EMAIL_LINK_ERRORS[emailError] || emailError}`
+  if (!linked && !linkError && !emailVerified && !emailChanged && !emailError) return
 
   const nextQuery = { ...route.query }
-  delete nextQuery.linked
-  delete nextQuery.link_error
+  for (const key of ['linked', 'link_error', 'email_verified', 'email_changed', 'email_error']) delete nextQuery[key]
   await router.replace({ path: route.path, query: nextQuery })
+}
+
+const isThrottled = (err: any) => Number(err?.status || err?.statusCode || err?.response?.status || 0) === 429
+
+const sendVerifyEmail = async () => {
+  sendingVerify.value = true
+  notice.value = ''
+  try {
+    const data = await withAuthFetch<{ ok: boolean; sent_to?: string }>(`${config.public.apiBase}/account/email/verify`, {
+      method: 'POST',
+      body: {},
+    })
+    notice.value = `验证邮件已发送到 ${data?.sent_to || center.value?.profile.email || '你的邮箱'}，请在邮件里点击链接完成验证`
+  } catch (err: any) {
+    notice.value = isThrottled(err) ? '发送太频繁了，请稍后再试' : explainError(err, '发送验证邮件失败，请稍后再试')
+  } finally {
+    sendingVerify.value = false
+  }
+}
+
+const openEmailChange = () => {
+  emailChangeOpen.value = true
+  emailChangeReauth.value = false
+  emailChangeError.value = ''
+  newEmail.value = ''
+}
+
+const closeEmailChange = () => {
+  emailChangeOpen.value = false
+  emailChangeReauth.value = false
+  emailChangeError.value = ''
+  newEmail.value = ''
+}
+
+const submitEmailChange = async () => {
+  const target = newEmail.value.trim()
+  if (!target) return
+  if (target.toLowerCase() === (center.value?.profile.email || '').toLowerCase()) {
+    emailChangeError.value = '新邮箱和当前邮箱相同'
+    return
+  }
+  changingEmail.value = true
+  emailChangeError.value = ''
+  try {
+    const data = await withAuthFetch<{ ok: boolean; sent_to?: string }>(`${config.public.apiBase}/account/email/change`, {
+      method: 'POST',
+      body: { new_email: target },
+    })
+    closeEmailChange()
+    notice.value = `已向 ${data?.sent_to || target} 发送确认链接，点击后生效`
+  } catch (err: any) {
+    const status = Number(err?.status || err?.statusCode || err?.response?.status || 0)
+    if (isReauthError(err)) {
+      emailChangeReauth.value = true
+    } else if (status === 409) {
+      emailChangeError.value = '这个邮箱已被其他账号使用'
+    } else if (status === 429) {
+      emailChangeError.value = '发送太频繁了，请稍后再试'
+    } else {
+      emailChangeError.value = explainError(err, '更改邮箱失败，请稍后再试')
+    }
+  } finally {
+    changingEmail.value = false
+  }
 }
 
 const loadCenter = async () => {
@@ -1292,10 +1428,12 @@ const unlinkIdentity = async (row: MethodRow) => {
 }
 
 const downloadExport = async () => {
-  if (!center.value || !process.client) return
+  if (!process.client) return
   exportingData.value = true
   try {
-    const blob = new Blob([JSON.stringify(center.value, null, 2)], {
+    // The server assembles the full export (more than this page shows).
+    const data = await withAuthFetch<Record<string, unknown>>(`${config.public.apiBase}/account/export`)
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: 'application/json;charset=utf-8',
     })
     const url = URL.createObjectURL(blob)
@@ -1308,6 +1446,8 @@ const downloadExport = async () => {
     a.remove()
     URL.revokeObjectURL(url)
     notice.value = '数据导出已开始'
+  } catch (err: any) {
+    notice.value = explainError(err, '导出失败，请稍后再试')
   } finally {
     exportingData.value = false
   }
@@ -1372,6 +1512,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .merge-block { border: 2px solid var(--color-primary-600); border-radius: 14px; padding: 14px 16px; }
 .merge-list { margin: 8px 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--color-text-secondary); }
+.email-field { display: flex; flex-direction: column; gap: 8px; }
+.email-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.email-change { display: flex; flex-direction: column; gap: 8px; border: 1px dashed var(--color-border); border-radius: 12px; padding: 12px; }
 .danger-block { border: 2px solid var(--color-danger, #c5221f); border-radius: 14px; padding: 14px 16px; }
 .merge-refusal { color: var(--color-danger, #c5221f); font-size: 13px; font-weight: 600; margin: 6px 0; }
 .reauth-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--color-text-secondary); background: var(--color-primary-50); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }

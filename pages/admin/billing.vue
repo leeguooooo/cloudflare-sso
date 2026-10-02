@@ -3,12 +3,12 @@
     <div class="page-header">
       <div class="header-text">
         <h2>Billing & Subscriptions</h2>
-        <p>Manage product catalog, pricing plans, and entitlement configurations.</p>
+        <p>Manage the product catalog and pricing plans, see subscriptions and billing events, and grant entitlements by hand.</p>
       </div>
       <div class="header-controls">
         <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
         <UiCheckbox v-model="includeArchived" label="Show archived" class="checkbox-control" />
-        <UiButton variant="ghost" @click="loadCatalog" :loading="loading">
+        <UiButton variant="ghost" @click="refreshAll" :loading="loading">
           Refresh
         </UiButton>
       </div>
@@ -183,11 +183,132 @@
           </template>
         </UiTableShell>
       </UiCard>
+
+      <UiCard class="info-card wide-card">
+        <template #header>
+          <div class="card-header">
+            <h3>Subscriptions</h3>
+            <div class="card-tools">
+              <UiSelect v-model="subscriptionStatus" class="filter-select">
+                <option value="">All statuses</option>
+                <option v-for="status in SUBSCRIPTION_STATUSES" :key="status" :value="status">{{ status }}</option>
+              </UiSelect>
+              <UiBadge variant="info" :label="String(subscriptions.length)" />
+            </div>
+          </div>
+        </template>
+
+        <UiTableShell :columns="subscriptionColumns" :rows="subscriptions" empty-text="No subscriptions for this tenant.">
+          <template #cell="{ row, column }">
+            <template v-if="column.key === 'user'">
+              <span class="font-medium">{{ asSubscription(row).email || asSubscription(row).user_id }}</span>
+            </template>
+            <template v-else-if="column.key === 'plan'">
+              <span>{{ asSubscription(row).plan_name || asSubscription(row).plan_key }}</span>
+              <div class="text-xs muted">{{ asSubscription(row).plan_key }}</div>
+            </template>
+            <template v-else-if="column.key === 'provider'">
+              <span class="text-xs">{{ asSubscription(row).provider }}</span>
+              <div v-if="asSubscription(row).provider_ref" class="text-xs muted">{{ asSubscription(row).provider_ref }}</div>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiBadge :variant="subscriptionBadge(asSubscription(row).status)" :label="asSubscription(row).status" />
+              <div v-if="asSubscription(row).cancel_at_period_end" class="text-xs muted">cancels at period end</div>
+            </template>
+            <template v-else-if="column.key === 'period_end'">
+              <span class="text-xs">{{ formatTime(asSubscription(row).current_period_end) }}</span>
+            </template>
+            <template v-else-if="column.key === 'started_at'">
+              <span class="text-xs">{{ formatTime(asSubscription(row).started_at) }}</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="table-actions">
+                <UiButton
+                  v-for="next in subscriptionActions(asSubscription(row).status)"
+                  :key="next.status"
+                  variant="ghost"
+                  size="sm"
+                  :class="{ 'text-danger': next.status === 'canceled' || next.status === 'expired' }"
+                  :disabled="transitioningId === asSubscription(row).id"
+                  @click="transitionSubscription(asSubscription(row), next.status)"
+                >
+                  {{ next.label }}
+                </UiButton>
+                <span v-if="!subscriptionActions(asSubscription(row).status).length" class="text-xs muted">—</span>
+              </div>
+            </template>
+          </template>
+        </UiTableShell>
+      </UiCard>
+
+      <UiCard class="info-card wide-card">
+        <template #header>
+          <div class="card-header">
+            <h3>Billing Events</h3>
+            <div class="card-tools">
+              <UiSelect v-model="eventStatus" class="filter-select">
+                <option value="">All statuses</option>
+                <option v-for="status in EVENT_STATUSES" :key="status" :value="status">{{ status }}</option>
+              </UiSelect>
+              <UiBadge variant="info" :label="String(events.length)" />
+            </div>
+          </div>
+        </template>
+
+        <UiTableShell :columns="eventColumns" :rows="events" empty-text="No billing events for this filter.">
+          <template #cell="{ row, column }">
+            <template v-if="column.key === 'event'">
+              <span class="font-medium">{{ asEvent(row).event_type }}</span>
+              <div class="text-xs muted">{{ asEvent(row).provider }} · {{ asEvent(row).event_id }}</div>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiBadge :variant="eventBadge(asEvent(row).status)" :label="asEvent(row).status" />
+              <div v-if="asEvent(row).error_message" class="text-xs event-error">{{ asEvent(row).error_message }}</div>
+            </template>
+            <template v-else-if="column.key === 'subscription_id'">
+              <span class="text-xs muted">{{ asEvent(row).subscription_id || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'occurred_at'">
+              <span class="text-xs">{{ formatTime(asEvent(row).occurred_at) }}</span>
+            </template>
+            <template v-else-if="column.key === 'processed_at'">
+              <span class="text-xs">{{ formatTime(asEvent(row).processed_at) }}</span>
+            </template>
+          </template>
+        </UiTableShell>
+      </UiCard>
+
+      <UiCard class="info-card" title="Grant Entitlement" subtitle="Give a user an entitlement outside any plan (support, promo, comp). Recorded as a manual billing event.">
+        <form @submit.prevent="grantEntitlement" class="admin-form">
+          <div class="form-grid">
+            <UiInput v-model="grantForm.user_id" label="User ID" placeholder="tenant user id" required />
+            <UiInput v-model="grantForm.entitlement_key" label="Entitlement Key" placeholder="paste.pro" required />
+            <UiInput v-model="grantForm.valid_to" label="Valid until (optional)" type="date" />
+          </div>
+          <UiAlert v-if="grantMessage" :variant="grantFailed ? 'danger' : 'success'" :message="grantMessage" class="error-alert" />
+          <div class="form-actions">
+            <UiButton type="submit" variant="primary" :loading="granting">Grant</UiButton>
+          </div>
+        </form>
+      </UiCard>
     </div>
   </div>
 </template>
 
 <style scoped>
+.card-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-select {
+  min-width: 140px;
+}
+
+.muted { color: #5f6368; }
+.event-error { color: #d93025; max-width: 320px; white-space: normal; }
+
 .billing-page {
   display: flex;
   flex-direction: column;
@@ -434,6 +555,212 @@ const splitEntitlementKeys = (raw: string) => {
     .filter(Boolean)
 }
 
+type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired'
+
+type SubscriptionItem = {
+  id: string
+  user_id: string
+  email: string | null
+  plan_key: string
+  plan_name: string | null
+  provider: string
+  provider_ref: string | null
+  status: SubscriptionStatus
+  started_at: number
+  current_period_end: number | null
+  cancel_at_period_end: boolean | number
+  canceled_at: number | null
+  updated_at: number
+}
+
+type EventItem = {
+  id: string
+  provider: string
+  event_id: string
+  event_type: string
+  status: 'pending' | 'applied' | 'ignored' | 'failed'
+  error_message: string | null
+  occurred_at: number
+  processed_at: number | null
+  subscription_id: string | null
+}
+
+const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['trialing', 'active', 'past_due', 'canceled', 'expired']
+const EVENT_STATUSES: EventItem['status'][] = ['pending', 'applied', 'ignored', 'failed']
+
+/** Mirrors the DB transition guard (trg_subscriptions_status_transition_guard). */
+const TRANSITIONS: Record<SubscriptionStatus, Array<{ status: SubscriptionStatus; label: string }>> = {
+  trialing: [
+    { status: 'active', label: 'Activate' },
+    { status: 'past_due', label: 'Mark past due' },
+    { status: 'canceled', label: 'Cancel' },
+    { status: 'expired', label: 'Expire' },
+  ],
+  active: [
+    { status: 'past_due', label: 'Mark past due' },
+    { status: 'canceled', label: 'Cancel' },
+    { status: 'expired', label: 'Expire' },
+  ],
+  past_due: [
+    { status: 'active', label: 'Reactivate' },
+    { status: 'canceled', label: 'Cancel' },
+    { status: 'expired', label: 'Expire' },
+  ],
+  canceled: [],
+  expired: [],
+}
+
+const subscriptionColumns = [
+  { key: 'user', label: 'User' },
+  { key: 'plan', label: 'Plan' },
+  { key: 'provider', label: 'Provider' },
+  { key: 'status', label: 'Status' },
+  { key: 'started_at', label: 'Started' },
+  { key: 'period_end', label: 'Period end' },
+  { key: 'actions', label: 'Actions' },
+]
+
+const eventColumns = [
+  { key: 'event', label: 'Event' },
+  { key: 'status', label: 'Status' },
+  { key: 'subscription_id', label: 'Subscription' },
+  { key: 'occurred_at', label: 'Occurred' },
+  { key: 'processed_at', label: 'Processed' },
+]
+
+const subscriptions = ref<SubscriptionItem[]>([])
+const subscriptionStatus = ref('')
+const transitioningId = ref('')
+const events = ref<EventItem[]>([])
+const eventStatus = ref('')
+const granting = ref(false)
+const grantMessage = ref('')
+const grantFailed = ref(false)
+const grantForm = reactive({
+  user_id: '',
+  entitlement_key: '',
+  valid_to: '',
+})
+
+const asSubscription = (row: Record<string, unknown>) => row as unknown as SubscriptionItem
+const asEvent = (row: Record<string, unknown>) => row as unknown as EventItem
+const subscriptionActions = (status: SubscriptionStatus) => TRANSITIONS[status] || []
+const formatTime = (seconds: number | null | undefined) => (seconds ? new Date(seconds * 1000).toLocaleString() : '—')
+const errorText = (err: any, fallback: string) => err?.data?.statusMessage || err?.data?.message || err?.message || fallback
+
+const subscriptionBadge = (status: SubscriptionStatus) => {
+  if (status === 'active' || status === 'trialing') return 'success'
+  if (status === 'past_due') return 'info'
+  return 'danger'
+}
+
+const eventBadge = (status: EventItem['status']) => {
+  if (status === 'applied') return 'success'
+  if (status === 'failed') return 'danger'
+  if (status === 'pending') return 'info'
+  return 'neutral'
+}
+
+const loadSubscriptions = async () => {
+  if (!tenantId.value) return
+  try {
+    const data = await $fetch<{ subscriptions: SubscriptionItem[] }>(`${config.public.apiBase}/billing/subscriptions`, {
+      query: { tenant_id: tenantId.value, status: subscriptionStatus.value || undefined, limit: 50 },
+      headers: getAuthHeaders(),
+    })
+    subscriptions.value = data.subscriptions || []
+  } catch (err: any) {
+    error.value = errorText(err, 'Load subscriptions failed')
+  }
+}
+
+const loadEvents = async () => {
+  if (!tenantId.value) return
+  try {
+    const data = await $fetch<{ events: EventItem[] }>(`${config.public.apiBase}/billing/events`, {
+      query: { tenant_id: tenantId.value, status: eventStatus.value || undefined, limit: 50 },
+      headers: getAuthHeaders(),
+    })
+    events.value = data.events || []
+  } catch (err: any) {
+    error.value = errorText(err, 'Load billing events failed')
+  }
+}
+
+watch(subscriptionStatus, () => void loadSubscriptions())
+watch(eventStatus, () => void loadEvents())
+
+const refreshAll = async () => {
+  await loadCatalog()
+  await Promise.all([loadSubscriptions(), loadEvents()])
+}
+
+const transitionSubscription = async (subscription: SubscriptionItem, status: SubscriptionStatus) => {
+  const who = subscription.email || subscription.user_id
+  if (!process.client || !window.confirm(`Change ${who}'s ${subscription.plan_key} subscription to "${status}"?`)) return
+  transitioningId.value = subscription.id
+  error.value = ''
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    await $fetch(`${config.public.apiBase}/billing/subscriptions/transition`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: {
+        tenant_id: tenantId.value,
+        subscription_id: subscription.id,
+        status,
+        ...(status === 'canceled' ? { canceled_at: now } : {}),
+      },
+    })
+    await Promise.all([loadSubscriptions(), loadEvents()])
+  } catch (err: any) {
+    error.value = errorText(err, 'Subscription update failed')
+  } finally {
+    transitioningId.value = ''
+  }
+}
+
+const grantEntitlement = async () => {
+  granting.value = true
+  grantMessage.value = ''
+  grantFailed.value = false
+  try {
+    const validTo = grantForm.valid_to ? Math.floor(new Date(`${grantForm.valid_to}T23:59:59`).getTime() / 1000) : undefined
+    const result = await $fetch<{ event?: { status: string; error_message?: string | null } }>(
+      `${config.public.apiBase}/billing/events/ingest`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: {
+          tenant_id: tenantId.value,
+          provider: 'manual',
+          event_id: `manual-${crypto.randomUUID()}`,
+          event_type: 'entitlement.granted',
+          payload: {
+            user_id: grantForm.user_id.trim(),
+            entitlement_key: grantForm.entitlement_key.trim(),
+            ...(validTo ? { valid_to: validTo } : {}),
+          },
+        },
+      },
+    )
+    if (result?.event?.status === 'failed') {
+      grantFailed.value = true
+      grantMessage.value = result.event.error_message || 'Grant failed'
+    } else {
+      grantMessage.value = `Granted ${grantForm.entitlement_key.trim()}`
+      grantForm.entitlement_key = ''
+      grantForm.valid_to = ''
+    }
+    await loadEvents()
+  } catch (err: any) {
+    grantFailed.value = true
+    grantMessage.value = errorText(err, 'Grant failed')
+  } finally {
+    granting.value = false
+  }
+}
+
 const productKeyById = (productId: string) => {
   const product = products.value.find((item) => item.id === productId)
   return product ? product.product_key : productId
@@ -654,6 +981,6 @@ onMounted(() => {
     return
   }
   tenantId.value = storedTokenTenantId()
-  loadCatalog()
+  void refreshAll()
 })
 </script>

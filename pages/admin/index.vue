@@ -5,7 +5,7 @@
         <h2 class="section-title">Overview</h2>
         <div class="tenant-selector">
           <UiInput v-model="tenantId" label="Tenant ID" class="tenant-input" />
-          <UiButton variant="ghost" @click="loadOverview" :loading="loading">
+          <UiButton variant="ghost" @click="refresh" :loading="loading">
             Refresh
           </UiButton>
         </div>
@@ -23,6 +23,49 @@
         </template>
       </UiCard>
     </div>
+
+    <UiCard class="metrics-card">
+      <template #header>
+        <div class="metrics-header">
+          <h3>Sign-in activity · last {{ metrics.days }} days</h3>
+          <span v-if="metricsError" class="metrics-error">{{ metricsError }}</span>
+        </div>
+      </template>
+
+      <div class="metric-tiles">
+        <div v-for="tile in metricTiles" :key="tile.key" class="metric-tile">
+          <span class="stat-label">{{ tile.label }}</span>
+          <span class="metric-value" :class="{ 'metric-bad': tile.key === 'login_failure' && tile.value > 0 }">{{ tile.value }}</span>
+        </div>
+      </div>
+
+      <div v-if="metrics.daily.length" class="daily-table">
+        <div class="daily-row daily-head">
+          <span>Day</span>
+          <span>Sign-ins</span>
+          <span>Failed</span>
+          <span>Tokens</span>
+          <span>Refreshes</span>
+        </div>
+        <div v-for="day in metrics.daily" :key="day.day" class="daily-row">
+          <span class="day-label">{{ day.day }}</span>
+          <span class="bar-cell"><span class="bar bar-ok" :style="barStyle(day.login_success)" />{{ day.login_success }}</span>
+          <span class="bar-cell"><span class="bar bar-bad" :style="barStyle(day.login_failure)" />{{ day.login_failure }}</span>
+          <span class="bar-cell"><span class="bar" :style="barStyle(day.token_issued)" />{{ day.token_issued }}</span>
+          <span class="bar-cell"><span class="bar" :style="barStyle(day.refresh)" />{{ day.refresh }}</span>
+        </div>
+      </div>
+      <p v-else class="metrics-empty">No sign-in activity recorded in this window.</p>
+
+      <div v-if="metrics.by_client.length" class="client-list">
+        <h4>By application</h4>
+        <div v-for="client in metrics.by_client" :key="client.client_id" class="client-row">
+          <span class="client-id">{{ client.client_id }}</span>
+          <span>{{ client.token_issued }} tokens</span>
+          <span>{{ client.refresh }} refreshes</span>
+        </div>
+      </div>
+    </UiCard>
 
     <div class="management-grid">
       <UiCard class="management-card">
@@ -89,11 +132,41 @@ const overview = ref<OverviewResponse>({
 })
 
 const stats = computed(() => [
-  { label: 'Active Users', value: overview.value.users, link: '/admin/access' },
+  { label: 'Active Users', value: overview.value.users, link: '/admin/users' },
   { label: 'OIDC Clients', value: overview.value.clients, link: '/admin/apps' },
   { label: 'Custom Roles', value: overview.value.roles, link: '/admin/access' },
   { label: 'Active Sessions', value: overview.value.active_sessions, link: '' },
 ])
+
+type MetricsResponse = {
+  days: number
+  totals: { login_success: number; login_failure: number; token_issued: number; refresh: number; logout: number; revoked: number }
+  daily: Array<{ day: string; login_success: number; login_failure: number; token_issued: number; refresh: number }>
+  by_client: Array<{ client_id: string; token_issued: number; refresh: number }>
+}
+
+const metricsError = ref('')
+const metrics = ref<MetricsResponse>({
+  days: 7,
+  totals: { login_success: 0, login_failure: 0, token_issued: 0, refresh: 0, logout: 0, revoked: 0 },
+  daily: [],
+  by_client: [],
+})
+
+const metricTiles = computed(() => [
+  { key: 'login_success', label: 'Sign-ins', value: metrics.value.totals.login_success },
+  { key: 'login_failure', label: 'Failed sign-ins', value: metrics.value.totals.login_failure },
+  { key: 'token_issued', label: 'Tokens issued', value: metrics.value.totals.token_issued },
+  { key: 'refresh', label: 'Refreshes', value: metrics.value.totals.refresh },
+  { key: 'logout', label: 'Sign-outs', value: metrics.value.totals.logout },
+  { key: 'revoked', label: 'Revocations', value: metrics.value.totals.revoked },
+])
+
+/** Bars share one scale across every column so days and series compare honestly. */
+const maxDaily = computed(() =>
+  Math.max(1, ...metrics.value.daily.flatMap((d) => [d.login_success, d.login_failure, d.token_issued, d.refresh])),
+)
+const barStyle = (value: number) => ({ width: `${Math.round((value / maxDaily.value) * 100)}%` })
 
 const getAuthHeaders = () => {
   if (!process.client) return {}
@@ -114,13 +187,30 @@ const loadOverview = async () => {
   }
 }
 
+const loadMetrics = async () => {
+  if (!tenantId.value) return
+  metricsError.value = ''
+  try {
+    metrics.value = await $fetch<MetricsResponse>(`${config.public.apiBase}/admin/metrics`, {
+      query: { tenant_id: tenantId.value, days: 7 },
+      headers: getAuthHeaders(),
+    })
+  } catch (err: any) {
+    metricsError.value = err?.data?.statusMessage || err?.data?.message || err?.message || 'Failed to load metrics'
+  }
+}
+
+const refresh = async () => {
+  await Promise.all([loadOverview(), loadMetrics()])
+}
+
 onMounted(() => {
   if (process.client && !localStorage.getItem('sso_access_token')) {
     navigateTo('/login')
     return
   }
   tenantId.value = storedTokenTenantId()
-  loadOverview()
+  void refresh()
 })
 </script>
 
@@ -195,6 +285,121 @@ onMounted(() => {
   text-decoration: underline;
 }
 
+.metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.metrics-header h3,
+.client-list h4 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #1f1f1f;
+  margin: 0;
+}
+
+.client-list h4 {
+  font-size: 0.875rem;
+  margin: 20px 0 8px;
+}
+
+.metrics-error {
+  font-size: 0.75rem;
+  color: #d93025;
+}
+
+.metric-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  color: #1a73e8;
+}
+
+.metric-value.metric-bad {
+  color: #d93025;
+}
+
+.daily-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.daily-row {
+  display: grid;
+  grid-template-columns: 110px repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.daily-head {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #5f6368;
+}
+
+.day-label {
+  color: #444746;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  display: inline-block;
+  height: 8px;
+  min-width: 2px;
+  max-width: 70%;
+  border-radius: 4px;
+  background: #8ab4f8;
+}
+
+.bar-ok { background: #81c995; }
+.bar-bad { background: #f28b82; }
+
+.metrics-empty {
+  font-size: 0.875rem;
+  color: #5f6368;
+}
+
+.client-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) 1fr 1fr;
+  gap: 12px;
+  font-size: 0.8125rem;
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.client-id {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .management-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -241,6 +446,11 @@ onMounted(() => {
 }
 
 @media (max-width: 600px) {
+  .daily-row {
+    grid-template-columns: 80px repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
   .header-content {
     flex-direction: column;
     align-items: flex-start;

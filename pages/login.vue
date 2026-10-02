@@ -65,6 +65,10 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.36-2.22-.26-4.55-1.14-4.55-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05a9.4 9.4 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.04 10.04 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" /></svg>
           {{ t.github }}
         </button>
+        <button v-if="providers.wechat" type="button" class="obtn obtn-wechat" :disabled="loading" @click="startSocialLogin('wechat')">
+          <svg width="22" height="20" viewBox="0 0 24 22" aria-hidden="true"><path fill="#fff" d="M8.7 1C4.1 1 .4 4.1.4 8c0 2.2 1.2 4.2 3.1 5.5l-.8 2.4 2.8-1.4c1 .3 2.1.5 3.2.5h.6a6.4 6.4 0 0 1-.3-1.9c0-3.9 3.7-7 8.3-7h.5C17.1 3.1 13.3 1 8.7 1zM5.9 6.9a1 1 0 1 1 0-2.1 1 1 0 0 1 0 2.1zm5.6 0a1 1 0 1 1 0-2.1 1 1 0 0 1 0 2.1zM23.6 13.2c0-3.3-3.2-5.9-7.2-5.9s-7.2 2.6-7.2 5.9 3.2 5.9 7.2 5.9c.9 0 1.7-.1 2.5-.4l2.3 1.2-.6-2c1.8-1.1 3-2.8 3-4.7zm-9.5-1a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8zm4.7 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8z" /></svg>
+          {{ t.wechat }}
+        </button>
       </div>
 
       <!-- divider -->
@@ -82,7 +86,7 @@
         <label class="field-label">
           <span class="flabel flabel-row">
             <span>{{ t.password }}</span>
-            <NuxtLink v-if="!nativeClient" to="/help#password" class="forgot">{{ t.forgot }}</NuxtLink>
+            <NuxtLink v-if="!nativeClient" :to="forgotPath" class="forgot">{{ t.forgot }}</NuxtLink>
           </span>
           <span class="field doodle-box field-pw">
             <input v-model="form.password" :type="showPw ? 'text' : 'password'" required placeholder="••••••••" autocomplete="current-password" :disabled="loading" />
@@ -126,7 +130,7 @@ useHead({
 })
 
 import { getInAppBrowserLabel, isInAppBrowser } from '~/utils/in-app-browser'
-import { AUTH_COPY, clientAppName, detectAuthLocale, formatCopy, isNativeStoreClient, requestedClientId, safeContinuePath, type AuthLocale, type ProviderAvailability } from '~/utils/auth-client'
+import { AUTH_COPY, clientAppName, detectAuthLocale, formatCopy, isNativeStoreClient, requestedClientId, safeContinuePath, type AuthLocale, type ProviderResponse } from '~/utils/auth-client'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -140,8 +144,8 @@ const rememberedEmail = ref('')
 
 const extraNativeIds = typeof config.public.nativeStoreClientIds === 'string' ? config.public.nativeStoreClientIds : ''
 // Nothing social shows until the server answered which providers this client gets.
-const providers = ref<ProviderAvailability>({ apple: false, google: false, github: false })
-const anySocial = computed(() => providers.value.apple || providers.value.google || providers.value.github)
+const providers = ref<ProviderResponse>({ apple: false, google: false, github: false })
+const anySocial = computed(() => providers.value.apple || providers.value.google || providers.value.github || Boolean(providers.value.wechat))
 const siwaPreview = route.query.siwa === '1'
 const nativeClient = computed(() => isNativeStoreClient(requestedClientId(route.query), extraNativeIds))
 const pageLocale = ref<AuthLocale>(detectAuthLocale(route.query, process.client ? navigator.languages || [navigator.language] : []))
@@ -159,7 +163,7 @@ const inAppLabel = ref('')
 const bannerDismissed = ref(false)
 const linkCopied = ref(false)
 const showInAppBanner = computed(() => inApp.value && !bannerDismissed.value)
-type SocialProvider = 'apple' | 'google' | 'github'
+type SocialProvider = 'apple' | 'google' | 'github' | 'wechat'
 
 const PROVIDER_NAMES: Record<string, string> = { apple: 'Apple', google: 'Google', github: 'GitHub' }
 const accountExists = ref(false)
@@ -179,7 +183,7 @@ const loadProviders = async () => {
   try {
     const query = new URLSearchParams({ client_id: resolveClientId() })
     if (siwaPreview) query.set('siwa', '1')
-    providers.value = await $fetch<ProviderAvailability>(`${config.public.apiBase}/auth/providers?${query.toString()}`)
+    providers.value = await $fetch<ProviderResponse>(`${config.public.apiBase}/auth/providers?${query.toString()}`)
   } catch {
     providers.value = fallback
   }
@@ -225,6 +229,19 @@ const registerPath = computed(() => {
   }
   const queryString = query.toString()
   return queryString ? `/register?${queryString}` : '/register'
+})
+
+// With email sending configured the link starts a reset by mail; otherwise it explains the alternatives.
+const forgotPath = computed(() => {
+  if (!providers.value.password_reset) return '/help#password'
+  const query = new URLSearchParams()
+  const queryClientId = typeof route.query.client_id === 'string' ? route.query.client_id.trim() : ''
+  if (queryClientId) query.set('client_id', queryClientId)
+  const continuePath = resolveContinuePath()
+  if (continuePath) query.set('continue', continuePath)
+  if (form.email) query.set('email', form.email)
+  const queryString = query.toString()
+  return queryString ? `/forgot-password?${queryString}` : '/forgot-password'
 })
 
 const resolveClientId = () => {
@@ -517,6 +534,8 @@ onMounted(() => {
 .obtn:disabled { opacity: .6; cursor: default; }
 .obtn-google { background: var(--color-surface); color: var(--color-text-primary); }
 .obtn-github { background: var(--color-text-primary); color: var(--color-surface); }
+.obtn-wechat { background: #07c160; color: #fff; min-height: 48px; }
+.obtn-wechat:not(:disabled):hover { transform: translateY(-2px); background: #06ad56; }
 .obtn:not(:disabled):hover { transform: translateY(-2px) rotate(-1deg); }
 .obtn-github:not(:disabled):hover { transform: translateY(-2px) rotate(1deg); }
 .obtn:active { transform: translateY(0) rotate(0); }

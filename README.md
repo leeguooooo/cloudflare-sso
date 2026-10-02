@@ -12,10 +12,14 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - i18n：内置 EN / 简体，登录/注册页可切换
 - 部署：一条命令部署到 Cloudflare Pages，支持多账号 wrangler 切换
 
-## TODO
-- [ ] WeChat OAuth 登录/绑定（当前入口保留为 TODO，后端返回未启用）
-- [ ] 邮箱验证与找回密码（需要先选定发信服务；`email_tokens` 表已预留）
-- [ ] 小程序 `wx.code` 换 token（W1-05）
+## 需要配置才会启用的功能
+| 功能 | 需要的配置 | 未配置时 |
+| --- | --- | --- |
+| 找回密码、邮箱验证、更换邮箱 | secret `RESEND_API_KEY` + 变量 `EMAIL_FROM`（本地可用 `EMAIL_TRANSPORT=log`） | 入口隐藏，接口返回 503 |
+| 微信扫码登录 | `WECHAT_WEB_APP_ID` + secret `WECHAT_WEB_APP_SECRET`（微信开放平台网站应用） | 按钮隐藏 |
+| 微信小程序登录 | `WECHAT_MINIPROGRAMS='{"<client_id>":{"appid":"wx…"}}'` + secret `WECHAT_MP_SECRET_<APPID>` | 接口返回 400 |
+| 密码 pepper 迁移 | secret `PASSWORD_PEPPER_V2` | 新密码继续用旧 pepper |
+| 账单对账定时任务 | Pages secret `RECONCILE_SECRET` + 部署 `workers/billing-reconcile` | 不对账 |
 
 ## 新增（统一登录简化方案，Phase 1）
 - 全局账号模型：`global_accounts` 作为统一凭据源，`users.global_account_id` 做租户映射
@@ -40,6 +44,16 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - 注销：`GET /logout?id_token_hint=…&post_logout_redirect_uri=…&state=…`，回跳地址必须与该 client 某个已注册 `redirect_uri` 同源；或者 `POST /revoke` 吊销 refresh/access token。
 - `/userinfo` 会检查会话是否仍有效：用户登出或会话被吊销后，用 `/userinfo` 校验的应用立刻感知。
 - 签名 key 用 `kid` 区分，验签方请按 `kid` 从 `/jwks.json` 取 key，并在遇到未知 `kid` 时重新拉取 JWKS。
+
+## 账号与登录接口（补充）
+- `POST /api/auth/password/forgot { email, client_id? }`：发送 30 分钟有效的重置链接；不论邮箱是否存在都返回 `{ ok: true }`；按 IP 与邮箱限流
+- `POST /api/auth/password/reset { token, password }`：一次性令牌；成功后吊销该账号所有会话，并视为邮箱已验证
+- `POST /api/account/email/verify`：给当前邮箱发验证链接；`POST /api/account/email/change { new_email }`：需近期登录，向新邮箱发确认链接，点开后才生效
+- `GET /api/auth/email/verify?token=`：邮件链接落地，回跳账号中心
+- `GET /api/account/export`：下载账号数据（资料、登录方式、会话、完整活动记录、订阅与权益）
+- `POST /api/auth/wechat/miniprogram { client_id, code }`：`wx.login()` 的 code 换 SSO token（同 `/token` 响应）。有 unionid 时网站与各小程序落到同一个账号
+- 管理：`GET/POST /api/admin/users`（禁用/启用/全部登出）、`GET /api/admin/metrics`（登录健康度）、`GET /api/billing/subscriptions`、`GET /api/billing/events`
+- 内部：`POST /api/internal/billing/reconcile`（`RECONCILE_SECRET`，由 `workers/billing-reconcile` 每 30 分钟调用；可配 `ALERT_WEBHOOK_URL` 推送告警到飞书/Discord/Slack）
 
 ## 服务间调用（client_credentials）
 1. 在管理后台（或 `POST /api/admin/clients`）创建 client：`grant_types: "client_credentials"`、`scope: "billing:events.write billing:entitlements.read"`、`generate_secret: true`。响应里的 `client_secret` **只出现这一次**，库里只存哈希。

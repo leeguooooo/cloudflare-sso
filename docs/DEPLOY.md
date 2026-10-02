@@ -25,3 +25,20 @@ pnpm logs:prod   # 生产账号
 - **找不到数据库**：确认 `wrangler.account-prod.toml` 内的 `database_id` 指向当前账号下存在的 D1。
 - **部署目录错误**：模板使用 `.output/public` 作为输出路径；如果改成别的目录，记得同步 `wrangler.account-*.toml` 与部署脚本。
 - **配置更新**：再次运行 `pnpm wrangler:config:prod` 即可覆盖 `wrangler.toml`。
+
+## Secrets（不进 toml）
+```bash
+for name in JWT_PRIVATE_KEY OAUTH_GOOGLE_CLIENT_SECRET OAUTH_GITHUB_CLIENT_SECRET PASSWORD_PEPPER_V2 RECONCILE_SECRET RESEND_API_KEY WECHAT_WEB_APP_SECRET; do
+  echo "wrangler pages secret put $name --project-name cloudflare-sso"
+done
+```
+`tests/unit/config-secrets.test.ts` 会在任何 wrangler toml 出现密钥时失败，CI 部署前会先跑它。
+
+## 账单对账 Worker（Pages 没有 cron）
+```bash
+cd workers/billing-reconcile
+npx wrangler secret put RECONCILE_SECRET      # 与 Pages 的同名 secret 相同
+npx wrangler secret put ALERT_WEBHOOK_URL     # 可选：飞书 / Discord / Slack 告警
+npx wrangler deploy
+```
+
