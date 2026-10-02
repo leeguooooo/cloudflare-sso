@@ -25,6 +25,9 @@ SIWA_ENABLED = "1"
 STORE_CLIENTS_SOCIAL_LOGIN = "0"
 APPLE_APP_IDS = "com.paste.native"
 
+# Password reset / email verification mail (secret: RESEND_API_KEY; misonote.com is verified in Resend).
+EMAIL_FROM = "leeguoo 账号 <no-reply@misonote.com>"
+
 # Connected apps' account hooks (merge / delete); secret: ACCOUNT_HOOK_SECRET.
 ACCOUNT_HOOK_URLS = "https://pasteapi.leeguoo.com/v1/internal/accounts"
 
