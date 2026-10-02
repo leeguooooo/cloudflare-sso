@@ -25,6 +25,12 @@
         <li>会话异常：进入“安全性与登录”撤销异常设备后重新登录。</li>
         <li>第三方绑定失败：确认第三方账号已完成邮箱验证并允许公开邮箱信息。</li>
       </ul>
+      <h2 id="password">忘记密码</h2>
+      <ul>
+        <li>暂不支持通过邮件重置密码。</li>
+        <li>如果账号已关联 Google、GitHub 或 Apple：在登录页用对应方式登录，再到账号中心 → leeguoo 密码设置新密码。</li>
+        <li>没有关联第三方账号：发邮件到 <a href="mailto:support@misonote.com">support@misonote.com</a>，附上注册邮箱，我们会协助找回。</li>
+      </ul>
       <h2>操作入口</h2>
       <ul>
         <li>修改密码：账号中心 → leeguoo 密码。</li>

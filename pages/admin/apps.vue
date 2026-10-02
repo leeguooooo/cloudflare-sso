@@ -61,14 +61,23 @@
           <div class="form-grid">
             <UiInput v-model="createForm.client_id" label="Client ID" placeholder="sample-web" required />
             <UiInput v-model="createForm.name" label="Name" placeholder="Sample Web" required />
-            <UiInput v-model="createForm.redirect_uris" label="Redirect URIs" placeholder="http://localhost:3000/callback" required />
+            <UiInput v-model="createForm.redirect_uris" label="Redirect URIs" placeholder="http://localhost:3000/callback" :required="!serviceOnly" />
             <UiInput v-model="createForm.grant_types" label="Grant Types" />
             <UiInput v-model="createForm.scope" label="Scope" />
           </div>
+          <label class="checkbox-control">
+            <input v-model="createForm.generate_secret" type="checkbox" />
+            Confidential client — generate a client secret (required for <code>client_credentials</code>)
+          </label>
           <div class="form-actions">
             <UiButton type="submit" variant="primary" :loading="loading">Create Client</UiButton>
           </div>
         </form>
+        <div v-if="createdSecret" class="secret-once">
+          <p>Client secret for <strong>{{ createdSecret.clientId }}</strong>. It is shown only now — store it in the service's secrets.</p>
+          <code>{{ createdSecret.secret }}</code>
+          <UiButton variant="ghost" size="sm" @click="createdSecret = null">Done</UiButton>
+        </div>
       </UiCard>
 
       <UiCard class="info-card wide-card">
@@ -182,6 +191,25 @@
   padding-bottom: 4px;
 }
 
+.secret-once {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid #f9ab00;
+  border-radius: 8px;
+  background: #fef7e0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #444746;
+}
+
+.secret-once code {
+  font-family: monospace;
+  word-break: break-all;
+  color: #1f1f1f;
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
@@ -282,6 +310,7 @@
 </style>
 
 <script setup lang="ts">
+import { storedTokenTenantId } from '~/utils/token-claims'
 type ClientItem = {
   id: string
   client_id: string
@@ -347,7 +376,7 @@ const clientColumns = [
 ]
 
 const config = useRuntimeConfig()
-const tenantId = ref('tenant-demo')
+const tenantId = ref('')
 const includeDisabled = ref(false)
 const loading = ref(false)
 const error = ref('')
@@ -369,7 +398,11 @@ const createForm = reactive({
   redirect_uris: '',
   grant_types: 'authorization_code pkce refresh_token',
   scope: 'openid profile email',
+  generate_secret: false,
 })
+
+const createdSecret = ref<{ clientId: string; secret: string } | null>(null)
+const serviceOnly = computed(() => createForm.grant_types.trim().split(/\s+/).every((grant) => grant === 'client_credentials'))
 
 const asReceipt = (row: Record<string, unknown>) => row as unknown as BootstrapReceipt
 const asClient = (row: Record<string, unknown>) => row as unknown as ClientItem
@@ -463,7 +496,7 @@ const loadBootstrapReceipts = async (runId = bootstrapRunId.value) => {
 }
 
 const manageClient = async (payload: Record<string, unknown>) => {
-  await $fetch(`${config.public.apiBase}/admin/clients`, {
+  return await $fetch<{ client_secret?: string }>(`${config.public.apiBase}/admin/clients`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: {
@@ -477,14 +510,18 @@ const createClient = async () => {
   loading.value = true
   error.value = ''
   try {
-    await manageClient({
+    const clientId = createForm.client_id.trim()
+    const result = await manageClient({
       action: 'create',
-      client_id: createForm.client_id.trim(),
+      client_id: clientId,
       name: createForm.name.trim(),
       redirect_uris: splitUris(createForm.redirect_uris),
       grant_types: createForm.grant_types.trim(),
       scope: createForm.scope.trim(),
+      generate_secret: createForm.generate_secret,
     })
+    createdSecret.value = result?.client_secret ? { clientId, secret: result.client_secret } : null
+    createForm.generate_secret = false
     createForm.client_id = ''
     createForm.name = ''
     createForm.redirect_uris = ''
@@ -554,6 +591,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
+  tenantId.value = storedTokenTenantId()
   loadClients()
 })
 </script>

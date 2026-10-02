@@ -19,7 +19,7 @@
           <span class="stat-value">{{ item.value }}</span>
         </div>
         <template #footer>
-          <NuxtLink :to="item.link" class="stat-link">View details</NuxtLink>
+          <NuxtLink v-if="item.link" :to="item.link" class="stat-link">View details</NuxtLink>
         </template>
       </UiCard>
     </div>
@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { storedTokenTenantId } from '~/utils/token-claims'
 type OverviewResponse = {
   tenant_id: string
   users: number
@@ -77,10 +78,10 @@ type OverviewResponse = {
 }
 
 const config = useRuntimeConfig()
-const tenantId = ref('tenant-demo')
+const tenantId = ref('')
 const loading = ref(false)
 const overview = ref<OverviewResponse>({
-  tenant_id: 'tenant-demo',
+  tenant_id: '',
   users: 0,
   clients: 0,
   roles: 0,
@@ -91,7 +92,7 @@ const stats = computed(() => [
   { label: 'Active Users', value: overview.value.users, link: '/admin/access' },
   { label: 'OIDC Clients', value: overview.value.clients, link: '/admin/apps' },
   { label: 'Custom Roles', value: overview.value.roles, link: '/admin/access' },
-  { label: 'Active Sessions', value: overview.value.active_sessions, link: '/portal' },
+  { label: 'Active Sessions', value: overview.value.active_sessions, link: '' },
 ])
 
 const getAuthHeaders = () => {
@@ -118,6 +119,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
+  tenantId.value = storedTokenTenantId()
   loadOverview()
 })
 </script>

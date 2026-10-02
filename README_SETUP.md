@@ -36,20 +36,18 @@ pnpm setup:pages:sh
    - D1 Database: `cf-nuxt-pages-db`
    - 应用到 Production
 
-### 2. 配置环境变量
+### 2. 配置 Secrets 与变量
 
-在同一个 Settings 页面，Environment variables，添加：
+**密钥只用 secret，不要放进 Dashboard 的明文变量或任何 toml：**
 
-| 变量名 | 值 |
-|--------|-----|
-| `JWT_PRIVATE_KEY` | (从 `wrangler.account-prod.toml` 复制) |
-| `JWT_KID` | `primary` |
-| `JWT_ISSUER` | `https://cloudflare-sso.pages.dev` |
-| `PASSWORD_PEPPER` | `change-me` |
-| `RECORDING_JWT_SECRET` | `test-secret-change-me` |
-| `ACCESS_TOKEN_TTL_SECONDS` | `600` |
-| `REFRESH_TOKEN_TTL_SECONDS` | `1209600` |
-| `CDN_BASE_URL` | `https://cdn.example.com` |
+```bash
+wrangler pages secret put JWT_PRIVATE_KEY --project-name cloudflare-sso      # RS256 PKCS8 私钥
+wrangler pages secret put OAUTH_GOOGLE_CLIENT_SECRET --project-name cloudflare-sso
+wrangler pages secret put OAUTH_GITHUB_CLIENT_SECRET --project-name cloudflare-sso
+```
+
+非敏感变量（`JWT_KID`、`JWT_ISSUER`、`DEFAULT_CLIENT_ID`、TTL 等）放在 `wrangler.account-prod.toml` 的 `[vars]`。
+换 key 的流程见 `docs/KEY_ROTATION.md`。
 
 ### 3. 重新部署
 

@@ -109,7 +109,7 @@ Acceptance:
 - [x] W1-03 Add mandatory authz middleware for `/api/admin/*` and `/api/access/*` (role/perms required)
 - [x] W1-04 Add client management CRUD UI/API (create/update/disable client)
 - [ ] W1-05 Add mini-program login exchange endpoint (`wx.code -> SSO tokens`)
-- [ ] W1-06 Add machine-to-machine token flow for backend calls (if needed)
+- [x] W1-06 Add machine-to-machine token flow for backend calls (`client_credentials`, 2026-10-02)
 - [x] W1-07 Add audit logs for auth, client changes, role changes
 - [x] W1-08 Add interactive OIDC login/authorize flow for browser PKCE clients
 
@@ -125,7 +125,7 @@ Acceptance:
 - [x] W2-03 Add entitlement read API for apps
 - [x] W2-04 Add admin billing UI for product/plan mapping
 - [x] W2-05 Add transition guards for subscription state machine
-- [ ] W2-06 Add reconciliation job and mismatch alerting
+- [ ] W2-06 Add reconciliation job and mismatch alerting (events are now applied on ingest and failed ones retried on redelivery; Pages has no cron, a scheduled sweep needs a separate Worker)
 
 Acceptance:
 - Event replay is idempotent
@@ -188,7 +188,7 @@ Acceptance:
 - [ ] W7-01 Add auth metrics per app/client: login success, refresh success, 401 rate
 - [ ] W7-02 Add entitlement metrics per app/client: allowed/denied rates
 - [ ] W7-03 Add token verification failure logging with reason labels
-- [ ] W7-04 Add incident playbook for auth outage and key rotation
+- [ ] W7-04 Add incident playbook for auth outage and key rotation (key rotation done: `docs/KEY_ROTATION.md`; auth outage pending)
 - [ ] W7-05 Add fallback usage dashboard and alert (`legacy path hit rate > threshold`)
 
 Acceptance:
@@ -230,6 +230,11 @@ Acceptance:
 - [x] N-05 Register first batch clients: `cherry-admin-web`, `paste-web`, `paste-macos`
 
 ## 9. Execution Records
+- 2026-10-02 (security + completion pass)
+  - Rotated the JWT signing key (`primary` was in public git history) → `k2026-10`, moved secrets out of toml.
+  - Fixed: XSS in OAuth bridge page, cross-tenant admin escalation via app bootstrap, pre-registration takeover via email auto-link, bearer tokens accepted at `/authorize`, optional PKCE, code/refresh race conditions, disabled users refreshing, admin APIs accepting any client's token.
+  - Added: `/revoke`, `/logout`, `client_credentials`, billing event processing (subscriptions + entitlements), login throttling, `nonce`/`auth_time` in ID tokens, spec-compliant `prompt=none`.
+  - Tests: end-to-end OIDC harness (`tests/helpers/harness.ts`) over the real route handlers + SQLite.
 - 2026-02-26 10:44:28 +0900 (local validation)
   - `POST /api/admin/apps/bootstrap` with `app_keys=["cherry","paste"]`
   - `bootstrap_run_id=2d38df9d-fa55-443f-8db6-2c106f1d38eb`

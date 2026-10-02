@@ -82,7 +82,7 @@
         <label class="field-label">
           <span class="flabel flabel-row">
             <span>{{ t.password }}</span>
-            <NuxtLink v-if="!nativeClient" :to="registerPath" class="forgot">{{ t.forgot }}</NuxtLink>
+            <NuxtLink v-if="!nativeClient" to="/help#password" class="forgot">{{ t.forgot }}</NuxtLink>
           </span>
           <span class="field doodle-box field-pw">
             <input v-model="form.password" :type="showPw ? 'text' : 'password'" required placeholder="••••••••" autocomplete="current-password" :disabled="loading" />
@@ -307,7 +307,7 @@ const tryResumeRememberedSession = async () => {
 
     if (!token) return
 
-    const profile = await $fetch<UserInfoPayload>(`${config.public.apiBase}/userinfo`, {
+    const profile = await $fetch<UserInfoPayload>('/userinfo', {
       headers: { authorization: `Bearer ${token}` },
     })
     const targetEmail = (profile?.email || '').trim().toLowerCase()

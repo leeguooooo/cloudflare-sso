@@ -28,7 +28,7 @@
     <UiCard
       class="info-card"
       title="Subscriptions"
-      subtitle="Billing schema is ready in SSO. Next step is entitlement read APIs and event ingestion."
+      subtitle="Products, plans and entitlements are managed in the billing console; apps read entitlements from /api/billing/entitlements."
     >
       <template #footer>
         <NuxtLink class="card-link" to="/admin/billing">Open Billing Console</NuxtLink>

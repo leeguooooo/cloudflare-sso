@@ -8,6 +8,7 @@
         </NuxtLink>
         <div class="apps-wrap" ref="appsWrapRef">
           <UiButton
+            v-if="isAdmin"
             unstyled
             type="button"
             class="icon-btn"
@@ -16,7 +17,7 @@
           >
             ⋮
           </UiButton>
-          <div v-if="appsOpen" class="apps-menu">
+          <div v-if="appsOpen && isAdmin" class="apps-menu">
             <NuxtLink to="/portal" @click="appsOpen = false">用户门户</NuxtLink>
             <NuxtLink to="/admin" @click="appsOpen = false">管理后台</NuxtLink>
             <NuxtLink to="/admin/apps" @click="appsOpen = false">应用管理</NuxtLink>
@@ -64,7 +65,6 @@
               class="hero-avatar-image"
             />
             <span v-else>{{ initials }}</span>
-            <span class="camera-badge">◉</span>
           </div>
           <h1>{{ displayName }}</h1>
           <p>{{ center?.profile.email || '未设置邮箱' }}</p>
@@ -159,6 +159,11 @@
             <div v-if="activePanel !== 'activity'" class="stack-block">
               <h3>设备与会话</h3>
               <p class="block-hint">可撤销异常设备会话，保护账号安全。</p>
+              <div v-if="otherActiveSessions.length" class="inline-actions">
+                <UiButton variant="ghost" size="sm" :loading="revokingBulk === 'others'" @click="revokeOtherSessions">
+                  退出其他所有设备（{{ otherActiveSessions.length }}）
+                </UiButton>
+              </div>
               <div v-if="center?.sessions.length" class="list-wrap">
                 <div v-for="session in center.sessions" :key="session.id" class="list-item">
                   <div>
@@ -280,7 +285,7 @@
               <p class="block-hint">下面任意一种方式都能登录这个账号，至少要保留一种。</p>
               <div v-if="methods && !methods.recent_auth" class="reauth-row">
                 <span>为了安全，绑定、解绑、设置密码前需要你在 15 分钟内登录过。</span>
-                <UiButton variant="ghost" size="sm" @click="reauthenticate">重新验证身份</UiButton>
+                <UiButton variant="ghost" size="sm" @click="reauthenticate()">重新验证身份</UiButton>
               </div>
               <div class="list-wrap">
                 <div v-for="row in methodRows" :key="row.key" class="list-item">
@@ -315,7 +320,7 @@
           <div v-else-if="activeNav === 'privacy'" class="section-stack">
             <div class="stack-block">
               <h3>数据与隐私</h3>
-              <p class="block-hint">导出你当前账号中心可见的数据快照（JSON）。</p>
+              <p class="block-hint">下载本页显示的账号信息（个人资料、登录方式、会话、活动记录、订阅），JSON 格式。各应用里的内容（如剪贴板记录）不包含在内。</p>
               <div class="summary-grid">
                 <div class="summary-item">
                   <span class="summary-label">邮箱</span>
@@ -331,8 +336,53 @@
                 </div>
               </div>
               <div class="inline-actions">
-                <UiButton variant="primary" :loading="exportingData" @click="downloadExport">下载数据导出</UiButton>
+                <UiButton variant="primary" :loading="exportingData" @click="downloadExport">下载账号信息 (JSON)</UiButton>
               </div>
+            </div>
+
+            <div class="stack-block danger-block">
+              <h3>删除账号</h3>
+              <p class="block-hint">
+                永久删除这个 leeguoo 账号：所有登录方式、会话和各应用中的账号都会被删除，所有设备都会退出登录。此操作无法撤销。
+              </p>
+              <template v-if="deleteStep === 'idle'">
+                <div class="inline-actions">
+                  <UiButton variant="ghost" :loading="deleteChecking" @click="startDeleteAccount">删除账号…</UiButton>
+                </div>
+              </template>
+              <template v-else-if="deleteStep === 'blocked'">
+                <p class="merge-refusal">{{ deleteError }}</p>
+                <div class="inline-actions">
+                  <UiButton variant="ghost" size="sm" @click="resetDeleteAccount">好的</UiButton>
+                </div>
+              </template>
+              <template v-else-if="deleteStep === 'reauth'">
+                <p class="merge-refusal">为了安全，删除账号前需要你重新登录一次。</p>
+                <div class="inline-actions">
+                  <UiButton variant="primary" size="sm" @click="reauthenticate('/account?section=privacy')">重新登录</UiButton>
+                  <UiButton variant="ghost" size="sm" @click="resetDeleteAccount">取消</UiButton>
+                </div>
+              </template>
+              <template v-else>
+                <UiInput
+                  v-model="deleteConfirmText"
+                  :label="`请输入 ${deleteConfirmTarget} 以确认删除`"
+                  autocomplete="off"
+                  :disabled="deletingAccount"
+                />
+                <p v-if="deleteError" class="merge-refusal">{{ deleteError }}</p>
+                <div class="inline-actions">
+                  <UiButton
+                    variant="primary"
+                    :loading="deletingAccount"
+                    :disabled="!deleteConfirmMatches"
+                    @click="confirmDeleteAccount"
+                  >
+                    永久删除账号
+                  </UiButton>
+                  <UiButton variant="ghost" :disabled="deletingAccount" @click="resetDeleteAccount">取消</UiButton>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -364,6 +414,15 @@
                   </div>
                   <div class="list-actions">
                     <span class="tag-muted">活动会话 {{ client.active_sessions }}</span>
+                    <UiButton
+                      v-if="revocableSessionsForClient(client.client_id).length"
+                      variant="ghost"
+                      size="sm"
+                      :loading="revokingBulk === client.client_id"
+                      @click="revokeClientAccess(client.client_id, client.client_name)"
+                    >
+                      撤销访问
+                    </UiButton>
                   </div>
                 </div>
               </div>
@@ -421,7 +480,7 @@ definePageMeta({
 })
 
 type AccountSection = 'home' | 'profile' | 'security' | 'password' | 'linked' | 'privacy' | 'share' | 'billing'
-type QuickPanel = 'sessions' | 'activity' | 'manager' | 'email'
+type QuickPanel = 'sessions' | 'activity'
 
 type AccountCenterPayload = {
   profile: {
@@ -539,7 +598,15 @@ const savingProfile = ref(false)
 const changingPassword = ref(false)
 const unlinkingProvider = ref('')
 const revokingSessionId = ref('')
+const revokingBulk = ref('')
 const exportingData = ref(false)
+
+type DeleteStep = 'idle' | 'blocked' | 'reauth' | 'confirm'
+const deleteStep = ref<DeleteStep>('idle')
+const deleteChecking = ref(false)
+const deletingAccount = ref(false)
+const deleteConfirmText = ref('')
+const deleteError = ref('')
 
 const profileForm = reactive({
   display_name: '',
@@ -566,9 +633,7 @@ const navItems: Array<{ key: AccountSection; label: string; icon: string; color:
 const quickActions: Array<{ label: string; section: AccountSection; panel?: QuickPanel }> = [
   { label: '我的密码', section: 'password' },
   { label: '设备', section: 'security', panel: 'sessions' },
-  { label: '密码管理工具', section: 'password', panel: 'manager' },
   { label: '我的活动记录', section: 'security', panel: 'activity' },
-  { label: '邮箱', section: 'profile', panel: 'email' },
 ]
 
 const activeNav = computed<AccountSection>(() => {
@@ -581,7 +646,7 @@ const activeNav = computed<AccountSection>(() => {
 
 const activePanel = computed<QuickPanel | ''>(() => {
   const panel = Array.isArray(route.query.panel) ? route.query.panel[0] : route.query.panel
-  if (panel === 'sessions' || panel === 'activity' || panel === 'manager' || panel === 'email') {
+  if (panel === 'sessions' || panel === 'activity') {
     return panel
   }
   return ''
@@ -600,6 +665,8 @@ const initials = computed(() => {
   if (!name) return 'U'
   return name.slice(0, 1).toUpperCase()
 })
+
+const isAdmin = computed(() => (center.value?.profile.roles || []).some((role) => role.toLowerCase() === 'admin'))
 
 const roleLabel = computed(() => {
   const roles = center.value?.profile.roles || []
@@ -622,7 +689,7 @@ const sectionDesc = computed(() => {
   if (activeNav.value === 'security') return '查看设备会话与近期账号活动。'
   if (activeNav.value === 'password') return '修改密码并管理密码安全策略。'
   if (activeNav.value === 'linked') return '绑定 Apple、Google、GitHub 或设置密码；把重复的账号合并成一个。'
-  if (activeNav.value === 'privacy') return '查看与导出账号数据。'
+  if (activeNav.value === 'privacy') return '下载账号信息，或永久删除账号。'
   if (activeNav.value === 'share') return '查看跨应用会话和访问范围。'
   if (activeNav.value === 'billing') return '查看订阅与权益状态。'
   return '同一邮箱一次登录，可自动开通到不同应用租户。'
@@ -798,13 +865,13 @@ const explainError = (err: any, fallback: string) => {
   return message || fallback
 }
 
-const reauthenticate = async () => {
+const reauthenticate = async (continuePath = '/account?section=linked') => {
   const email = methods.value?.email || center.value?.profile.email || ''
   try {
     await $fetch(`${config.public.apiBase}/auth/logout`, { method: 'POST', body: {} })
   } finally {
     clearAccessToken()
-    const query = new URLSearchParams({ continue: '/account?section=linked' })
+    const query = new URLSearchParams({ continue: continuePath })
     if (email && !email.endsWith('.invalid')) query.set('email', email)
     await navigateTo(`/login?${query.toString()}`)
   }
@@ -1087,6 +1154,110 @@ const revokeSession = async (sessionId: string) => {
   }
 }
 
+const nowSeconds = () => Math.floor(Date.now() / 1000)
+
+const isRevocable = (session: AccountCenterPayload['sessions'][number]) =>
+  !session.revoked_at && session.expires_at > nowSeconds()
+
+const otherActiveSessions = computed(() =>
+  (center.value?.sessions || []).filter((session) => !session.is_current && isRevocable(session)),
+)
+
+// The current session is never revoked from a bulk action: that would sign this page out mid-way.
+const revocableSessionsForClient = (clientId: string) =>
+  (center.value?.sessions || []).filter(
+    (session) => session.client_id === clientId && !session.is_current && isRevocable(session),
+  )
+
+const revokeSessions = async (key: string, sessionIds: string[], done: string) => {
+  if (!sessionIds.length) return
+  revokingBulk.value = key
+  notice.value = ''
+  let failed = 0
+  for (const sessionId of sessionIds) {
+    try {
+      await withAuthFetch(`${config.public.apiBase}/account/session/revoke`, {
+        method: 'POST',
+        body: { session_id: sessionId },
+      })
+    } catch {
+      failed += 1
+    }
+  }
+  notice.value = failed ? `${done}，但有 ${failed} 个会话撤销失败，请重试` : done
+  revokingBulk.value = ''
+  await loadCenter()
+}
+
+const revokeOtherSessions = async () => {
+  if (!process.client || !window.confirm(`退出其他 ${otherActiveSessions.value.length} 个设备上的登录？`)) return
+  await revokeSessions('others', otherActiveSessions.value.map((session) => session.id), '已退出其他所有设备')
+}
+
+const revokeClientAccess = async (clientId: string, clientName: string) => {
+  const sessions = revocableSessionsForClient(clientId)
+  if (!process.client || !window.confirm(`撤销 ${clientName} 的访问？该应用在 ${sessions.length} 个设备上的登录都会失效。`)) return
+  await revokeSessions(clientId, sessions.map((session) => session.id), `已撤销 ${clientName} 的访问`)
+}
+
+const deleteConfirmTarget = computed(() => {
+  const email = (center.value?.profile.email || '').trim()
+  return email && !email.endsWith('.invalid') ? email : 'DELETE'
+})
+
+const deleteConfirmMatches = computed(
+  () => deleteConfirmText.value.trim().toLowerCase() === deleteConfirmTarget.value.toLowerCase(),
+)
+
+const isReauthError = (err: any) => {
+  const message = String(err?.data?.statusMessage || err?.data?.message || err?.statusMessage || err?.message || '')
+  return message === 'reauth_required' || /recent sign-in/i.test(message)
+}
+
+const resetDeleteAccount = () => {
+  deleteStep.value = 'idle'
+  deleteConfirmText.value = ''
+  deleteError.value = ''
+}
+
+const startDeleteAccount = async () => {
+  deleteChecking.value = true
+  deleteError.value = ''
+  try {
+    await withAuthFetch(`${config.public.apiBase}/account?check=1`, { method: 'DELETE' })
+    deleteStep.value = 'confirm'
+  } catch (err: any) {
+    if (isReauthError(err)) {
+      deleteStep.value = 'reauth'
+    } else {
+      deleteError.value = explainError(err, '暂时无法删除这个账号，请稍后再试')
+      deleteStep.value = 'blocked'
+    }
+  } finally {
+    deleteChecking.value = false
+  }
+}
+
+const confirmDeleteAccount = async () => {
+  if (!deleteConfirmMatches.value) return
+  deletingAccount.value = true
+  deleteError.value = ''
+  try {
+    await withAuthFetch(`${config.public.apiBase}/account`, { method: 'DELETE' })
+    clearAccessToken()
+    if (process.client) localStorage.removeItem('sso_last_email')
+    await navigateTo('/login')
+  } catch (err: any) {
+    if (isReauthError(err)) {
+      deleteStep.value = 'reauth'
+    } else {
+      deleteError.value = explainError(err, '删除失败，请稍后再试')
+    }
+  } finally {
+    deletingAccount.value = false
+  }
+}
+
 const startLinkProvider = (provider: string) => {
   if (!process.client) return
   if (methods.value && !methods.value.recent_auth) {
@@ -1201,6 +1372,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .merge-block { border: 2px solid var(--color-primary-600); border-radius: 14px; padding: 14px 16px; }
 .merge-list { margin: 8px 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--color-text-secondary); }
+.danger-block { border: 2px solid var(--color-danger, #c5221f); border-radius: 14px; padding: 14px 16px; }
 .merge-refusal { color: var(--color-danger, #c5221f); font-size: 13px; font-weight: 600; margin: 6px 0; }
 .reauth-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--color-text-secondary); background: var(--color-primary-50); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
 .account-shell {
@@ -1374,20 +1546,6 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
-.camera-badge {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-neutral-300);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-  display: grid;
-  place-items: center;
-}
 
 .profile-block h1 {
   margin: 0;

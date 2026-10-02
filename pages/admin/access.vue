@@ -112,10 +112,11 @@
 </template>
 
 <script setup lang="ts">
+import { storedTokenTenantId } from '~/utils/token-claims'
 const { t } = useI18n()
 const config = useRuntimeConfig()
 
-const tenantId = ref('tenant-demo')
+const tenantId = ref('')
 const clientId = ref('demo-web')
 const userId = ref('user-demo')
 
@@ -257,6 +258,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
+  tenantId.value = storedTokenTenantId()
   loadSnapshot()
 })
 </script>

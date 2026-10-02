@@ -317,6 +317,7 @@
 </style>
 
 <script setup lang="ts">
+import { storedTokenTenantId } from '~/utils/token-claims'
 type ProductItem = {
   id: string
   tenant_id: string
@@ -365,7 +366,7 @@ const planColumns = [
 ]
 
 const config = useRuntimeConfig()
-const tenantId = ref('tenant-demo')
+const tenantId = ref('')
 const includeArchived = ref(false)
 const loading = ref(false)
 const error = ref('')
@@ -652,6 +653,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
+  tenantId.value = storedTokenTenantId()
   loadCatalog()
 })
 </script>
