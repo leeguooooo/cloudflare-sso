@@ -1,19 +1,15 @@
-import { createError, defineEventHandler, getRequestHeader } from 'h3'
+import { createError, defineEventHandler } from 'h3'
 import { getDb } from '../utils/env'
-import { verifyJwt } from '../utils/jwt'
 import { getUserRolesForClient, flattenPermissions } from '../utils/access'
+import { requireAccessPrincipal } from '../utils/guard'
+import { accountEmailVerified } from '../utils/oauth-complete'
 
 export default defineEventHandler(async (event) => {
-  const authHeader = getRequestHeader(event, 'authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw createError({ statusCode: 401, statusMessage: 'Missing access token' })
-  }
-  const token = authHeader.slice('Bearer '.length)
-  const payload = await verifyJwt(event, token)
-  if (payload.token_use && payload.token_use !== 'access') {
-    throw createError({ statusCode: 401, statusMessage: 'Invalid token use' })
-  }
-  const sub = payload.sub as string
+  // Also rejects tokens whose session was signed out or revoked, so connected apps that
+  // validate through /userinfo see a sign-out immediately.
+  const principal = await requireAccessPrincipal(event)
+  const payload = principal.payload
+  const sub = principal.sub
   const db = getDb(event)
   const user = await db
     .prepare(`
@@ -22,6 +18,9 @@ export default defineEventHandler(async (event) => {
         u.email,
         u.locale,
         u.tenant_id,
+        u.status,
+        u.global_account_id,
+        ga.status AS account_status,
         ga.display_name,
         ga.avatar_url,
         gei.profile_json
@@ -42,14 +41,25 @@ export default defineEventHandler(async (event) => {
       email: string
       locale?: string
       tenant_id: string
+      status?: string | null
+      global_account_id?: string | null
+      account_status?: string | null
       display_name?: string | null
       avatar_url?: string | null
       profile_json?: string | null
     }>()
   if (!user) throw createError({ statusCode: 404, statusMessage: 'User not found' })
+  if ((user.status || 'active') !== 'active' || (user.account_status || 'active') !== 'active') {
+    throw createError({ statusCode: 403, statusMessage: 'User inactive' })
+  }
 
-  const clientId = payload.aud as string | undefined
-  const roles = clientId ? await getUserRolesForClient(event, user.id, user.tenant_id, clientId) : []
+  // aud is the public client_id; role assignments are keyed by the internal clients.id.
+  const clientId = principal.aud
+  const client = clientId
+    ? await db.prepare(`SELECT id FROM clients WHERE client_id = ?`).bind(clientId).first<{ id: string }>()
+    : null
+  const roles = client ? await getUserRolesForClient(event, user.id, user.tenant_id, client.id) : []
+  const emailVerified = user.global_account_id ? await accountEmailVerified(event, user.global_account_id) : false
   const perms = flattenPermissions(roles)
   const externalProfile = (() => {
     if (!user.profile_json) return {}
@@ -79,12 +89,14 @@ export default defineEventHandler(async (event) => {
   return {
     sub: user.id,
     email: user.email,
-    email_verified: true,
+    email_verified: emailVerified,
     locale: user.locale,
     tid: user.tenant_id,
     gaid: typeof payload.gaid === 'string' ? payload.gaid : undefined,
     client_id: clientId,
     name: profileName,
+    picture: profileAvatar,
+    /** Deprecated alias of `picture`, kept for existing clients. */
     avatar_url: profileAvatar,
     roles: roles.map((r) => r.name),
     perms,

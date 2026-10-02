@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS global_accounts (
   avatar_url TEXT,
   locale TEXT DEFAULT 'en',
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'locked', 'disabled')),
+  password_set INTEGER, -- 0 when the password is a random placeholder (social-only account)
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
@@ -31,6 +32,11 @@ CREATE TABLE IF NOT EXISTS global_external_identities (
   subject TEXT NOT NULL, -- provider subject/user id
   email TEXT,
   profile_json TEXT DEFAULT '{}' NOT NULL,
+  email_verified INTEGER, -- provider vouches for `email`
+  is_private_email INTEGER, -- Apple private relay address
+  email_disabled INTEGER, -- Apple: relay forwarding turned off
+  refresh_token TEXT, -- provider refresh token (Apple: needed to revoke on deletion)
+  consent_revoked_at INTEGER,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
@@ -94,6 +100,7 @@ CREATE TABLE IF NOT EXISTS auth_codes (
   consumed_at INTEGER,
   ip TEXT,
   user_agent TEXT,
+  auth_time INTEGER, -- when the user signed in for the session that approved this code
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 
@@ -107,10 +114,15 @@ CREATE TABLE IF NOT EXISTS sessions (
   ip TEXT,
   expires_at INTEGER NOT NULL,
   revoked_at INTEGER,
+  auth_time INTEGER, -- when the user actually authenticated (kept across refreshes)
+  scope TEXT, -- scope granted at sign-in, preserved on refresh
+  previous_refresh_token_hash TEXT, -- for refresh token replay detection
+  rotated_at INTEGER,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions (refresh_token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_prev_token ON sessions (previous_refresh_token_hash);
 
 CREATE TABLE IF NOT EXISTS email_tokens (
   id TEXT PRIMARY KEY, -- uuid
@@ -304,3 +316,37 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_events_provider_event_unique
   ON subscription_events (tenant_id, provider, event_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_events_status
   ON subscription_events (tenant_id, status, occurred_at DESC);
+
+-- Server-side OAuth state for social sign-in (the cookie only carries the random state)
+CREATE TABLE IF NOT EXISTS oauth_states (
+  state TEXT PRIMARY KEY,
+  payload_json TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+
+-- Account merge proposals and their progress (retryable, idempotent)
+CREATE TABLE IF NOT EXISTS account_merges (
+  id TEXT PRIMARY KEY,
+  from_global_account_id TEXT NOT NULL,
+  to_global_account_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'proposed',
+  error TEXT,
+  detail_json TEXT DEFAULT '{}' NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
+  updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_account_merges_to ON account_merges(to_global_account_id, status);
+
+-- Failed password sign-ins, for throttling (pruned opportunistically)
+CREATE TABLE IF NOT EXISTS login_failures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_failures_email ON login_failures (email, created_at);
+CREATE INDEX IF NOT EXISTS idx_login_failures_ip ON login_failures (ip, created_at);

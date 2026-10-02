@@ -31,6 +31,8 @@ const str = (value: unknown): string => (typeof value === 'string' ? value.trim(
 export const safeContinuePath = (raw: unknown): string => {
   const value = typeof raw === 'string' ? raw : ''
   if (!value.startsWith('/') || value.startsWith('//')) return ''
+  // Browsers read `/\host` as `//host`; control characters are stripped by URL parsers.
+  if (/[\\\u0000-\u001f\u007f]/.test(value)) return ''
   return value
 }
 

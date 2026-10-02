@@ -1,11 +1,13 @@
-import { createError, defineEventHandler, getRequestHeader, readBody } from 'h3'
+import { defineEventHandler, getRequestHeader, H3Event, readBody, setResponseHeader } from 'h3'
 import { getDb } from '../utils/env'
-import { getSessionByRefreshToken, issueTokens, rotateSession } from '../utils/auth'
+import { assertUserActive, ensureSessionSchema, getSessionByRefreshToken, issueTokens, rotateSession } from '../utils/auth'
 import { nowInSeconds, base64UrlEncode } from '../utils/crypto'
 import { getUserRolesForClient } from '../utils/access'
 import { ensureClientManagementSchema } from '../utils/identity'
 import { writeAuditLog } from '../utils/audit'
 import { normalizeRedirectUriForMatch } from '../utils/redirect-uri'
+import { OAuthError, readClientCredentials, sendOAuthError } from '../utils/oauth-error'
+import { issueClientCredentialsToken, verifyClientSecret } from '../utils/client-auth'
 
 const hashVerifier = async (verifier: string) => {
   const data = new TextEncoder().encode(verifier)
@@ -13,155 +15,165 @@ const hashVerifier = async (verifier: string) => {
   return base64UrlEncode(new Uint8Array(digest))
 }
 
-export default defineEventHandler(async (event) => {
+type ClientRow = {
+  id: string
+  tenant_id: string
+  client_secret: string | null
+  redirect_uris: string
+  grant_types?: string | null
+  scope: string
+  status?: string
+}
+
+const str = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
+
+const exchangeAuthorizationCode = async (event: H3Event, body: Record<string, unknown>, client: ClientRow, clientId: string) => {
   const db = getDb(event)
-  await ensureClientManagementSchema(event)
-  const body = (await readBody(event)) as Record<string, unknown>
-  const grantType = body.grant_type
-  const authHeader = getRequestHeader(event, 'authorization')
-  const basicAuth = authHeader?.startsWith('Basic ')
-    ? atob(authHeader.slice('Basic '.length)).split(':', 2)
-    : undefined
-  const bodyClientId = typeof body.client_id === 'string' ? body.client_id : undefined
-  const bodyClientSecret = typeof body.client_secret === 'string' ? body.client_secret : undefined
-  const clientId = basicAuth?.[0] || bodyClientId
-  const clientSecret = basicAuth?.[1] || bodyClientSecret
+  const code = str(body.code)
+  const redirectUriRaw = str(body.redirect_uri)
+  const codeVerifier = str(body.code_verifier)
+  if (!code || !redirectUriRaw) throw new OAuthError('invalid_request', 'code and redirect_uri are required')
+  const redirectUri = normalizeRedirectUriForMatch(redirectUriRaw)
 
-  if (!clientId) throw createError({ statusCode: 400, statusMessage: 'client_id required' })
-
-  const client = await db.prepare(`SELECT * FROM clients WHERE client_id = ?`).bind(clientId).first<{
-    id: string
-    tenant_id: string
-    client_secret: string | null
-    redirect_uris: string
-    scope: string
-    status?: string
-  }>()
-  if (!client) throw createError({ statusCode: 400, statusMessage: 'Unknown client' })
-  if ((client.status || 'active') !== 'active') {
-    throw createError({ statusCode: 403, statusMessage: 'Client disabled' })
+  const authCode = await db
+    .prepare(
+      `SELECT ac.*, u.email, u.locale, u.global_account_id
+       FROM auth_codes ac
+       JOIN users u ON u.id = ac.user_id
+       WHERE ac.code = ?`,
+    )
+    .bind(code)
+    .first<{
+      id: string
+      client_id: string
+      user_id: string
+      tenant_id: string
+      redirect_uri: string
+      scope: string
+      nonce: string | null
+      code_challenge: string | null
+      expires_at: number
+      consumed_at: number | null
+      auth_time?: number | null
+      email: string
+      locale?: string
+      global_account_id?: string | null
+    }>()
+  if (!authCode) throw new OAuthError('invalid_grant', 'Invalid authorization code')
+  if (authCode.expires_at && nowInSeconds() > authCode.expires_at) throw new OAuthError('invalid_grant', 'Authorization code expired')
+  if (authCode.client_id !== client.id) throw new OAuthError('invalid_grant', 'Authorization code was issued to another client')
+  if (normalizeRedirectUriForMatch(authCode.redirect_uri) !== redirectUri) throw new OAuthError('invalid_grant', 'redirect_uri mismatch')
+  // Every client is public unless it has a secret, so PKCE is what binds the code to its requester.
+  if (!authCode.code_challenge && !client.client_secret) throw new OAuthError('invalid_grant', 'PKCE is required for this client')
+  if (authCode.code_challenge) {
+    if (!codeVerifier) throw new OAuthError('invalid_request', 'code_verifier required')
+    if ((await hashVerifier(codeVerifier)) !== authCode.code_challenge) throw new OAuthError('invalid_grant', 'Invalid code_verifier')
   }
 
-  if (client.client_secret && clientSecret !== client.client_secret) {
-    throw createError({ statusCode: 401, statusMessage: 'Invalid client secret' })
-  }
+  // Compare-and-swap: of two concurrent redemptions exactly one wins.
+  const consumed = await db
+    .prepare(`UPDATE auth_codes SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL`)
+    .bind(nowInSeconds(), authCode.id)
+    .run()
+  if (!consumed.meta?.changes) throw new OAuthError('invalid_grant', 'Authorization code already used')
 
-  if (grantType === 'authorization_code') {
-    const code = typeof body.code === 'string' ? body.code : undefined
-    const redirectUri =
-      typeof body.redirect_uri === 'string' ? normalizeRedirectUriForMatch(body.redirect_uri) : undefined
-    const codeVerifier = typeof body.code_verifier === 'string' ? body.code_verifier : undefined
-    if (!code || !redirectUri || !codeVerifier) {
-      throw createError({ statusCode: 400, statusMessage: 'code, redirect_uri, code_verifier are required' })
-    }
-    const authCode = await db
-      .prepare(
-        `SELECT ac.*, u.email, u.locale, u.global_account_id
-         FROM auth_codes ac
-         JOIN users u ON u.id = ac.user_id
-         WHERE ac.code = ?`,
-      )
-      .bind(code)
-      .first<{
-        id: string
-        client_id: string
-        user_id: string
-        tenant_id: string
-        redirect_uri: string
-        scope: string
-        nonce: string | null
-        code_challenge: string | null
-        code_challenge_method: string | null
-        expires_at: number
-        consumed_at: number | null
-        email: string
-        locale?: string
-        global_account_id?: string | null
-      }>()
-    if (!authCode) throw createError({ statusCode: 400, statusMessage: 'Invalid authorization code' })
-    if (authCode.consumed_at) throw createError({ statusCode: 400, statusMessage: 'Authorization code used' })
-    if (authCode.expires_at && nowInSeconds() > authCode.expires_at) {
-      throw createError({ statusCode: 400, statusMessage: 'Authorization code expired' })
-    }
-    if (authCode.client_id !== client.id) throw createError({ statusCode: 400, statusMessage: 'Client mismatch' })
-    if (normalizeRedirectUriForMatch(authCode.redirect_uri) !== redirectUri) {
-      throw createError({ statusCode: 400, statusMessage: 'redirect_uri mismatch' })
-    }
-    if (authCode.code_challenge) {
-      const expected = await hashVerifier(codeVerifier)
-      if (expected !== authCode.code_challenge) {
-        throw createError({ statusCode: 400, statusMessage: 'Invalid code_verifier' })
-      }
-    }
-
-    await db.prepare(`UPDATE auth_codes SET consumed_at = ? WHERE id = ?`).bind(nowInSeconds(), authCode.id).run()
-    const roles = await getUserRolesForClient(event, authCode.user_id, authCode.tenant_id, client.id)
-    const tokens = await issueTokens(event, {
+  await assertUserActive(event, authCode.user_id)
+  const roles = await getUserRolesForClient(event, authCode.user_id, authCode.tenant_id, client.id)
+  const tokens = await issueTokens(
+    event,
+    {
       id: authCode.user_id,
       tenant_id: authCode.tenant_id,
       email: authCode.email,
       locale: authCode.locale,
       global_account_id: authCode.global_account_id,
-    }, { id: client.id, client_id: clientId }, authCode.scope, undefined, roles)
+    },
+    { id: client.id, client_id: clientId },
+    authCode.scope,
+    { roles, nonce: authCode.nonce, authTime: Number(authCode.auth_time || 0) || undefined },
+  )
 
-    await writeAuditLog(event, {
-      tenantId: authCode.tenant_id,
-      userId: authCode.user_id,
-      action: 'auth.token.authorization_code',
-      payload: { client_id: clientId, scope: authCode.scope },
-    })
+  await writeAuditLog(event, {
+    tenantId: authCode.tenant_id,
+    userId: authCode.user_id,
+    action: 'auth.token.authorization_code',
+    payload: { client_id: clientId, scope: authCode.scope },
+  })
 
-    return {
-      token_type: 'Bearer',
-      access_token: tokens.accessToken,
-      id_token: tokens.idToken,
-      refresh_token: tokens.refreshToken,
-      expires_in: tokens.accessTokenExpiresIn,
-      scope: authCode.scope,
-    }
+  return {
+    token_type: 'Bearer',
+    access_token: tokens.accessToken,
+    id_token: tokens.idToken,
+    refresh_token: tokens.refreshToken,
+    expires_in: tokens.accessTokenExpiresIn,
+    scope: authCode.scope,
+  }
+}
+
+const exchangeRefreshToken = async (event: H3Event, body: Record<string, unknown>, client: ClientRow, clientId: string) => {
+  const db = getDb(event)
+  const refreshToken = str(body.refresh_token)
+  if (!refreshToken) throw new OAuthError('invalid_request', 'refresh_token required')
+  const session = await getSessionByRefreshToken(event, refreshToken)
+  if (!session) throw new OAuthError('invalid_grant', 'Invalid refresh token')
+  if (session.client_id && session.client_id !== client.id) throw new OAuthError('invalid_grant', 'Refresh token was issued to another client')
+
+  await assertUserActive(event, session.user_id)
+  const userRow = await db
+    .prepare(`SELECT id, email, locale, tenant_id, global_account_id FROM users WHERE id = ?`)
+    .bind(session.user_id)
+    .first<{ id: string; email: string; locale?: string; tenant_id: string; global_account_id?: string | null }>()
+  if (!userRow) throw new OAuthError('invalid_grant', 'User not found')
+
+  const roles = await getUserRolesForClient(event, userRow.id, userRow.tenant_id, client.id)
+  let rotated
+  try {
+    rotated = await rotateSession(event, session, userRow, { id: client.id, client_id: clientId }, roles)
+  } catch {
+    throw new OAuthError('invalid_grant', 'Invalid refresh token')
   }
 
-  if (grantType === 'refresh_token') {
-    const refreshToken = typeof body.refresh_token === 'string' ? body.refresh_token : undefined
-    if (!refreshToken) throw createError({ statusCode: 400, statusMessage: 'refresh_token required' })
-    const session = await getSessionByRefreshToken(event, refreshToken)
-    if (!session) throw createError({ statusCode: 401, statusMessage: 'Invalid refresh token' })
-    if (session.client_id && session.client_id !== client.id) {
-      throw createError({ statusCode: 403, statusMessage: 'Client mismatch' })
-    }
+  await writeAuditLog(event, {
+    tenantId: userRow.tenant_id,
+    userId: userRow.id,
+    action: 'auth.token.refresh_token',
+    payload: { client_id: clientId, session_id: session.id },
+  })
 
-    const userRow = await db
-      .prepare(`SELECT id, email, locale, tenant_id, global_account_id FROM users WHERE id = ?`)
-      .bind(session.user_id)
-      .first<{ id: string; email: string; locale?: string; tenant_id: string; global_account_id?: string | null }>()
-    if (!userRow) throw createError({ statusCode: 404, statusMessage: 'User not found' })
-
-    const roles = await getUserRolesForClient(event, userRow.id, userRow.tenant_id, client.id)
-    const rotated = await rotateSession(
-      event,
-      session.id,
-      userRow,
-      { id: client.id, client_id: clientId },
-      client.scope || 'openid profile email',
-      roles,
-    )
-
-    await writeAuditLog(event, {
-      tenantId: userRow.tenant_id,
-      userId: userRow.id,
-      action: 'auth.token.refresh_token',
-      payload: { client_id: clientId, session_id: session.id },
-    })
-
-    return {
-      token_type: 'Bearer',
-      access_token: rotated.accessToken,
-      id_token: rotated.idToken,
-      refresh_token: rotated.refreshToken,
-      expires_in: rotated.accessTokenExpiresIn,
-      scope: client.scope,
-    }
+  return {
+    token_type: 'Bearer',
+    access_token: rotated.accessToken,
+    id_token: rotated.idToken,
+    refresh_token: rotated.refreshToken,
+    expires_in: rotated.accessTokenExpiresIn,
+    scope: rotated.scope,
   }
+}
 
-  throw createError({ statusCode: 400, statusMessage: 'Unsupported grant_type' })
+export default defineEventHandler(async (event) => {
+  setResponseHeader(event, 'cache-control', 'no-store')
+  try {
+    const db = getDb(event)
+    await ensureClientManagementSchema(event)
+    await ensureSessionSchema(event)
+    const body = ((await readBody(event).catch(() => ({}))) || {}) as Record<string, unknown>
+    const grantType = body.grant_type
+    const { clientId, clientSecret } = readClientCredentials(getRequestHeader(event, 'authorization'), body)
+    if (!clientId) throw new OAuthError('invalid_request', 'client_id required')
+
+    const client = await db.prepare(`SELECT * FROM clients WHERE client_id = ?`).bind(clientId).first<ClientRow>()
+    if (!client) throw new OAuthError('invalid_client', 'Unknown client')
+    if ((client.status || 'active') !== 'active') throw new OAuthError('invalid_client', 'Client disabled')
+    if (client.client_secret && !(await verifyClientSecret(clientSecret, client.client_secret))) {
+      throw new OAuthError('invalid_client', 'Invalid client secret')
+    }
+
+    if (grantType === 'authorization_code') return await exchangeAuthorizationCode(event, body, client, clientId)
+    if (grantType === 'refresh_token') return await exchangeRefreshToken(event, body, client, clientId)
+    if (grantType === 'client_credentials') return await issueClientCredentialsToken(event, client, clientId, str(body.scope))
+    throw new OAuthError('unsupported_grant_type', 'Unsupported grant_type')
+  } catch (error) {
+    if (error instanceof OAuthError) return sendOAuthError(event, error)
+    throw error
+  }
 })

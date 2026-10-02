@@ -1,5 +1,6 @@
 import { createError, H3Event } from 'h3'
 import { getDb } from './env'
+import { oncePerDb } from './schema-once'
 
 export type ClientRecord = {
   id: string
@@ -69,8 +70,9 @@ const addColumnIfMissing = async (
   }
 }
 
-export const ensureGlobalIdentitySchema = async (event: H3Event) => {
-  const db = getDb(event)
+export const ensureGlobalIdentitySchema = (event: H3Event) => globalIdentitySchema(getDb(event))
+
+const globalIdentitySchema = oncePerDb(async (db) => {
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS global_accounts (
@@ -133,7 +135,7 @@ export const ensureGlobalIdentitySchema = async (event: H3Event) => {
     .run()
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_global_external_identities_account ON global_external_identities(global_account_id)`).run()
   await ensureLinkingSchema(db)
-}
+})
 
 const addColumn = async (db: D1Database, table: string, definition: string) => {
   try {
@@ -143,7 +145,6 @@ const addColumn = async (db: D1Database, table: string, definition: string) => {
   }
 }
 
-let linkingSchemaReady: Promise<void> | null = null
 
 /**
  * Sign-in methods / account linking (2026-10). Additive and idempotent:
@@ -157,9 +158,7 @@ let linkingSchemaReady: Promise<void> | null = null
  * - account_merges: merge proposals and their progress (retryable, idempotent).
  * Run once per isolate.
  */
-export const ensureLinkingSchema = (db: D1Database): Promise<void> => {
-  if (!linkingSchemaReady) {
-    linkingSchemaReady = (async () => {
+const linkingSchemaStep = async (db: D1Database) => {
       await addColumn(db, 'global_accounts', 'password_set INTEGER')
       await db
         .prepare(
@@ -205,21 +204,20 @@ export const ensureLinkingSchema = (db: D1Database): Promise<void> => {
         )
         .run()
       await db.prepare(`CREATE INDEX IF NOT EXISTS idx_account_merges_to ON account_merges(to_global_account_id, status)`).run()
-    })().catch((error) => {
-      linkingSchemaReady = null
-      throw error
-    })
-  }
-  return linkingSchemaReady
 }
+
+let linkingSchema = oncePerDb(linkingSchemaStep)
+
+export const ensureLinkingSchema = (db: D1Database): Promise<void> => linkingSchema(db)
 
 /** Test hook: forget that the schema was ensured in this isolate. */
 export const resetLinkingSchemaMemo = () => {
-  linkingSchemaReady = null
+  linkingSchema = oncePerDb(linkingSchemaStep)
 }
 
-export const ensureClientManagementSchema = async (event: H3Event) => {
-  const db = getDb(event)
+export const ensureClientManagementSchema = (event: H3Event) => clientManagementSchema(getDb(event))
+
+const clientManagementSchema = oncePerDb(async (db) => {
   const columns = await readTableColumns(db, 'clients')
 
   await addColumnIfMissing(db, columns, 'clients', 'status', `status TEXT DEFAULT 'active'`)
@@ -230,7 +228,7 @@ export const ensureClientManagementSchema = async (event: H3Event) => {
     ? `COALESCE(updated_at, created_at, strftime('%s', 'now'))`
     : `COALESCE(updated_at, strftime('%s', 'now'))`
   await db.prepare(`UPDATE clients SET updated_at = ${updatedAtFallback} WHERE updated_at IS NULL`).run()
-}
+})
 
 export const getClientByPublicId = async (event: H3Event, clientPublicId: string) => {
   await ensureClientManagementSchema(event)

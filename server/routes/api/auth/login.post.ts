@@ -2,6 +2,7 @@ import { createError, defineEventHandler, readBody, setCookie } from 'h3'
 import { getDb, getEnv } from '../../../utils/env'
 import { hashPassword, verifyPassword } from '../../../utils/crypto'
 import { issueTokens } from '../../../utils/auth'
+import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from '../../../utils/rate-limit'
 import { getUserRolesForClient } from '../../../utils/access'
 import { writeAuditLog } from '../../../utils/audit'
 import { resolveDefaultClientId } from '../../../utils/default-client'
@@ -36,6 +37,11 @@ export default defineEventHandler(async (event) => {
   const clientPublicId = body.client_id?.trim() || resolveDefaultClientId(event)
 
   if (!email || !password) throw createError({ statusCode: 400, statusMessage: 'email and password required' })
+  await assertLoginAllowed(event, email)
+  const invalidCredentials = async () => {
+    await recordLoginFailure(event, email)
+    return createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
+  }
 
   await ensureGlobalIdentitySchema(event)
 
@@ -61,13 +67,13 @@ export default defineEventHandler(async (event) => {
       .first<LegacyUserRow>()
 
     if (!legacyUser || !legacyUser.password_hash) {
-      throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
+      // Same PBKDF2 cost as a real check, so response time does not reveal which emails exist.
+      await hashPassword(password, env.PASSWORD_PEPPER || '')
+      throw await invalidCredentials()
     }
 
     const legacyPasswordOk = await verifyPassword(password, legacyUser.password_hash, env.PASSWORD_PEPPER || '')
-    if (!legacyPasswordOk) {
-      throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
-    }
+    if (!legacyPasswordOk) throw await invalidCredentials()
 
     if (legacyUser.status !== 'active') {
       throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
@@ -91,18 +97,15 @@ export default defineEventHandler(async (event) => {
     globalAccount = await findGlobalAccountByEmail(event, email)
   }
 
-  if (!globalAccount) {
-    throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
-  }
+  if (!globalAccount) throw await invalidCredentials()
+
+  const passwordOk = await verifyPassword(password, globalAccount.password_hash, env.PASSWORD_PEPPER || '')
+  if (!passwordOk) throw await invalidCredentials()
 
   if (globalAccount.status !== 'active') {
     throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })
   }
-
-  const passwordOk = await verifyPassword(password, globalAccount.password_hash, env.PASSWORD_PEPPER || '')
-  if (!passwordOk) {
-    throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
-  }
+  await clearLoginFailures(event, email)
 
   const provisioned = await provisionTenantUserForGlobalAccount(event, {
     tenantId: client.tenant_id,
@@ -116,7 +119,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
-  const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', undefined, roles)
+  const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', { roles })
 
   setCookie(event, 'sso_refresh_token', tokens.refreshToken, {
     httpOnly: true,

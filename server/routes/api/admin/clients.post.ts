@@ -3,6 +3,7 @@ import { getDb } from '../../../utils/env'
 import { writeAuditLog } from '../../../utils/audit'
 import { requireTenantAdmin } from '../../../utils/guard'
 import { ensureClientManagementSchema } from '../../../utils/identity'
+import { generateClientSecret, hashClientSecret } from '../../../utils/client-auth'
 
 type ClientManageBody = {
   action?: 'create' | 'update' | 'disable' | 'enable'
@@ -10,6 +11,8 @@ type ClientManageBody = {
   id?: string
   client_id?: string
   client_secret?: string | null
+  /** true = the server generates a secret and returns it once in the response. */
+  generate_secret?: boolean
   name?: string
   redirect_uris?: string[]
   grant_types?: string
@@ -23,6 +26,22 @@ const normalizeRedirectUris = (input: unknown): string[] => {
     .filter((item): item is string => typeof item === 'string')
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+/**
+ * Secrets are stored hashed. Returns [stored value, plaintext to show once] — the plaintext is
+ * only ever returned for a server-generated secret.
+ */
+const resolveSecret = async (body: ClientManageBody, current: string | null): Promise<[string | null, string | undefined]> => {
+  if (body.generate_secret === true) {
+    const secret = generateClientSecret()
+    return [await hashClientSecret(secret), secret]
+  }
+  if (typeof body.client_secret === 'string') {
+    const value = body.client_secret.trim()
+    return [value ? await hashClientSecret(value) : null, undefined]
+  }
+  return [current, undefined]
 }
 
 export default defineEventHandler(async (event) => {
@@ -43,8 +62,13 @@ export default defineEventHandler(async (event) => {
     const grantTypes = body.grant_types?.trim() || 'authorization_code pkce refresh_token'
     const scope = body.scope?.trim() || 'openid profile email'
     const firstParty = body.first_party === false ? 0 : 1
-    if (!clientPublicId || !name || redirectUris.length === 0) {
+    const serviceOnly = grantTypes.split(/\s+/).every((grant) => grant === 'client_credentials')
+    if (!clientPublicId || !name || (redirectUris.length === 0 && !serviceOnly)) {
       throw createError({ statusCode: 400, statusMessage: 'client_id, name, redirect_uris are required' })
+    }
+    const [storedSecret, plaintextSecret] = await resolveSecret(body, null)
+    if (grantTypes.includes('client_credentials') && !storedSecret) {
+      throw createError({ statusCode: 400, statusMessage: 'client_credentials needs a secret (set generate_secret: true)' })
     }
 
     const id = crypto.randomUUID()
@@ -58,7 +82,7 @@ export default defineEventHandler(async (event) => {
         id,
         tenantId,
         clientPublicId,
-        body.client_secret || null,
+        storedSecret,
         name,
         JSON.stringify(redirectUris),
         grantTypes,
@@ -82,7 +106,7 @@ export default defineEventHandler(async (event) => {
       },
     })
 
-    return { success: true, action, id }
+    return { success: true, action, id, ...(plaintextSecret ? { client_secret: plaintextSecret } : {}) }
   }
 
   const clientId = body.id?.trim()
@@ -142,10 +166,7 @@ export default defineEventHandler(async (event) => {
   const nextGrantTypes = body.grant_types?.trim() || existing.grant_types
   const nextScope = body.scope?.trim() || existing.scope
   const nextFirstParty = typeof body.first_party === 'boolean' ? (body.first_party ? 1 : 0) : existing.first_party
-  const nextClientSecret =
-    typeof body.client_secret === 'string'
-      ? (body.client_secret.trim() ? body.client_secret.trim() : null)
-      : existing.client_secret
+  const [nextClientSecret, plaintextSecret] = await resolveSecret(body, existing.client_secret)
   const redirectUriJson = nextRedirectUris.length ? JSON.stringify(nextRedirectUris) : existing.redirect_uris
 
   await db
@@ -181,5 +202,5 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  return { success: true, action, id: clientId }
+  return { success: true, action, id: clientId, ...(plaintextSecret ? { client_secret: plaintextSecret } : {}) }
 })

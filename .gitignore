@@ -46,3 +46,6 @@ yarn-error.log*
 tmp/
 temp/
 *.tmp
+
+# Local wrangler secrets
+.dev.vars

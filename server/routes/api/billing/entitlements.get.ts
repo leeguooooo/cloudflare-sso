@@ -1,7 +1,7 @@
 import { createError, defineEventHandler, getQuery } from 'h3'
 import { getDb } from '../../../utils/env'
 import { ensureBillingSchema } from '../../../utils/billing'
-import { requireAccessPrincipal } from '../../../utils/guard'
+import { requireUserOrServiceScope } from '../../../utils/guard'
 
 type EntitlementRow = {
   id: string
@@ -27,11 +27,12 @@ const isAdminPrincipal = (principal: { roles: string[]; perms: string[] }) => {
 
 export default defineEventHandler(async (event) => {
   await ensureBillingSchema(event)
-  const principal = await requireAccessPrincipal(event)
+  const principal = await requireUserOrServiceScope(event, 'billing:entitlements.read')
   const query = getQuery(event)
 
   const tenantId = String(query.tenant_id || principal.tid)
-  const targetUserId = String(query.user_id || principal.sub)
+  // A service token has no user of its own, so it must name one.
+  const targetUserId = String(query.user_id || (principal.clientOnly ? '' : principal.sub))
   const asOf = query.as_of ? Number(query.as_of) : Math.floor(Date.now() / 1000)
   const includeInactive = String(query.include_inactive || '') === 'true'
 
@@ -47,7 +48,7 @@ export default defineEventHandler(async (event) => {
   if (tenantId !== principal.tid) {
     throw createError({ statusCode: 403, statusMessage: 'Tenant mismatch' })
   }
-  if (targetUserId !== principal.sub && !isAdminPrincipal(principal)) {
+  if (targetUserId !== principal.sub && !principal.clientOnly && !isAdminPrincipal(principal)) {
     throw createError({ statusCode: 403, statusMessage: 'Admin required for cross-user entitlement query' })
   }
 

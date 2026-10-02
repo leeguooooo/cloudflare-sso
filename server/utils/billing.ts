@@ -1,8 +1,11 @@
 import { H3Event } from 'h3'
 import { getDb } from './env'
+import { oncePerDb } from './schema-once'
 
-export const ensureBillingSchema = async (event: H3Event) => {
-  const db = getDb(event)
+/** Creates the billing tables and triggers once per database binding. */
+export const ensureBillingSchema = (event: H3Event) => billingSchema(getDb(event))
+
+const createBillingSchema = async (db: D1Database) => {
 
   await db
     .prepare(
@@ -182,3 +185,5 @@ export const ensureBillingSchema = async (event: H3Event) => {
     )
     .run()
 }
+
+const billingSchema = oncePerDb(createBillingSchema)

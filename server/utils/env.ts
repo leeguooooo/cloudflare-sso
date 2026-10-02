@@ -15,6 +15,12 @@ type EnvBindings = {
   OAUTH_GOOGLE_CLIENT_SECRET?: string
   OAUTH_GOOGLE_REDIRECT_URI?: string
   DEFAULT_CLIENT_ID?: string
+  /** Extra comma-separated client ids (besides DEFAULT_CLIENT_ID) whose tokens may use the admin APIs. */
+  ADMIN_CLIENT_IDS?: string
+  /** Tenant whose admins may bootstrap apps; defaults to the tenant of DEFAULT_CLIENT_ID. */
+  PLATFORM_TENANT_ID?: string
+  /** Absolute session lifetime regardless of refreshes (default one year). */
+  SESSION_MAX_AGE_SECONDS?: string
   /** Sign in with Apple: "1" = on for every client, "test" = only when the page URL has ?siwa=1, else off. */
   SIWA_ENABLED?: string
   /** "1" = show Google / GitHub to native App Store clients too (only ever when Apple is available). */
