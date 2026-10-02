@@ -1,5 +1,6 @@
 import { createError, getRequestURL, H3Event } from 'h3'
 import { getEnv } from './env'
+import { buildWechatAuthorizeUrl, exchangeWechatWebCode } from './wechat'
 
 export type OAuthProvider = 'github' | 'google' | 'wechat' | 'apple'
 
@@ -84,14 +85,11 @@ const getProviderConfig = (event: H3Event, provider: OAuthProvider): ProviderCon
     }
   }
 
-  if (provider === 'wechat') {
-    throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is TODO and not enabled yet' })
-  }
-
   throw createError({ statusCode: 400, statusMessage: 'Unsupported provider' })
 }
 
 export const buildOAuthAuthorizeUrl = (event: H3Event, provider: OAuthProvider, state: string) => {
+  if (provider === 'wechat') return buildWechatAuthorizeUrl(getEnv(event), resolveRedirectUri(event, provider), state)
   const config = getProviderConfig(event, provider)
 
   if (provider === 'github') {
@@ -114,10 +112,6 @@ export const buildOAuthAuthorizeUrl = (event: H3Event, provider: OAuthProvider, 
     url.searchParams.set('access_type', 'online')
     url.searchParams.set('prompt', 'select_account')
     return url.toString()
-  }
-
-  if (provider === 'wechat') {
-    throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is TODO and not enabled yet' })
   }
 
   throw createError({ statusCode: 400, statusMessage: 'Unsupported provider' })
@@ -279,7 +273,7 @@ export const getOAuthIdentityProfile = async (
     return exchangeGoogleCode(event, input.code)
   }
   if (input.provider === 'wechat') {
-    throw createError({ statusCode: 501, statusMessage: 'WeChat OAuth is TODO and not enabled yet' })
+    return exchangeWechatWebCode(getEnv(event), input.code)
   }
   throw createError({ statusCode: 400, statusMessage: 'Unsupported provider' })
 }

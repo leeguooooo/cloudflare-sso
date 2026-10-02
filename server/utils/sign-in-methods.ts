@@ -1,6 +1,7 @@
 import { createError, H3Event } from 'h3'
 import type { AccountUserContext } from './account'
 import { getDb } from './env'
+import { ensureSessionSchema } from './auth'
 
 /** Linking, unlinking, setting a password and merging require a sign-in this recent. */
 export const RECENT_AUTH_SECONDS = 15 * 60
@@ -10,15 +11,19 @@ export const REAUTH_REQUIRED = 'reauth_required'
 export const isRecentAuth = (sessionCreatedAt: number | null | undefined, nowSeconds = Math.floor(Date.now() / 1000)) =>
   typeof sessionCreatedAt === 'number' && sessionCreatedAt > 0 && nowSeconds - sessionCreatedAt <= RECENT_AUTH_SECONDS
 
-/** created_at of the session = when the user last actually signed in (refresh keeps it). */
+/**
+ * When the user last actually authenticated for this session: auth_time, which an OIDC code
+ * flow inherits from the browser session instead of resetting it (older rows: created_at).
+ */
 export const sessionSignedInAt = async (event: H3Event, sessionId: string) => {
   if (!sessionId) return null
+  await ensureSessionSchema(event)
   const row = await getDb(event)
-    .prepare(`SELECT created_at, revoked_at FROM sessions WHERE id = ?`)
+    .prepare(`SELECT COALESCE(auth_time, created_at) AS signed_in_at, revoked_at FROM sessions WHERE id = ?`)
     .bind(sessionId)
-    .first<{ created_at: number; revoked_at?: number | null }>()
+    .first<{ signed_in_at: number; revoked_at?: number | null }>()
   if (!row || row.revoked_at) return null
-  return Number(row.created_at || 0)
+  return Number(row.signed_in_at || 0)
 }
 
 export const requireRecentAuth = async (event: H3Event, ctx: AccountUserContext) => {

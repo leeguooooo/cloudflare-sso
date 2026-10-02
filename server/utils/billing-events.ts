@@ -34,7 +34,7 @@ export type SubscriptionEventRow = {
 
 type Outcome = { status: 'applied' | 'ignored'; subscriptionId?: string | null; note?: string }
 
-type SubscriptionRow = {
+export type SubscriptionRow = {
   id: string
   tenant_id: string
   user_id: string
@@ -103,7 +103,7 @@ const findSubscription = async (event: H3Event, row: SubscriptionEventRow, paylo
 }
 
 /** Makes the plan's entitlements cover [subscription start, accessUntil) — null means open-ended. */
-const syncPlanEntitlements = async (event: H3Event, sub: SubscriptionRow, accessUntil: number | null) => {
+export const syncPlanEntitlements = async (event: H3Event, sub: SubscriptionRow, accessUntil: number | null) => {
   const db = getDb(event)
   const plan = await db.prepare(`SELECT entitlement_keys_json FROM plans WHERE id = ?`).bind(sub.plan_id).first<{ entitlement_keys_json: string }>()
   const keys = parseJson<unknown[]>(plan?.entitlement_keys_json, []).filter((k): k is string => typeof k === 'string' && Boolean(k))

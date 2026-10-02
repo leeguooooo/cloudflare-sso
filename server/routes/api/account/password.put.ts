@@ -1,7 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
+import { hashAccountPassword, verifyAccountPassword } from '../../../utils/password'
 import { getDb, getEnv } from '../../../utils/env'
 import { requireAccountUserContext } from '../../../utils/account'
-import { hashPassword, verifyPassword } from '../../../utils/crypto'
 import { writeAuditLog } from '../../../utils/audit'
 import { requireRecentAuth } from '../../../utils/sign-in-methods'
 
@@ -56,13 +56,14 @@ export default defineEventHandler(async (event) => {
     if (currentPassword === newPassword) {
       throw createError({ statusCode: 400, statusMessage: 'new_password must be different from current_password' })
     }
-    const verified = await verifyPassword(currentPassword, account.password_hash, env.PASSWORD_PEPPER || '')
-    if (!verified) {
-      throw createError({ statusCode: 401, statusMessage: 'Current password is incorrect' })
+    const verified = await verifyAccountPassword(env, currentPassword, account.password_hash)
+    if (!verified.ok) {
+      // 400, not 401: a wrong password must not look like an expired session to the client.
+      throw createError({ statusCode: 400, statusMessage: 'Current password is incorrect' })
     }
   }
 
-  const nextHash = await hashPassword(newPassword, env.PASSWORD_PEPPER || '')
+  const nextHash = await hashAccountPassword(env, newPassword)
   await db
     .prepare(`UPDATE global_accounts SET password_hash = ?, password_set = 1, updated_at = strftime('%s', 'now') WHERE id = ?`)
     .bind(nextHash, account.id)

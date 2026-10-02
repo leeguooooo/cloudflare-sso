@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody, setCookie } from 'h3'
 import { getDb, getEnv } from '../../../utils/env'
-import { hashPassword, verifyPassword } from '../../../utils/crypto'
+import { hashAccountPassword, verifyAccountPassword } from '../../../utils/password'
+import { hashPassword } from '../../../utils/crypto'
 import { issueTokens } from '../../../utils/auth'
 import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from '../../../utils/rate-limit'
 import { getUserRolesForClient } from '../../../utils/access'
@@ -40,6 +41,7 @@ export default defineEventHandler(async (event) => {
   await assertLoginAllowed(event, email)
   const invalidCredentials = async () => {
     await recordLoginFailure(event, email)
+    await writeAuditLog(event, { tenantId: client.tenant_id, userId: null, action: 'auth.login_failed', payload: { client_id: client.client_id } })
     return createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
   }
 
@@ -72,14 +74,14 @@ export default defineEventHandler(async (event) => {
       throw await invalidCredentials()
     }
 
-    const legacyPasswordOk = await verifyPassword(password, legacyUser.password_hash, env.PASSWORD_PEPPER || '')
-    if (!legacyPasswordOk) throw await invalidCredentials()
+    const legacyPassword = await verifyAccountPassword(env, password, legacyUser.password_hash)
+    if (!legacyPassword.ok) throw await invalidCredentials()
 
     if (legacyUser.status !== 'active') {
       throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
     }
 
-    const globalPasswordHash = await hashPassword(password, env.PASSWORD_PEPPER || '')
+    const globalPasswordHash = await hashAccountPassword(env, password)
     const globalAccountId = crypto.randomUUID()
     await db
       .prepare(
@@ -99,8 +101,15 @@ export default defineEventHandler(async (event) => {
 
   if (!globalAccount) throw await invalidCredentials()
 
-  const passwordOk = await verifyPassword(password, globalAccount.password_hash, env.PASSWORD_PEPPER || '')
-  if (!passwordOk) throw await invalidCredentials()
+  const passwordCheck = await verifyAccountPassword(env, password, globalAccount.password_hash)
+  if (!passwordCheck.ok) throw await invalidCredentials()
+  if (passwordCheck.needsRehash) {
+    // Move the hash off the legacy (public) pepper now that we know the password.
+    await db
+      .prepare(`UPDATE global_accounts SET password_hash = ? WHERE id = ?`)
+      .bind(await hashAccountPassword(env, password), globalAccount.id)
+      .run()
+  }
 
   if (globalAccount.status !== 'active') {
     throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })

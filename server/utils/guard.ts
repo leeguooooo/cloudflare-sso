@@ -1,4 +1,4 @@
-import { createError, getRequestHeader, H3Event } from 'h3'
+import { createError, getRequestHeader, getRequestURL, H3Event } from 'h3'
 import { verifyJwt } from './jwt'
 import { getDb, getEnv } from './env'
 import { resolveDefaultClientId } from './default-client'
@@ -25,7 +25,15 @@ const readBearerPayload = async (event: H3Event) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw createError({ statusCode: 401, statusMessage: 'Missing access token' })
   }
-  const payload = (await verifyJwt(event, authHeader.slice('Bearer '.length))) as Record<string, unknown>
+  let payload: Record<string, unknown>
+  try {
+    payload = (await verifyJwt(event, authHeader.slice('Bearer '.length))) as Record<string, unknown>
+  } catch (error) {
+    // Labelled so auth regressions (e.g. a stale kid after rotation) show up in the logs by reason.
+    const reason = (error as { statusMessage?: string })?.statusMessage || 'unknown'
+    console.warn('token verification failed', { reason, path: getRequestURL(event).pathname })
+    throw error
+  }
   if (payload.token_use !== 'access') {
     throw createError({ statusCode: 401, statusMessage: 'Invalid token use' })
   }

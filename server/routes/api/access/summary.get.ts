@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
     .all<{ role_id: string; action: string; resource: string }>()
 
   const rolePermissions: Record<string, string[]> = {}
-  for (const rp of rolePerms) {
+  for (const rp of rolePerms.results || []) {
     rolePermissions[rp.role_id] = rolePermissions[rp.role_id] || []
     rolePermissions[rp.role_id].push(`${rp.action}:${rp.resource}`)
   }
@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
       .prepare(`SELECT role_id FROM client_roles WHERE client_id = ?`)
       .bind(clientId)
       .all<{ role_id: string }>()
-    clientRoleMap[clientId] = cr.map((r) => r.role_id)
+    clientRoleMap[clientId] = (cr.results || []).map((r) => r.role_id)
   }
 
   let userAssignments: string[] = []
@@ -64,8 +64,8 @@ export default defineEventHandler(async (event) => {
   }
 
   return {
-    roles: roles.map((r) => ({ ...r, permissions: rolePermissions[r.id] || [] })),
-    permissions: perms.map((p) => `${p.action}:${p.resource}`),
+    roles: (roles.results || []).map((r) => ({ ...r, permissions: rolePermissions[r.id] || [] })),
+    permissions: (perms.results || []).map((p) => `${p.action}:${p.resource}`),
     client_roles: clientRoleMap,
     user_roles: userAssignments,
     user_role_names: userRoleNames,

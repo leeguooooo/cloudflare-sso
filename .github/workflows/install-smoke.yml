@@ -9,6 +9,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  unit:
+    # Unit + end-to-end route tests and lint. They need neither the private UI packages nor
+    # `nuxt prepare`, so they run on every push and pull request.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - name: Install (no build scripts; the linked cherry UI packages are not needed)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Stub the generated Nuxt tsconfig
+        run: mkdir -p .nuxt && echo '{}' > .nuxt/tsconfig.json
+      - run: npx vitest run
+      - run: npx eslint .
+
   smoke:
     runs-on: ubuntu-latest
     env:

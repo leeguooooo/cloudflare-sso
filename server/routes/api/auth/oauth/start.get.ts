@@ -3,10 +3,11 @@ import { randomId } from '../../../../utils/crypto'
 import { ensureGlobalIdentitySchema, getClientByPublicId } from '../../../../utils/identity'
 import { buildOAuthAuthorizeUrl, parseOAuthProvider } from '../../../../utils/oauth'
 import { getSessionByRefreshToken } from '../../../../utils/auth'
-import { getDb } from '../../../../utils/env'
+import { getDb, getEnv } from '../../../../utils/env'
 import { appleRedirectUri, buildAppleAuthorizeUrl, requireAppleConfig } from '../../../../utils/apple'
 import { buildLoginPath, errorMessageOf, isSecureRequest, safeContinue, withQuery } from '../../../../utils/oauth-complete'
 import { createOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_TTL_SECONDS } from '../../../../utils/oauth-state'
+import { isWechatWebEnabled } from '../../../../utils/wechat'
 import { getProviderAvailability } from '../../../../utils/provider-policy'
 import { isRecentAuth, REAUTH_REQUIRED } from '../../../../utils/sign-in-methods'
 
@@ -55,7 +56,9 @@ export default defineEventHandler(async (event) => {
       }
     } else {
       const available = getProviderAvailability(event, { clientId: client.client_id, siwaPreview: query.siwa === '1' })
-      if (provider === 'wechat' || !available[provider as 'apple' | 'google' | 'github']) {
+      // WeChat is third-party sign-in too: same store-client rule as Google (Guideline 4.8).
+      const allowed = provider === 'wechat' ? isWechatWebEnabled(getEnv(event)) && available.google : available[provider as 'apple' | 'google' | 'github']
+      if (!allowed) {
         throw createError({ statusCode: 403, statusMessage: 'This sign-in method is not available here' })
       }
     }

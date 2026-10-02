@@ -6,6 +6,20 @@ type EnvBindings = {
   JWT_KID?: string
   JWT_ISSUER?: string
   PASSWORD_PEPPER?: string
+  /** Secret pepper for `pbkdf2v2$` hashes; legacy hashes (PASSWORD_PEPPER) migrate on sign-in. */
+  PASSWORD_PEPPER_V2?: string
+  /** Resend API key + verified sender, e.g. "leeguoo <account@leeguoo.com>". */
+  RESEND_API_KEY?: string
+  EMAIL_FROM?: string
+  /** "log" = print emails instead of sending (local dev / tests). */
+  EMAIL_TRANSPORT?: string
+  /** WeChat open-platform website app (QR code sign-in). */
+  WECHAT_WEB_APP_ID?: string
+  WECHAT_WEB_APP_SECRET?: string
+  /** JSON: SSO client_id → { appid } for mini-programs; secrets in WECHAT_MP_SECRET_<APPID>. */
+  WECHAT_MINIPROGRAMS?: string
+  /** Shared secret of the billing reconcile cron worker. */
+  RECONCILE_SECRET?: string
   ACCESS_TOKEN_TTL_SECONDS?: string
   REFRESH_TOKEN_TTL_SECONDS?: string
   OAUTH_GITHUB_CLIENT_ID?: string

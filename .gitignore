@@ -12,9 +12,9 @@ dist/
 # Wrangler generated config (should not be committed)
 wrangler.toml
 
-# Wrangler account configs with sensitive data (use .example files instead)
+# wrangler.account-prod.toml is committed: it holds no secrets (enforced by
+# tests/unit/config-secrets.test.ts). Secrets live in `wrangler pages secret`.
 wrangler.account-test.toml
-wrangler.account-prod.toml
 
 # Environment files
 .env

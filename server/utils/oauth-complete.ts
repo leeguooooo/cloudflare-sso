@@ -18,9 +18,12 @@
 import { createError, deleteCookie, getRequestHeader, getRequestURL, H3Event, sendRedirect, setCookie } from 'h3'
 import { getUserRolesForClient } from './access'
 import { syntheticAppleEmail } from './apple'
+import { syntheticWechatEmail } from './wechat'
 import { writeAuditLog } from './audit'
 import { issueTokens } from './auth'
-import { hashPassword, randomId } from './crypto'
+import { ensureAccountEmailSchema } from './account-email'
+import { randomId } from './crypto'
+import { hashAccountPassword } from './password'
 import { getDb, getEnv } from './env'
 import {
   createGlobalAccount,
@@ -188,14 +191,19 @@ export const upsertIdentity = async (event: H3Event, globalAccountId: string, pr
   return id
 }
 
-/** True once a linked provider has vouched for the account's own email address. */
+/** True once the user clicked a verification link, or a linked provider vouched for the account's email. */
 export const accountEmailVerified = async (event: H3Event, globalAccountId: string) => {
+  await ensureAccountEmailSchema(event)
   const row = await getDb(event)
     .prepare(
-      `SELECT 1 AS ok FROM global_external_identities gei
-       JOIN global_accounts ga ON ga.id = gei.global_account_id
-       WHERE gei.global_account_id = ? AND gei.email_verified = 1 AND lower(gei.email) = lower(ga.email)
-       LIMIT 1`,
+      `SELECT 1 AS ok FROM global_accounts ga
+       WHERE ga.id = ? AND (
+         ga.email_verified_at IS NOT NULL
+         OR EXISTS (
+           SELECT 1 FROM global_external_identities gei
+           WHERE gei.global_account_id = ga.id AND gei.email_verified = 1 AND lower(gei.email) = lower(ga.email)
+         )
+       )`,
     )
     .bind(globalAccountId)
     .first<{ ok: number }>()
@@ -218,7 +226,7 @@ const revokeUnprovenPassword = async (event: H3Event, account: GlobalAccountReco
   if (await accountEmailVerified(event, account.id)) return
 
   const env = getEnv(event)
-  const placeholder = await hashPassword(`oauth-claim-${randomId(32)}`, env.PASSWORD_PEPPER || '')
+  const placeholder = await hashAccountPassword(env, `oauth-claim-${randomId(32)}`)
   await db.batch([
     db
       .prepare(`UPDATE global_accounts SET password_hash = ?, password_set = 0, updated_at = strftime('%s', 'now') WHERE id = ?`)
@@ -238,7 +246,7 @@ const revokeUnprovenPassword = async (event: H3Event, account: GlobalAccountReco
   })
 }
 
-const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile): Promise<GlobalAccountRecord> => {
+export const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile): Promise<GlobalAccountRecord> => {
   const linked = await findGlobalAccountByExternalIdentity(event, profile.provider, profile.subject)
   if (linked) return linked
 
@@ -257,11 +265,15 @@ const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile
   if (!email && profile.provider === 'apple') {
     email = await syntheticAppleEmail(profile.subject)
   }
+  if (!email && profile.provider === 'wechat') {
+    // WeChat never shares an email address; the account gets a non-deliverable placeholder.
+    email = await syntheticWechatEmail(profile.subject)
+  }
   if (!email) {
     throw createError({ statusCode: 400, statusMessage: 'Provider account email is required for first sign-in' })
   }
   const env = getEnv(event)
-  const passwordHash = await hashPassword(`oauth-${profile.provider}-${randomId(32)}`, env.PASSWORD_PEPPER || '')
+  const passwordHash = await hashAccountPassword(env, `oauth-${profile.provider}-${randomId(32)}`)
   const id = await createGlobalAccount(event, {
     email,
     passwordHash,
@@ -272,6 +284,43 @@ const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile
   const created = await findGlobalAccountById(event, id)
   if (!created) throw createError({ statusCode: 500, statusMessage: 'Failed to resolve global account' })
   return created
+}
+
+/**
+ * Final step of every provider sign-in (browser OAuth and native exchanges): records the
+ * identity on the account, provisions the client's tenant user and opens a session.
+ */
+export const signInAccount = async (
+  event: H3Event,
+  client: Awaited<ReturnType<typeof getClientByPublicId>>,
+  account: GlobalAccountRecord,
+  profile: OAuthIdentityProfile,
+) => {
+  if (account.status !== 'active') {
+    throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })
+  }
+
+  await upsertIdentity(event, account.id, profile)
+  if (profile.name && !account.display_name) {
+    await getDb(event)
+      .prepare(`UPDATE global_accounts SET display_name = ?, updated_at = strftime('%s', 'now') WHERE id = ? AND (display_name IS NULL OR display_name = '')`)
+      .bind(profile.name, account.id)
+      .run()
+  }
+
+  const provisioned = await provisionTenantUserForGlobalAccount(event, {
+    tenantId: client.tenant_id,
+    globalAccountId: account.id,
+    email: account.email,
+    locale: account.locale || 'en',
+  })
+  if (provisioned.user.status !== 'active') {
+    throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
+  }
+
+  const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
+  const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', { roles })
+  return { provisioned, tokens }
 }
 
 /** Runs after the provider proved the identity. Always answers with a redirect / bridge page. */
@@ -304,30 +353,7 @@ export const completeOAuthSignIn = async (event: H3Event, state: OAuthStatePaylo
       account = await resolveLoginAccount(event, profile)
     }
 
-    if (account.status !== 'active') {
-      throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })
-    }
-
-    await upsertIdentity(event, account.id, profile)
-    if (profile.name && !account.display_name) {
-      await getDb(event)
-        .prepare(`UPDATE global_accounts SET display_name = ?, updated_at = strftime('%s', 'now') WHERE id = ? AND (display_name IS NULL OR display_name = '')`)
-        .bind(profile.name, account.id)
-        .run()
-    }
-
-    const provisioned = await provisionTenantUserForGlobalAccount(event, {
-      tenantId: client.tenant_id,
-      globalAccountId: account.id,
-      email: account.email,
-      locale: account.locale || 'en',
-    })
-    if (provisioned.user.status !== 'active') {
-      throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
-    }
-
-    const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
-    const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', { roles })
+    const { provisioned, tokens } = await signInAccount(event, client, account, profile)
     setCookie(event, 'sso_refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: isSecureRequest(event),
