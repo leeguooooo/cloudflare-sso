@@ -2,7 +2,8 @@ import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb } from '../../../../utils/env'
 import { writeAuditLog } from '../../../../utils/audit'
 import { ensureBillingSchema } from '../../../../utils/billing'
-import { requireTenantAdmin } from '../../../../utils/guard'
+import { requireTenantAdminOrService } from '../../../../utils/guard'
+import { processSubscriptionEvent } from '../../../../utils/billing-events'
 
 type IngestBody = {
   tenant_id?: string
@@ -61,8 +62,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'occurred_at must be a unix timestamp' })
   }
 
-  const principal = await requireTenantAdmin(event, tenantId)
   const db = getDb(event)
+  const readEvent = (id: string) =>
+    db
+      .prepare(
+        `SELECT id, tenant_id, subscription_id, provider, event_id, event_type, occurred_at, payload_json, status, error_message, processed_at, created_at
+         FROM subscription_events
+         WHERE id = ?`,
+      )
+      .bind(id)
+      .first<EventRow>()
+
+  // Tenant admins from the console, or a billing backend with a client_credentials token.
+  const principal = await requireTenantAdminOrService(event, tenantId, 'billing:events.write')
 
   let subscriptionRef: SubscriptionRow | null = null
   if (subscriptionId) {
@@ -89,9 +101,13 @@ export default defineEventHandler(async (event) => {
     .first<EventRow>()
 
   if (existing) {
+    // A redelivery retries events that could not be applied yet; applied/ignored ones are final.
+    if (existing.status === 'pending' || existing.status === 'failed') {
+      await processSubscriptionEvent(event, existing)
+    }
     return {
       idempotent: true,
-      event: existing,
+      event: await readEvent(existing.id),
     }
   }
 
@@ -105,20 +121,17 @@ export default defineEventHandler(async (event) => {
     .bind(rowId, tenantId, subscriptionRef?.id || null, provider, eventId, eventType, Math.floor(occurredAt), JSON.stringify(payload))
     .run()
 
-  const created = await db
-    .prepare(
-      `SELECT id, tenant_id, subscription_id, provider, event_id, event_type, occurred_at, payload_json, status, error_message, processed_at, created_at
-       FROM subscription_events
-       WHERE id = ?`,
-    )
-    .bind(rowId)
-    .first<EventRow>()
+  const inserted = await readEvent(rowId)
+  if (inserted) await processSubscriptionEvent(event, inserted)
+  const created = await readEvent(rowId)
 
   await writeAuditLog(event, {
     tenantId,
-    userId: principal.sub,
+    userId: principal.clientOnly ? null : principal.sub,
     action: 'billing.subscription_event.ingest',
     payload: {
+      actor: principal.clientOnly ? principal.sub : undefined,
+      status: created?.status,
       provider,
       event_id: eventId,
       event_type: eventType,

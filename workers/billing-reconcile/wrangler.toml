@@ -1,0 +1,15 @@
+name = "cloudflare-sso-billing-reconcile"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+# Cron only: no public URL.
+workers_dev = false
+
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+SSO_BASE_URL = "https://account.leeguoo.com"
+
+# Secrets (wrangler secret put … --config workers/billing-reconcile/wrangler.toml):
+#   RECONCILE_SECRET   — same value as the Pages secret of the same name
+#   ALERT_WEBHOOK_URL  — optional incoming webhook for alerts

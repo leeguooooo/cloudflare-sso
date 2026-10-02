@@ -18,9 +18,12 @@
 import { createError, deleteCookie, getRequestHeader, getRequestURL, H3Event, sendRedirect, setCookie } from 'h3'
 import { getUserRolesForClient } from './access'
 import { syntheticAppleEmail } from './apple'
+import { syntheticWechatEmail } from './wechat'
 import { writeAuditLog } from './audit'
 import { issueTokens } from './auth'
-import { hashPassword, randomId } from './crypto'
+import { ensureAccountEmailSchema } from './account-email'
+import { randomId } from './crypto'
+import { hashAccountPassword } from './password'
 import { getDb, getEnv } from './env'
 import {
   createGlobalAccount,
@@ -48,11 +51,25 @@ export class AccountExistsError extends Error {
   }
 }
 
+/**
+ * Same-origin path only. Browsers read `/\host` as `//host`, so any backslash is refused,
+ * as are control characters (a tab or newline inside `//` is stripped by URL parsers).
+ */
 export const safeContinue = (raw: unknown) => {
   const value = typeof raw === 'string' ? raw.trim() : ''
   if (!value.startsWith('/') || value.startsWith('//')) return ''
+  if (/[\\\u0000-\u001f\u007f]/.test(value)) return ''
   return value
 }
+
+/** JSON that is safe inside an inline <script>: `</script>`, `<!--` and line separators cannot break out. */
+const scriptJson = (value: unknown) =>
+  JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
 
 export const isSecureRequest = (event: H3Event) => {
   const forwardedProto = getRequestHeader(event, 'x-forwarded-proto')?.split(',')[0].trim().toLowerCase()
@@ -96,7 +113,7 @@ export const withQuery = (path: string, values: Record<string, string>) => {
   return `${url.pathname}${url.search}`
 }
 
-const renderBridgeHtml = (input: { accessToken: string; email: string; redirectPath: string }) => `<!doctype html>
+export const renderBridgeHtml = (input: { accessToken: string; email: string; redirectPath: string; nonce: string }) => `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -105,13 +122,13 @@ const renderBridgeHtml = (input: { accessToken: string; email: string; redirectP
     <title>Signing in...</title>
   </head>
   <body>
-    <script>
+    <script nonce="${input.nonce}">
       (function () {
         try {
-          localStorage.setItem('sso_access_token', ${JSON.stringify(input.accessToken)});
-          localStorage.setItem('sso_last_email', ${JSON.stringify(input.email)});
+          localStorage.setItem('sso_access_token', ${scriptJson(input.accessToken)});
+          localStorage.setItem('sso_last_email', ${scriptJson(input.email)});
         } catch (_) {}
-        window.location.replace(${JSON.stringify(input.redirectPath)});
+        window.location.replace(${scriptJson(safeContinue(input.redirectPath) || '/account')});
       })();
     </script>
   </body>
@@ -174,14 +191,72 @@ export const upsertIdentity = async (event: H3Event, globalAccountId: string, pr
   return id
 }
 
-const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile): Promise<GlobalAccountRecord> => {
+/** True once the user clicked a verification link, or a linked provider vouched for the account's email. */
+export const accountEmailVerified = async (event: H3Event, globalAccountId: string) => {
+  await ensureAccountEmailSchema(event)
+  const row = await getDb(event)
+    .prepare(
+      `SELECT 1 AS ok FROM global_accounts ga
+       WHERE ga.id = ? AND (
+         ga.email_verified_at IS NOT NULL
+         OR EXISTS (
+           SELECT 1 FROM global_external_identities gei
+           WHERE gei.global_account_id = ga.id AND gei.email_verified = 1 AND lower(gei.email) = lower(ga.email)
+         )
+       )`,
+    )
+    .bind(globalAccountId)
+    .first<{ ok: number }>()
+  return Boolean(row?.ok)
+}
+
+/**
+ * Registration does not verify email, so anyone could have registered this address with a
+ * password first. When a provider now proves who owns the address, that password (and every
+ * session it opened) cannot be trusted: it is replaced and the sessions revoked, so a squatter
+ * cannot keep a key to the real owner's account. The owner can set a new password afterwards.
+ */
+const revokeUnprovenPassword = async (event: H3Event, account: GlobalAccountRecord, profile: OAuthIdentityProfile) => {
+  const db = getDb(event)
+  const row = await db
+    .prepare(`SELECT password_set FROM global_accounts WHERE id = ?`)
+    .bind(account.id)
+    .first<{ password_set?: number | null }>()
+  if (Number(row?.password_set ?? 1) !== 1) return
+  if (await accountEmailVerified(event, account.id)) return
+
+  const env = getEnv(event)
+  const placeholder = await hashAccountPassword(env, `oauth-claim-${randomId(32)}`)
+  await db.batch([
+    db
+      .prepare(`UPDATE global_accounts SET password_hash = ?, password_set = 0, updated_at = strftime('%s', 'now') WHERE id = ?`)
+      .bind(placeholder, account.id),
+    db
+      .prepare(
+        `UPDATE sessions SET revoked_at = strftime('%s', 'now')
+         WHERE revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE global_account_id = ?)`,
+      )
+      .bind(account.id),
+  ])
+  await writeAuditLog(event, {
+    tenantId: null,
+    userId: null,
+    action: 'account.email_claimed_by_provider',
+    payload: { global_account_id: account.id, provider: profile.provider, password_reset: true },
+  })
+}
+
+export const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile): Promise<GlobalAccountRecord> => {
   const linked = await findGlobalAccountByExternalIdentity(event, profile.provider, profile.subject)
   if (linked) return linked
 
   if (profile.email) {
     const byEmail = await findGlobalAccountByEmail(event, profile.email)
     if (byEmail) {
-      if (mayAutoLinkByEmail(profile)) return byEmail
+      if (mayAutoLinkByEmail(profile)) {
+        await revokeUnprovenPassword(event, byEmail, profile)
+        return byEmail
+      }
       throw new AccountExistsError(profile.provider, profile.email)
     }
   }
@@ -190,11 +265,15 @@ const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile
   if (!email && profile.provider === 'apple') {
     email = await syntheticAppleEmail(profile.subject)
   }
+  if (!email && profile.provider === 'wechat') {
+    // WeChat never shares an email address; the account gets a non-deliverable placeholder.
+    email = await syntheticWechatEmail(profile.subject)
+  }
   if (!email) {
     throw createError({ statusCode: 400, statusMessage: 'Provider account email is required for first sign-in' })
   }
   const env = getEnv(event)
-  const passwordHash = await hashPassword(`oauth-${profile.provider}-${randomId(32)}`, env.PASSWORD_PEPPER || '')
+  const passwordHash = await hashAccountPassword(env, `oauth-${profile.provider}-${randomId(32)}`)
   const id = await createGlobalAccount(event, {
     email,
     passwordHash,
@@ -205,6 +284,43 @@ const resolveLoginAccount = async (event: H3Event, profile: OAuthIdentityProfile
   const created = await findGlobalAccountById(event, id)
   if (!created) throw createError({ statusCode: 500, statusMessage: 'Failed to resolve global account' })
   return created
+}
+
+/**
+ * Final step of every provider sign-in (browser OAuth and native exchanges): records the
+ * identity on the account, provisions the client's tenant user and opens a session.
+ */
+export const signInAccount = async (
+  event: H3Event,
+  client: Awaited<ReturnType<typeof getClientByPublicId>>,
+  account: GlobalAccountRecord,
+  profile: OAuthIdentityProfile,
+) => {
+  if (account.status !== 'active') {
+    throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })
+  }
+
+  await upsertIdentity(event, account.id, profile)
+  if (profile.name && !account.display_name) {
+    await getDb(event)
+      .prepare(`UPDATE global_accounts SET display_name = ?, updated_at = strftime('%s', 'now') WHERE id = ? AND (display_name IS NULL OR display_name = '')`)
+      .bind(profile.name, account.id)
+      .run()
+  }
+
+  const provisioned = await provisionTenantUserForGlobalAccount(event, {
+    tenantId: client.tenant_id,
+    globalAccountId: account.id,
+    email: account.email,
+    locale: account.locale || 'en',
+  })
+  if (provisioned.user.status !== 'active') {
+    throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
+  }
+
+  const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
+  const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', { roles })
+  return { provisioned, tokens }
 }
 
 /** Runs after the provider proved the identity. Always answers with a redirect / bridge page. */
@@ -237,30 +353,7 @@ export const completeOAuthSignIn = async (event: H3Event, state: OAuthStatePaylo
       account = await resolveLoginAccount(event, profile)
     }
 
-    if (account.status !== 'active') {
-      throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })
-    }
-
-    await upsertIdentity(event, account.id, profile)
-    if (profile.name && !account.display_name) {
-      await getDb(event)
-        .prepare(`UPDATE global_accounts SET display_name = ?, updated_at = strftime('%s', 'now') WHERE id = ? AND (display_name IS NULL OR display_name = '')`)
-        .bind(profile.name, account.id)
-        .run()
-    }
-
-    const provisioned = await provisionTenantUserForGlobalAccount(event, {
-      tenantId: client.tenant_id,
-      globalAccountId: account.id,
-      email: account.email,
-      locale: account.locale || 'en',
-    })
-    if (provisioned.user.status !== 'active') {
-      throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
-    }
-
-    const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
-    const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', undefined, roles)
+    const { provisioned, tokens } = await signInAccount(event, client, account, profile)
     setCookie(event, 'sso_refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: isSecureRequest(event),
@@ -285,8 +378,14 @@ export const completeOAuthSignIn = async (event: H3Event, state: OAuthStatePaylo
     const redirectPath = isLink
       ? withQuery(continuePath || '/account?section=linked', { linked: profile.provider })
       : continuePath || '/account'
-    return new Response(renderBridgeHtml({ accessToken: tokens.accessToken, email: provisioned.user.email, redirectPath }), {
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+    const nonce = randomId(16)
+    return new Response(renderBridgeHtml({ accessToken: tokens.accessToken, email: provisioned.user.email, redirectPath, nonce }), {
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'`,
+        'referrer-policy': 'no-referrer',
+      },
     })
   } catch (error) {
     if (isLink) {

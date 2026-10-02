@@ -1,5 +1,7 @@
 import { defineEventHandler } from 'h3'
-import { getDb } from '../../../utils/env'
+import { getDb, getEnv } from '../../../utils/env'
+import { isEmailEnabled } from '../../../utils/email'
+import { accountEmailVerified } from '../../../utils/oauth-complete'
 import { requireAccountUserContext } from '../../../utils/account'
 
 type LinkedIdentityRow = {
@@ -217,6 +219,7 @@ export default defineEventHandler(async (event) => {
   ]
 
   return {
+    email_enabled: isEmailEnabled(getEnv(event)),
     profile: {
       sub: ctx.user.id,
       tid: ctx.user.tenant_id,
@@ -228,6 +231,7 @@ export default defineEventHandler(async (event) => {
       avatar_url: ctx.globalAccount?.avatar_url || null,
       roles: ctx.principal.roles,
       perms: ctx.principal.perms,
+      email_verified: ctx.globalAccount ? await accountEmailVerified(event, ctx.globalAccount.id) : false,
       created_at: ctx.user.created_at,
       global_account_created_at: ctx.globalAccount?.created_at || null,
     },

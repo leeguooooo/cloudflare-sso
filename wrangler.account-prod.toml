@@ -1,0 +1,34 @@
+name = "cloudflare-sso"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = ".output/public"
+
+[vars]
+# Secrets live in `wrangler pages secret`, never here: JWT_PRIVATE_KEY, OAUTH_GOOGLE_CLIENT_SECRET,
+# OAUTH_GITHUB_CLIENT_SECRET, APPLE_*, ACCOUNT_HOOK_SECRET.
+JWT_KID = "k2026-10"
+JWT_ISSUER = "https://account.leeguoo.com"
+PASSWORD_PEPPER = "change-me"
+ACCESS_TOKEN_TTL_SECONDS = "600"
+REFRESH_TOKEN_TTL_SECONDS = "1209600"
+DEFAULT_CLIENT_ID = "misonote-app-web"
+
+OAUTH_GOOGLE_CLIENT_ID = "9266088847-8oauoaula4i2shtmt3pnlt9av22p0e8h.apps.googleusercontent.com"
+OAUTH_GOOGLE_REDIRECT_URI = ""
+OAUTH_GITHUB_CLIENT_ID = "Ov23li6m3b5s4xaix55g"
+OAUTH_GITHUB_REDIRECT_URI = "https://account.leeguoo.com/api/auth/oauth/callback?provider=github"
+
+# Sign in with Apple (secrets: APPLE_TEAM_ID, APPLE_SERVICES_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY).
+# SIWA_ENABLED: "0" off | "test" only on /login?siwa=1 | "1" on for everyone.
+SIWA_ENABLED = "1"
+# "1" = native App Store clients (leeguoo-pastyx-ios, misonote-paste-macos) also get Google/GitHub.
+# Only takes effect while SIWA_ENABLED = "1" and the Apple secrets exist (Guideline 4.8).
+STORE_CLIENTS_SOCIAL_LOGIN = "0"
+APPLE_APP_IDS = "com.paste.native"
+
+# Connected apps' account hooks (merge / delete); secret: ACCOUNT_HOOK_SECRET.
+ACCOUNT_HOOK_URLS = "https://pasteapi.leeguoo.com/v1/internal/accounts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "misonote"
+database_id = "f93cf4c4-f573-40e9-8730-a2a668a1f4fa"

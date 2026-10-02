@@ -22,7 +22,7 @@ const isAllowedOrigin = (origin: string): boolean =>
   ALLOWED_ORIGIN_RE.test(origin) || isDevOrigin(origin)
 
 // Only these API paths are opened up for cross-origin credentialed reads.
-const CORS_PATHS = new Set<string>(['/token', '/userinfo', '/api/billing/entitlements'])
+const CORS_PATHS = new Set<string>(['/token', '/userinfo', '/revoke', '/api/billing/entitlements'])
 
 export default defineEventHandler((event) => {
   const origin = getRequestHeader(event, 'origin') || ''

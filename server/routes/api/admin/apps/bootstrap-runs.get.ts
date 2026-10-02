@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getDb } from '../../../../utils/env'
-import { requireAnyAdmin } from '../../../../utils/guard'
+import { requirePlatformAdmin } from '../../../../utils/guard'
 
 type AuditRow = {
   id: string
@@ -28,7 +28,7 @@ const parsePayload = (raw: string): BootstrapPayload => {
 }
 
 export default defineEventHandler(async (event) => {
-  await requireAnyAdmin(event)
+  await requirePlatformAdmin(event)
   const query = getQuery(event)
   const runId = String(query.run_id || '').trim()
   const limitRaw = Number(query.limit || 20)

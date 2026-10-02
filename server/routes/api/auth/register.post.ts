@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb, getEnv } from '../../../utils/env'
-import { hashPassword } from '../../../utils/crypto'
+import { hashAccountPassword } from '../../../utils/password'
+import { consumeRateLimit, requestIp } from '../../../utils/rate-limit'
 import { writeAuditLog } from '../../../utils/audit'
 import { resolveDefaultClientId } from '../../../utils/default-client'
 import {
@@ -30,6 +31,13 @@ export default defineEventHandler(async (event) => {
   if (!email || !password) {
     throw createError({ statusCode: 400, statusMessage: 'email and password are required' })
   }
+  if (password.length < 8) {
+    throw createError({ statusCode: 400, statusMessage: 'Password must be at least 8 characters' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid email address' })
+  }
+  await consumeRateLimit(event, 'register', requestIp(event), 20, 3600)
 
   await ensureGlobalIdentitySchema(event)
 
@@ -50,7 +58,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const env = getEnv(event)
-  const passwordHash = await hashPassword(password, env.PASSWORD_PEPPER || '')
+  const passwordHash = await hashAccountPassword(env, password)
   const globalAccountId = await createGlobalAccount(event, {
     email,
     passwordHash,

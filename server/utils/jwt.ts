@@ -1,4 +1,4 @@
-import { createError, H3Event } from 'h3'
+import { createError, getRequestURL, H3Event } from 'h3'
 import { base64UrlDecode, base64UrlEncode, nowInSeconds } from './crypto'
 import { getEnv } from './env'
 
@@ -44,15 +44,27 @@ export const signJwt = async (
   return `${toSign}.${encodedSignature}`
 }
 
-export const verifyJwt = async (event: H3Event, token: string) => {
+/** `ignoreExpiry` is only for hints (e.g. id_token_hint at logout), never for authentication. */
+export const verifyJwt = async (event: H3Event, token: string, options?: { ignoreExpiry?: boolean }) => {
   const parts = token.split('.')
   if (parts.length !== 3) throw createError({ statusCode: 401, statusMessage: 'Invalid token' })
   const [encodedHeader, encodedPayload, encodedSignature] = parts
-  const header = JSON.parse(new TextDecoder().decode(base64UrlToBuffer(encodedHeader)))
-  if (header.alg !== 'RS256') throw createError({ statusCode: 400, statusMessage: 'Unsupported alg' })
-  const payload = JSON.parse(new TextDecoder().decode(base64UrlToBuffer(encodedPayload)))
+  const decodeSegment = (segment: string) => {
+    try {
+      const value = JSON.parse(new TextDecoder().decode(base64UrlToBuffer(segment)))
+      if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>
+    } catch {
+      // fall through
+    }
+    throw createError({ statusCode: 401, statusMessage: 'Invalid token' })
+  }
+  const header = decodeSegment(encodedHeader)
+  if (header.alg !== 'RS256') throw createError({ statusCode: 401, statusMessage: 'Unsupported alg' })
+  const payload = decodeSegment(encodedPayload)
   const signature = base64UrlToBuffer(encodedSignature)
-  const { publicKey } = await getSigningKeys(event)
+  const { publicKey, kid } = await getSigningKeys(event)
+  // Tokens signed under a retired kid must not verify, even if someone still holds that key.
+  if (header.kid !== kid) throw createError({ statusCode: 401, statusMessage: 'Unknown key id' })
   const ok = await crypto.subtle.verify(
     { name: 'RSASSA-PKCS1-v1_5' },
     publicKey,
@@ -60,7 +72,11 @@ export const verifyJwt = async (event: H3Event, token: string) => {
     new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`),
   )
   if (!ok) throw createError({ statusCode: 401, statusMessage: 'Invalid signature' })
-  if (payload.exp && nowInSeconds() > payload.exp) throw createError({ statusCode: 401, statusMessage: 'Token expired' })
+  if (typeof payload.exp !== 'number' || (!options?.ignoreExpiry && nowInSeconds() > payload.exp)) {
+    throw createError({ statusCode: 401, statusMessage: 'Token expired' })
+  }
+  const issuer = getEnv(event).JWT_ISSUER || getRequestURL(event).origin
+  if (payload.iss !== issuer) throw createError({ statusCode: 401, statusMessage: 'Invalid issuer' })
   return payload
 }
 

@@ -6,6 +6,20 @@ type EnvBindings = {
   JWT_KID?: string
   JWT_ISSUER?: string
   PASSWORD_PEPPER?: string
+  /** Secret pepper for `pbkdf2v2$` hashes; legacy hashes (PASSWORD_PEPPER) migrate on sign-in. */
+  PASSWORD_PEPPER_V2?: string
+  /** Resend API key + verified sender, e.g. "leeguoo <account@leeguoo.com>". */
+  RESEND_API_KEY?: string
+  EMAIL_FROM?: string
+  /** "log" = print emails instead of sending (local dev / tests). */
+  EMAIL_TRANSPORT?: string
+  /** WeChat open-platform website app (QR code sign-in). */
+  WECHAT_WEB_APP_ID?: string
+  WECHAT_WEB_APP_SECRET?: string
+  /** JSON: SSO client_id → { appid } for mini-programs; secrets in WECHAT_MP_SECRET_<APPID>. */
+  WECHAT_MINIPROGRAMS?: string
+  /** Shared secret of the billing reconcile cron worker. */
+  RECONCILE_SECRET?: string
   ACCESS_TOKEN_TTL_SECONDS?: string
   REFRESH_TOKEN_TTL_SECONDS?: string
   OAUTH_GITHUB_CLIENT_ID?: string
@@ -15,6 +29,12 @@ type EnvBindings = {
   OAUTH_GOOGLE_CLIENT_SECRET?: string
   OAUTH_GOOGLE_REDIRECT_URI?: string
   DEFAULT_CLIENT_ID?: string
+  /** Extra comma-separated client ids (besides DEFAULT_CLIENT_ID) whose tokens may use the admin APIs. */
+  ADMIN_CLIENT_IDS?: string
+  /** Tenant whose admins may bootstrap apps; defaults to the tenant of DEFAULT_CLIENT_ID. */
+  PLATFORM_TENANT_ID?: string
+  /** Absolute session lifetime regardless of refreshes (default one year). */
+  SESSION_MAX_AGE_SECONDS?: string
   /** Sign in with Apple: "1" = on for every client, "test" = only when the page URL has ?siwa=1, else off. */
   SIWA_ENABLED?: string
   /** "1" = show Google / GitHub to native App Store clients too (only ever when Apple is available). */

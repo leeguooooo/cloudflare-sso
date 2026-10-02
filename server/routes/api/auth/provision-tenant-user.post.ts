@@ -6,7 +6,8 @@ import {
   getClientByPublicId,
   provisionTenantUserForGlobalAccount,
 } from '../../../utils/identity'
-import { requireAccessPrincipal } from '../../../utils/guard'
+import { platformTenantId, requireAccessPrincipal } from '../../../utils/guard'
+import { getDb } from '../../../utils/env'
 import { writeAuditLog } from '../../../utils/audit'
 
 type ProvisionBody = {
@@ -43,7 +44,15 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!body.client_id && body.tenant_id) {
-    await ensureTenantExists(event, tenantId, body.tenant_name || tenantId)
+    const exists = await getDb(event).prepare(`SELECT id FROM tenants WHERE id = ?`).bind(tenantId).first()
+    if (!exists) {
+      // Creating tenants is a platform operation; a regular user must not squat tenant ids.
+      const isPlatformAdmin =
+        principal.tid === (await platformTenantId(event)) &&
+        (principal.roles.includes('admin') || principal.perms.includes('manage:admin'))
+      if (!isPlatformAdmin) throw createError({ statusCode: 404, statusMessage: 'Unknown tenant' })
+      await ensureTenantExists(event, tenantId, body.tenant_name || tenantId)
+    }
   }
 
   const provisioned = await provisionTenantUserForGlobalAccount(event, {

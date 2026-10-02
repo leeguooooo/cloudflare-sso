@@ -1,29 +1,28 @@
 <template>
-  <NuxtLayout name="default">
-    <div class="dashboard-page">
-      <div class="page-header">
-        <div>
-          <h2 class="page-title">{{ t('access.title') }}</h2>
-          <p class="page-subtitle">{{ t('access.subtitle') }}</p>
-        </div>
-        <div class="header-controls">
-          <UiInput v-model="tenantId" :placeholder="t('access.tenant')" class="control-input" />
-          <UiInput v-model="clientId" :placeholder="t('access.client')" class="control-input" />
-          <UiInput v-model="userId" :placeholder="t('access.user')" class="control-input" />
-          <UiButton @click="loadSnapshot" :loading="loading">
-            {{ t('access.load') }}
-          </UiButton>
-        </div>
+  <div class="dashboard-page">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">{{ t('access.title') }}</h2>
+        <p class="page-subtitle">{{ t('access.subtitle') }}</p>
       </div>
+      <div class="header-controls">
+        <UiInput v-model="tenantId" :placeholder="t('access.tenant')" class="control-input" />
+        <UiInput v-model="clientId" :placeholder="t('access.client')" class="control-input" />
+        <UiInput v-model="userId" :placeholder="t('access.user')" class="control-input" />
+        <UiButton @click="loadSnapshot" :loading="loading">
+          {{ t('access.load') }}
+        </UiButton>
+      </div>
+    </div>
 
-      <div class="dashboard-grid">
-        <UiCard class="card">
-          <template #header>
-            <div class="card-header">
-              <h3>{{ t('access.roles') }}</h3>
-              <UiBadge variant="info" :label="String(roles.length)" />
-            </div>
-          </template>
+    <div class="dashboard-grid">
+      <UiCard class="card">
+        <template #header>
+          <div class="card-header">
+            <h3>{{ t('access.roles') }}</h3>
+            <UiBadge variant="info" :label="String(roles.length)" />
+          </div>
+        </template>
 
           <div class="card-body">
             <div v-if="roles.length === 0" class="empty-state">
@@ -104,25 +103,26 @@
       <UiAlert
         v-if="message"
         class="toast"
-        :variant="message.includes('Failed') ? 'danger' : 'success'"
+        :variant="messageVariant"
         :message="message"
       />
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
+import { storedTokenTenantId } from '~/utils/token-claims'
 const { t } = useI18n()
 const config = useRuntimeConfig()
 
-const tenantId = ref('tenant-demo')
-const clientId = ref('demo-web')
-const userId = ref('user-demo')
+const tenantId = ref('')
+const clientId = ref('')
+const userId = ref('')
 
 const roles = ref<{ id: string; name: string; description: string; permissions: string[] }[]>([])
 const permissions = ref<string[]>([])
 const loading = ref(false)
 const message = ref('')
+const messageVariant = ref<'success' | 'danger'>('success')
 
 const roleForm = reactive({
   name: '',
@@ -164,8 +164,8 @@ const loadSnapshot = async () => {
     })
     roles.value = (data as any).roles || []
     permissions.value = (data as any).permissions || []
-    message.value = t('access.success')
   } catch (err: any) {
+    messageVariant.value = 'danger'
     message.value = err?.data?.message || err?.message || 'Failed to load'
   } finally {
     loading.value = false
@@ -196,6 +196,7 @@ const createRole = async () => {
       },
       headers: getAuthHeaders(),
     })
+    messageVariant.value = 'success'
     message.value = t('access.success')
     roleForm.name = ''
     roleForm.description = ''
@@ -203,6 +204,7 @@ const createRole = async () => {
     roleForm.clientIds = ''
     await loadSnapshot()
   } catch (err: any) {
+    messageVariant.value = 'danger'
     message.value = err?.data?.message || err?.message || 'Failed to save role'
   } finally {
     loading.value = false
@@ -222,9 +224,11 @@ const assignRole = async () => {
       },
       headers: getAuthHeaders(),
     })
+    messageVariant.value = 'success'
     message.value = t('access.success')
     await loadSnapshot()
   } catch (err: any) {
+    messageVariant.value = 'danger'
     message.value = err?.data?.message || err?.message || 'Failed to assign'
   } finally {
     loading.value = false
@@ -243,9 +247,11 @@ const bindRole = async () => {
       },
       headers: getAuthHeaders(),
     })
+    messageVariant.value = 'success'
     message.value = t('access.success')
     await loadSnapshot()
   } catch (err: any) {
+    messageVariant.value = 'danger'
     message.value = err?.data?.message || err?.message || 'Failed to bind role'
   } finally {
     loading.value = false
@@ -257,6 +263,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
+  tenantId.value = storedTokenTenantId()
   loadSnapshot()
 })
 </script>

@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getCookie, readBody, setCookie } from 'h3'
 import { getDb } from '../../../utils/env'
-import { getSessionByRefreshToken, rotateSession } from '../../../utils/auth'
+import { assertUserActive, getSessionByRefreshToken, rotateSession } from '../../../utils/auth'
 import { getUserRolesForClient } from '../../../utils/access'
 import { ensureClientManagementSchema } from '../../../utils/identity'
 import { writeAuditLog } from '../../../utils/audit'
@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Client disabled' })
   }
 
+  await assertUserActive(event, session.user_id)
   const user = await db
     .prepare(`SELECT id, email, locale, tenant_id, global_account_id FROM users WHERE id = ?`)
     .bind(session.user_id)
@@ -31,7 +32,7 @@ export default defineEventHandler(async (event) => {
   if (!user) throw createError({ statusCode: 404, statusMessage: 'User not found' })
 
   const roles = await getUserRolesForClient(event, user.id, user.tenant_id, client.id)
-  const tokens = await rotateSession(event, session.id, user, client, client.scope || 'openid profile email', roles)
+  const tokens = await rotateSession(event, session, user, client, roles)
 
   setCookie(event, 'sso_refresh_token', tokens.refreshToken, {
     httpOnly: true,
@@ -54,6 +55,6 @@ export default defineEventHandler(async (event) => {
     id_token: tokens.idToken,
     refresh_token: tokens.refreshToken,
     expires_in: tokens.accessTokenExpiresIn,
-    scope: client.scope,
+    scope: tokens.scope,
   }
 })

@@ -1,7 +1,7 @@
 import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb } from '../../../../utils/env'
 import { writeAuditLog } from '../../../../utils/audit'
-import { requireAnyAdmin } from '../../../../utils/guard'
+import { requirePlatformAdmin } from '../../../../utils/guard'
 import {
   ensureClientManagementSchema,
   ensureGlobalIdentitySchema,
@@ -167,7 +167,7 @@ const ensureClient = async (db: D1Database, tenantId: string, seed: ClientSeed) 
 }
 
 export default defineEventHandler(async (event) => {
-  const principal = await requireAnyAdmin(event)
+  const principal = await requirePlatformAdmin(event)
   const bootstrapRunId = crypto.randomUUID()
   const body = (await readBody(event).catch(() => ({}))) as BootstrapBody
   const rawAppKeys = Array.isArray(body.app_keys) ? body.app_keys : body.app_key ? [body.app_key] : []

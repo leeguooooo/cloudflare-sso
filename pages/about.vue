@@ -6,8 +6,8 @@
 
       <h2>当前能力</h2>
       <ul>
-        <li>邮箱密码登录、Google/GitHub 第三方登录入口（WeChat 记为 TODO）。</li>
-        <li>统一账号中心：资料管理、密码变更、会话管理、第三方绑定。</li>
+        <li>邮箱密码登录，以及通过 Apple 登录、Google、GitHub 登录（微信登录暂不支持）。</li>
+        <li>统一账号中心：资料管理、密码变更、会话管理、登录方式绑定与账号合并、账号删除。</li>
         <li>多租户角色权限模型与订阅权益联动。</li>
       </ul>
 
@@ -21,7 +21,7 @@
       <h2>版本信息</h2>
       <ul>
         <li>站点版本：Identity Program 2026Q1</li>
-        <li>最后更新：2026-03-03</li>
+        <li>最后更新：2026-10-02</li>
       </ul>
 
       <NuxtLink to="/account" class="legal-back-link">返回账号中心</NuxtLink>
