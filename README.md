@@ -18,8 +18,8 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 | 找回密码、邮箱验证、更换邮箱 | secret `RESEND_API_KEY` + 变量 `EMAIL_FROM`（本地可用 `EMAIL_TRANSPORT=log`） | 入口隐藏，接口返回 503 |
 | 微信扫码登录 | `WECHAT_WEB_APP_ID` + secret `WECHAT_WEB_APP_SECRET`（微信开放平台网站应用） | 按钮隐藏 |
 | 微信小程序登录 | `WECHAT_MINIPROGRAMS='{"<client_id>":{"appid":"wx…"}}'` + secret `WECHAT_MP_SECRET_<APPID>` | 接口返回 400 |
-| 密码 pepper 迁移 | secret `PASSWORD_PEPPER_V2` | 新密码继续用旧 pepper |
-| 账单对账定时任务 | Pages secret `RECONCILE_SECRET` + 部署 `workers/billing-reconcile` | 不对账 |
+| 密码 pepper 迁移 | secret `PASSWORD_PEPPER_V2`（**生产已启用**，2026-10-02；备份在 Bitwarden `backup` 文件夹「cloudflare-sso PASSWORD_PEPPER_V2」） | 新密码继续用旧 pepper |
+| 账单对账定时任务 | Pages secret `RECONCILE_SECRET` + 部署 `workers/billing-reconcile`（**生产已启用**，每 30 分钟） | 不对账 |
 
 ## 新增（统一登录简化方案，Phase 1）
 - 全局账号模型：`global_accounts` 作为统一凭据源，`users.global_account_id` 做租户映射
