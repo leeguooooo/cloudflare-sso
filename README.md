@@ -108,7 +108,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - 页面接口（只认 `sso_refresh_token` cookie，跨站 Origin 返回 403）：
   - `GET /api/billing/afdian/membership?app_key=` → `{ signed_in, email, app_key, available, name, price_label, status: "member"|"trial"|"expired"|"none", valid_to }`
   - `POST /api/billing/afdian/checkout { app_key, month: 1..12 }` → `{ url, checkout_id, month }`；`404 not_available`（没有该 app 的方案）/ `401 login_required` / `400 invalid_request` / `429 too_many_requests`
-- `POST /api/billing/afdian/webhook`：校验爱发电 RSA-SHA256 签名（失败 HTTP 401 `{ec:401}`，不入库）。订单按 `custom_order_id`（购买页生成）或之前绑定过的爱发电用户匹配账号，
+- `POST /api/billing/afdian/webhook`：校验爱发电 RSA-SHA256 签名（签名不对只记日志、不入库、不生效，但仍回 `{ec:200}`：爱发电后台保存 Webhook 地址时发的示例订单没有有效签名）。订单按 `custom_order_id`（购买页生成）或之前绑定过的爱发电用户匹配账号，
   匹配后记住「爱发电用户 ↔ 账号」，以后的自动续费和直接在爱发电下的单都能对上。每个 `out_trade_no` 只生效一次；对不上的订单记为 `unmatched` 等管理员处理。
   配了 `AFDIAN_TOKEN` 时再用开放接口 `query-order` 确认金额 / 方案 / 用户一致，不一致记 `rejected`。最终结果都回 `{ec:200}`，临时失败回 `{ec:500}` 让爱发电重推。
 - 生效规则：权益（例如 `jrkan.premium`）从「现在」与「该权益当前最晚到期时间（含试用）」中较晚者起，延长 `month × days_per_month` 天；

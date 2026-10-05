@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody, setResponseStatus } from 'h3'
+import { defineEventHandler, readBody } from 'h3'
 import { getEnv } from '../../../../utils/env'
 import {
   AFDIAN_PUBLIC_KEY,
@@ -28,9 +28,10 @@ export default defineEventHandler(async (event) => {
   const env = getEnv(event)
   const publicKey = (env.AFDIAN_PUBLIC_KEY || '').trim() || AFDIAN_PUBLIC_KEY
   if (!(await verifyAfdianSignature(order, String(body.data?.sign || ''), publicKey))) {
+    // Ignored, not refused: afdian's "save webhook URL" check posts an unsigned sample order
+    // and only accepts the URL when it gets ec 200. Nothing is recorded or applied.
     console.warn('afdian webhook signature rejected', { out_trade_no: String(order.out_trade_no) })
-    setResponseStatus(event, 401)
-    return { ec: 401, em: 'invalid signature' }
+    return { ec: 200, em: '' }
   }
 
   try {

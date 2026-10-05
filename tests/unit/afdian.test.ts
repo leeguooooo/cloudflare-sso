@@ -241,11 +241,17 @@ describe('afdian webhook', () => {
     expect((await h.request('/api/admin/afdian/orders', { method: 'POST', bearer: token, json: { out_trade_no: order.out_trade_no, email: 'fan@example.com' } })).status).toBe(409)
   })
 
-  it('refuses bad signatures without recording, and records unknown plans as rejected', async () => {
+  it('answers ec 200 to bad or missing signatures but records and grants nothing', async () => {
+    await signIn('fan@example.com', 'acct-web')
+    h.db.sqlite.exec(`INSERT INTO afdian_bindings (afdian_user_id, global_account_id, bound_at) VALUES ('afd-user-1', 'ga1', 1)`)
     const order = paidOrder()
-    const forged = await push({ ...order, total_amount: '0.01' }, await sign(order))
-    expect(forged).toEqual({ status: 401, body: { ec: 401, em: 'invalid signature' } })
+    expect(await push({ ...order, total_amount: '0.01' }, await sign(order))).toEqual({ status: 200, body: { ec: 200, em: '' } })
+    expect(await push(order, '')).toEqual({ status: 200, body: { ec: 200, em: '' } })
     expect(orderRow(order.out_trade_no)).toBeUndefined()
+    expect(premium('ga1')).toEqual([])
+  })
+
+  it('records unknown plans as rejected', async () => {
 
     const unknownPlan = paidOrder({ plan_id: 'plan-other' })
     expect((await push(unknownPlan)).body.ec).toBe(200)
