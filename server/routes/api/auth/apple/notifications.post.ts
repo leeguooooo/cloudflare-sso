@@ -13,6 +13,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'payload required' })
   }
   const notification = await verifyAppleNotification(config, body.payload)
-  const outcome = await handleAppleAccountEvent(event, notification, (token) => revokeAppleToken(config, token))
+  const outcome = await handleAppleAccountEvent(event, notification, (token, clientId) => revokeAppleToken(config, token, clientId))
   return { ok: true, ...outcome }
 })

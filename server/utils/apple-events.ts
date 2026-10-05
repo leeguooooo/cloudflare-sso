@@ -51,14 +51,17 @@ export const deleteAccountEverywhere = async (event: H3Event, gaid: string) => {
 export const handleAppleAccountEvent = async (
   event: H3Event,
   notification: AppleNotificationEvent,
-  revoke: (refreshToken: string) => Promise<unknown>,
+  revoke: (refreshToken: string, clientId: string | null) => Promise<unknown>,
 ) => {
   await ensureGlobalIdentitySchema(event)
   const db = getDb(event)
   const identity = await db
-    .prepare(`SELECT id, global_account_id, refresh_token FROM global_external_identities WHERE provider = 'apple' AND subject = ?`)
+    .prepare(
+      `SELECT id, global_account_id, refresh_token, refresh_token_client_id
+       FROM global_external_identities WHERE provider = 'apple' AND subject = ?`,
+    )
     .bind(notification.sub)
-    .first<{ id: string; global_account_id: string; refresh_token?: string | null }>()
+    .first<{ id: string; global_account_id: string; refresh_token?: string | null; refresh_token_client_id?: string | null }>()
   if (!identity) return { handled: false, type: notification.type }
 
   const audit = (action: string, payload: Record<string, unknown> = {}) =>
@@ -83,7 +86,7 @@ export const handleAppleAccountEvent = async (
       await db
         .prepare(
           `UPDATE global_external_identities
-           SET consent_revoked_at = strftime('%s', 'now'), refresh_token = NULL, updated_at = strftime('%s', 'now')
+           SET consent_revoked_at = strftime('%s', 'now'), refresh_token = NULL, refresh_token_client_id = NULL, updated_at = strftime('%s', 'now')
            WHERE id = ?`,
         )
         .bind(identity.id)
@@ -94,7 +97,9 @@ export const handleAppleAccountEvent = async (
     }
     case 'account-delete': {
       const methods = await listSignInMethods(event, identity.global_account_id)
-      if (identity.refresh_token) await Promise.resolve(revoke(identity.refresh_token)).catch(() => undefined)
+      if (identity.refresh_token) {
+        await Promise.resolve(revoke(identity.refresh_token, identity.refresh_token_client_id || null)).catch(() => undefined)
+      }
       if (canRemoveIdentity(methods, identity.id)) {
         await db.prepare(`DELETE FROM global_external_identities WHERE id = ?`).bind(identity.id).run()
         await revokeAllSessions(db, identity.global_account_id)

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS global_external_identities (
   is_private_email INTEGER, -- Apple private relay address
   email_disabled INTEGER, -- Apple: relay forwarding turned off
   refresh_token TEXT, -- provider refresh token (Apple: needed to revoke on deletion)
+  refresh_token_client_id TEXT, -- Apple client the refresh token belongs to (NULL = Services ID)
   consent_revoked_at INTEGER,
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL,
   updated_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
@@ -350,3 +351,24 @@ CREATE TABLE IF NOT EXISTS login_failures (
 );
 CREATE INDEX IF NOT EXISTS idx_login_failures_email ON login_failures (email, created_at);
 CREATE INDEX IF NOT EXISTS idx_login_failures_ip ON login_failures (ip, created_at);
+
+-- OAuth 2.0 device authorization grant (RFC 8628); device_code stored as a SHA-256 hash
+CREATE TABLE IF NOT EXISTS device_codes (
+  id TEXT PRIMARY KEY,
+  device_code_hash TEXT NOT NULL UNIQUE,
+  user_code TEXT NOT NULL UNIQUE, -- 8 letters, stored without the dash
+  client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  scope TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied', 'consumed')),
+  global_account_id TEXT, -- who approved
+  auth_time INTEGER,
+  poll_interval INTEGER NOT NULL DEFAULT 5,
+  last_polled_ms INTEGER,
+  expires_at INTEGER NOT NULL,
+  approved_at INTEGER,
+  consumed_at INTEGER,
+  ip TEXT,
+  user_agent TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_device_codes_expires ON device_codes (expires_at);

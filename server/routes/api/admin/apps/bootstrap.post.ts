@@ -9,6 +9,7 @@ import {
   findUserById,
   provisionTenantUserForGlobalAccount,
 } from '../../../../utils/identity'
+import { DEVICE_CODE_GRANT } from '../../../../utils/device'
 
 type BootstrapBody = {
   app_key?: string
@@ -19,7 +20,11 @@ type ClientSeed = {
   client_id: string
   name: string
   redirect_uris: string[]
+  /** Space separated; defaults to DEFAULT_GRANT_TYPES. */
+  grant_types?: string
 }
+
+const DEFAULT_GRANT_TYPES = 'authorization_code pkce refresh_token'
 
 type AppSeed = {
   tenantId: string
@@ -119,6 +124,23 @@ const APP_SEEDS: Record<string, AppSeed> = {
       },
     ],
   },
+  jrkan: {
+    tenantId: 'tenant-jrkan',
+    tenantName: 'JRKAN',
+    clients: [
+      {
+        client_id: 'leeguoo-jrkan-tv',
+        name: 'JRKAN Apple TV',
+        redirect_uris: [],
+        grant_types: `refresh_token ${DEVICE_CODE_GRANT}`,
+      },
+      {
+        client_id: 'leeguoo-jrkan-ios',
+        name: 'JRKAN iOS/Mac',
+        redirect_uris: ['com.leeguoo.jrskan.tv:/oauth/callback'],
+      },
+    ],
+  },
 }
 
 const ensurePermission = async (db: D1Database, tenantId: string, action: string, resource: string) => {
@@ -158,9 +180,9 @@ const ensureClient = async (db: D1Database, tenantId: string, seed: ClientSeed) 
     .prepare(
       `INSERT INTO clients
        (id, tenant_id, client_id, client_secret, name, redirect_uris, grant_types, scope, first_party, status, updated_at)
-       VALUES (?, ?, ?, NULL, ?, ?, 'authorization_code pkce refresh_token', 'openid profile email', 1, 'active', strftime('%s', 'now'))`,
+       VALUES (?, ?, ?, NULL, ?, ?, ?, 'openid profile email', 1, 'active', strftime('%s', 'now'))`,
     )
-    .bind(clientId, tenantId, seed.client_id, seed.name, JSON.stringify(seed.redirect_uris))
+    .bind(clientId, tenantId, seed.client_id, seed.name, JSON.stringify(seed.redirect_uris), seed.grant_types || DEFAULT_GRANT_TYPES)
     .run()
 
   return clientId

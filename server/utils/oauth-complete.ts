@@ -161,6 +161,7 @@ export const upsertIdentity = async (event: H3Event, globalAccountId: string, pr
              profile_json = CASE WHEN ? = 1 THEN profile_json ELSE ? END,
              email_verified = COALESCE(?, email_verified),
              is_private_email = COALESCE(?, is_private_email),
+             refresh_token_client_id = CASE WHEN ? IS NULL THEN refresh_token_client_id ELSE ? END,
              refresh_token = COALESCE(?, refresh_token),
              consent_revoked_at = NULL,
              updated_at = strftime('%s', 'now')
@@ -173,6 +174,8 @@ export const upsertIdentity = async (event: H3Event, globalAccountId: string, pr
         emailVerified,
         isPrivate,
         profile.refreshToken || null,
+        profile.refreshTokenClientId || null,
+        profile.refreshToken || null,
         existing.id,
       )
       .run()
@@ -183,10 +186,21 @@ export const upsertIdentity = async (event: H3Event, globalAccountId: string, pr
   await db
     .prepare(
       `INSERT INTO global_external_identities
-         (id, global_account_id, provider, subject, email, profile_json, email_verified, is_private_email, refresh_token)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, global_account_id, provider, subject, email, profile_json, email_verified, is_private_email, refresh_token, refresh_token_client_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, globalAccountId, profile.provider, profile.subject, profile.email || null, profileJson, emailVerified, isPrivate, profile.refreshToken || null)
+    .bind(
+      id,
+      globalAccountId,
+      profile.provider,
+      profile.subject,
+      profile.email || null,
+      profileJson,
+      emailVerified,
+      isPrivate,
+      profile.refreshToken || null,
+      (profile.refreshToken && profile.refreshTokenClientId) || null,
+    )
     .run()
   return id
 }

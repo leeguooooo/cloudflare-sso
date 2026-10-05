@@ -1,7 +1,11 @@
 import { H3Event, setResponseHeader, setResponseStatus } from 'h3'
 
-/** RFC 6749 §5.2 error codes used by the token / revocation endpoints. */
+/** RFC 6749 §5.2 (and RFC 8628 §3.5 device flow) error codes used by the token / revocation endpoints. */
 export type OAuthErrorCode =
+  | 'authorization_pending'
+  | 'slow_down'
+  | 'access_denied'
+  | 'expired_token'
   | 'invalid_request'
   | 'invalid_client'
   | 'invalid_grant'

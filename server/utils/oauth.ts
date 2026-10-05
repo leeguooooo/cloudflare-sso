@@ -22,6 +22,8 @@ export type OAuthIdentityProfile = {
   isPrivateEmail?: boolean
   /** Provider refresh token worth keeping (Apple: needed to revoke on deletion). */
   refreshToken?: string
+  /** Apple: the client the refresh token was issued to (bundle id for native codes; unset = Services ID). */
+  refreshTokenClientId?: string
   profile: Record<string, unknown>
 }
 

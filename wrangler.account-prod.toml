@@ -23,7 +23,7 @@ SIWA_ENABLED = "1"
 # "1" = native App Store clients (leeguoo-pastyx-ios, misonote-paste-macos) also get Google/GitHub.
 # Only takes effect while SIWA_ENABLED = "1" and the Apple secrets exist (Guideline 4.8).
 STORE_CLIENTS_SOCIAL_LOGIN = "0"
-APPLE_APP_IDS = "com.paste.native"
+APPLE_APP_IDS = "com.paste.native,com.leeguoo.jrskan.tv"
 
 # Password reset / email verification mail (secret: RESEND_API_KEY; misonote.com is verified in Resend).
 EMAIL_FROM = "leeguoo 账号 <no-reply@misonote.com>"

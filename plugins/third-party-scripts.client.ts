@@ -7,9 +7,14 @@ import { hideSocialLogin } from '~/utils/auth-client'
  * They are skipped when the page is the sign-in / register sheet of a native
  * App Store client (ASWebAuthenticationSession): ads or trackers inside an
  * app's login sheet are an App Review problem (2.3 / 5.1.2) and the apps'
- * privacy labels do not declare them. Every other page is unchanged.
+ * privacy labels do not declare them.
+ *
+ * Also skipped on the TV device-approval page and on the sign-in that leads
+ * to it: an Auto Ad landing next to "Allow" on a page that grants a device
+ * access to the account is one mis-tap away from a wrong approval.
  */
 const AUTH_PAGE_RE = /^\/(?:[a-z]{2}\/)?(?:login|register)\/?$/
+const DEVICE_PAGE_RE = /^\/(?:[a-z]{2}\/)?device\/?$/
 
 const addScript = (attrs: Record<string, string | boolean>, inline?: string) => {
   const el = document.createElement('script')
@@ -27,6 +32,10 @@ export default defineNuxtPlugin(() => {
   const query = Object.fromEntries(url.searchParams.entries())
   const extra = typeof config.public.nativeStoreClientIds === 'string' ? config.public.nativeStoreClientIds : ''
   if (AUTH_PAGE_RE.test(url.pathname) && hideSocialLogin(query, extra)) {
+    return
+  }
+  const continuePath = (query.continue || '').split('?')[0]
+  if (DEVICE_PAGE_RE.test(url.pathname) || (AUTH_PAGE_RE.test(url.pathname) && DEVICE_PAGE_RE.test(continuePath))) {
     return
   }
 

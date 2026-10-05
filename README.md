@@ -4,7 +4,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 
 ## 特性
 - 单仓全栈：Nuxt SPA + Nitro Functions（Pages Functions）即 Workers 端点
-- OIDC: `/.well-known/openid-configuration`、`/authorize`、`/token`、`/userinfo`、`/jwks.json`、`/revoke`（RFC 7009）、`/logout`（RP-Initiated Logout）
+- OIDC: `/.well-known/openid-configuration`、`/authorize`、`/token`、`/userinfo`、`/jwks.json`、`/revoke`（RFC 7009）、`/logout`（RP-Initiated Logout）、`/device/code`（RFC 8628 设备授权，给 Apple TV 这类不方便输入的设备）
 - 认证：注册、登录、刷新、登出，Refresh Token 存 D1（轮换 + 重放检测），Access/ID Token 为 RS256；登录失败限流
 - 服务间调用：`client_credentials`（机密 client + 业务 scope，例如 `billing:events.write`）
 - 第三方登录：通过 Apple 登录 / GitHub / Google OAuth（WeChat 记为 TODO），一个账号可绑定多种登录方式，重复账号可合并
@@ -19,6 +19,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 | 微信扫码登录 | `WECHAT_WEB_APP_ID` + secret `WECHAT_WEB_APP_SECRET`（微信开放平台网站应用） | 按钮隐藏 |
 | 微信小程序登录 | `WECHAT_MINIPROGRAMS='{"<client_id>":{"appid":"wx…"}}'` + secret `WECHAT_MP_SECRET_<APPID>` | 接口返回 400 |
 | 密码 pepper 迁移 | secret `PASSWORD_PEPPER_V2`（**生产已启用**，2026-10-02；备份在 Bitwarden `backup` 文件夹「cloudflare-sso PASSWORD_PEPPER_V2」） | 新密码继续用旧 pepper |
+| App 内原生通过 Apple 登录 | 同上 Apple secrets；App 的 bundle id 加进 `APPLE_APP_IDS` | 接口返回 501 |
 | 账单对账定时任务 | Pages secret `RECONCILE_SECRET` + 部署 `workers/billing-reconcile`（**生产已启用**，每 30 分钟） | 不对账 |
 
 ## 新增（统一登录简化方案，Phase 1）
@@ -52,8 +53,43 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - `GET /api/auth/email/verify?token=`：邮件链接落地，回跳账号中心
 - `GET /api/account/export`：下载账号数据（资料、登录方式、会话、完整活动记录、订阅与权益）
 - `POST /api/auth/wechat/miniprogram { client_id, code }`：`wx.login()` 的 code 换 SSO token（同 `/token` 响应）。有 unionid 时网站与各小程序落到同一个账号
+- `POST /api/auth/apple/native { client_id, identity_token, nonce, authorization_code?, given_name?, family_name? }`：App 内原生「通过 Apple 登录」换 SSO token（同 `/token` 响应），详见下文
 - 管理：`GET/POST /api/admin/users`（禁用/启用/全部登出）、`GET /api/admin/metrics`（登录健康度）、`GET /api/billing/subscriptions`、`GET /api/billing/events`
 - 内部：`POST /api/internal/billing/reconcile`（`RECONCILE_SECRET`，由 `workers/billing-reconcile` 每 30 分钟调用；可配 `ALERT_WEBHOOK_URL` 推送告警到飞书/Discord/Slack）
+
+## App 内原生通过 Apple 登录
+`POST /api/auth/apple/native`（JSON）
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `client_id` | 是 | SSO client，例如 `leeguoo-jrkan-tv` / `leeguoo-jrkan-ios` |
+| `identity_token` | 是 | `ASAuthorizationAppleIDCredential.identityToken`，`aud` 必须在 `APPLE_APP_IDS` 里 |
+| `nonce` | 是 | 原始 nonce；发给 Apple 的是它的 SHA-256 小写 hex，token 的 `nonce` claim 必须等于它 |
+| `authorization_code` | 否 | 带上时服务端用 `client_id = token 的 aud`（bundle id）去 Apple 换 refresh token，删号时用来撤销。换失败只记日志，不影响登录 |
+| `given_name` / `family_name` | 否 | Apple 只在第一次授权时给名字 |
+
+- 成功：`200 { token_type, access_token, id_token, refresh_token, expires_in, scope }`，用户开通到该 client 的租户
+- 失败一律 `{ error, error_description }`：`400 invalid_request`（缺字段）/ `400 invalid_client`（未知 client）/ `401 invalid_token`（签名、aud、nonce、过期不对）/
+  `409 account_exists`（邮箱属于另一个没绑定 Apple 的账号，响应多一个 `email`；先用原方式登录再到账号中心绑定）/ `429 too_many_requests`（每 IP 10 分钟 60 次）/
+  `501 not_configured`（Apple secrets 不全或 `SIWA_ENABLED=0`）/ `502 server_error`（拿不到 Apple 公钥）
+- 审计：`auth.apple_native`
+
+## 设备授权（RFC 8628，Apple TV）
+1. 设备：`POST /device/code`（form 或 JSON）`client_id`、可选 `scope` →
+   `200 { device_code, user_code: "XXXX-XXXX", verification_uri: "<issuer>/device", verification_uri_complete: "<issuer>/device?user_code=XXXX-XXXX", expires_in: 600, interval: 5 }`。
+   只有 `grant_types` 含 `urn:ietf:params:oauth:grant-type:device_code` 的 client 能用（否则 `400 unauthorized_client`）；未知 client `401 invalid_client`；每 IP 10 分钟 30 次（`429 slow_down`）。
+   `device_code` 库里只存 SHA-256；`user_code` 是 8 个不含元音和 0/O/1/I 的字母，不区分大小写、可省略横线。
+2. 用户在手机/电脑打开 `verification_uri_complete`（或 `/device` 手动输入）。没登录会跳到托管登录页（`/login?continue=/device?...&client_id=<设备的 client>`，Apple / 密码 / Google 等都能用），
+   登录后看到应用名、设备、代码、当前账号（可切换），点「允许」或「拒绝」。
+3. 设备每 `interval` 秒轮询 `POST /token`：`grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=…&client_id=…`。
+   未批准 `400 authorization_pending`；比 interval 快 `400 slow_down`（该 code 的 interval 永久 +5 秒）；被拒 `400 access_denied`；过期 `400 expired_token`；已用过或不属于该 client `400 invalid_grant`。
+   批准后只发一次 token（与授权码换 token 同样的响应），用户开通到该 client 的租户，审计 `auth.token.device_code`。
+
+页面用的接口（只认账号域名下的 `sso_refresh_token` 会话 cookie，和 `/authorize` 一样不接受 Bearer）：
+- `GET /api/auth/device/lookup[?user_code=]` → `{ signed_in, email, user_code, client_id, client_name, device_name, status, expires_in }`；
+  未知代码 `404 invalid_user_code`。带 `user_code` 时每 IP 10 分钟 30 次（`429 too_many_requests`）
+- `POST /api/auth/device/verify { user_code, action: "approve" | "deny" }` → `{ ok: true, status: "approved" | "denied", client_id, client_name, device_name }`；
+  `401 login_required` / `404 invalid_user_code` / `409 already_handled` / `410 expired_user_code` / `403 invalid_origin`（跨站请求）/ `429 too_many_requests`（每 IP 10 分钟 20 次）。审计 `auth.device.approve` / `auth.device.deny`
 
 ## 服务间调用（client_credentials）
 1. 在管理后台（或 `POST /api/admin/clients`）创建 client：`grant_types: "client_credentials"`、`scope: "billing:events.write billing:entitlements.read"`、`generate_secret: true`。响应里的 `client_secret` **只出现这一次**，库里只存哈希。
@@ -72,7 +108,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
   - 鉴权：Bearer Access Token
   - 行为：将当前用户按 global account 映射开通到目标 tenant（幂等）
 - `POST /api/admin/apps/bootstrap`
-  - 入参：`app_key`（单个）或 `app_keys`（批量，字符串数组）
+  - 入参：`app_key`（单个）或 `app_keys`（批量，字符串数组）；可选值 `blog` / `paste` / `misonote` / `cherry` / `jrkan`
   - 鉴权：Bearer Access Token，**平台管理员**（`DEFAULT_CLIENT_ID` 所在租户、或 `PLATFORM_TENANT_ID` 的 admin）
   - 行为：创建 tenant、默认 clients、`admin/user` roles 与基础权限绑定
   - 示例：可一次传 `["misonote","paste"]`，完成 `misonote-app-web`、`misonote-paste-web`、`misonote-paste-macos`、`paste-web`、`paste-macos` 注册
@@ -92,6 +128,11 @@ Paste 客户端约定（统一账号）：
 - macOS：`misonote-paste-macos`
   - `redirect_uri` 白名单包含：`http://127.0.0.1:45897/auth/sso/callback`
 - 不建议 Web 与 Desktop 复用同一个 `client_id`。
+
+JRKAN 客户端约定（tvOS / iOS / Mac，bundle id 都是 `com.leeguoo.jrskan.tv`，租户 `tenant-jrkan`，只走内部 TestFlight，不是商店客户端）：
+- `leeguoo-jrkan-tv`：Apple TV，设备授权（`refresh_token` + `urn:ietf:params:oauth:grant-type:device_code`），没有 redirect URI；也可以用 `/api/auth/apple/native`
+- `leeguoo-jrkan-ios`：iPhone / iPad / Mac，授权码 + PKCE，`redirect_uri` 为 `com.leeguoo.jrskan.tv:/oauth/callback`；也可以用 `/api/auth/apple/native`
+- 生产注册：`POST /api/admin/apps/bootstrap { "app_key": "jrkan" }`，或执行 `scripts/sql/jrkan-clients.sql`（幂等，效果相同，只是不会把调用者设为租户 admin）
 - `GET /api/admin/clients`
   - 入参：`tenant_id`，可选 `include_disabled=true`
   - 鉴权：Bearer Access Token（tenant admin）
@@ -190,6 +231,7 @@ pnpm dev
 
 - `SIWA_ENABLED` / `STORE_CLIENTS_SOCIAL_LOGIN`：通过 Apple 登录与商店版客户端的第三方登录开关
 - `APPLE_TEAM_ID` / `APPLE_SERVICES_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY`（secrets）：通过 Apple 登录
+- `APPLE_APP_IDS`：逗号分隔的 App ID（bundle id），原生登录的 identity token 与 Apple 通知的 `aud` 必须在其中；第一个是 primary App ID（`com.paste.native`）
 - `ACCOUNT_HOOK_URLS` / `ACCOUNT_HOOK_SECRET`（secret）：账号合并、删除时通知已连接应用
 
 通过 Apple 登录、登录方式绑定与账号合并见 `docs/SIGN_IN_WITH_APPLE.md`。
