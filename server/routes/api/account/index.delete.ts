@@ -55,16 +55,16 @@ export default defineEventHandler(async (event) => {
       ? (
           await db
             .prepare(
-              `SELECT refresh_token FROM global_external_identities
+              `SELECT refresh_token, refresh_token_client_id FROM global_external_identities
                WHERE global_account_id = ? AND provider = 'apple' AND refresh_token IS NOT NULL`,
             )
             .bind(globalAccountId)
-            .all<{ refresh_token: string }>()
-            .catch(() => ({ results: [] as { refresh_token: string }[] }))
+            .all<{ refresh_token: string; refresh_token_client_id?: string | null }>()
+            .catch(() => ({ results: [] as { refresh_token: string; refresh_token_client_id?: string | null }[] }))
         ).results || []
       : []
     for (const row of appleRows) {
-      await revokeAppleToken(appleConfig!, row.refresh_token).catch(() => false)
+      await revokeAppleToken(appleConfig!, row.refresh_token, row.refresh_token_client_id).catch(() => false)
     }
   }
 

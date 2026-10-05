@@ -27,12 +27,12 @@ export default defineEventHandler(async (event) => {
   const db = getDb(event)
   const linked = await db
     .prepare(
-      `SELECT id, provider, refresh_token FROM global_external_identities
+      `SELECT id, provider, refresh_token, refresh_token_client_id FROM global_external_identities
        WHERE global_account_id = ? AND ${id ? 'id = ?' : 'provider = ?'}
        ORDER BY created_at LIMIT 1`,
     )
     .bind(gaid, id || provider)
-    .first<{ id: string; provider: string; refresh_token?: string | null }>()
+    .first<{ id: string; provider: string; refresh_token?: string | null; refresh_token_client_id?: string | null }>()
   if (!linked?.id) {
     throw createError({ statusCode: 404, statusMessage: 'Linked provider not found' })
   }
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
   if (linked.provider === 'apple' && linked.refresh_token) {
     const config = readAppleConfig(getEnv(event))
-    if (config) await revokeAppleToken(config, linked.refresh_token).catch(() => false)
+    if (config) await revokeAppleToken(config, linked.refresh_token, linked.refresh_token_client_id).catch(() => false)
   }
 
   await writeAuditLog(event, {

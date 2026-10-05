@@ -13,6 +13,7 @@ describe('normalizeRedirectUriForMatch', () => {
 
   it('keeps non-http schemes untouched', () => {
     expect(normalizeRedirectUriForMatch('paste://oauth/callback')).toBe('paste://oauth/callback')
+    expect(normalizeRedirectUriForMatch('com.leeguoo.jrskan.tv:/oauth/callback')).toBe('com.leeguoo.jrskan.tv:/oauth/callback')
   })
 
   it('returns empty string for blank input', () => {

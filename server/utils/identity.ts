@@ -153,7 +153,8 @@ const addColumn = async (db: D1Database, table: string, definition: string) => {
  *   an account whose first linked identity was created within 30 s of the account
  *   itself was created by that sign-in (password_set = 0); every other account = 1.
  * - global_external_identities: Apple-specific flags and the provider refresh token
- *   (Apple requires revoking it when the account is deleted).
+ *   (Apple requires revoking it when the account is deleted), plus the Apple client it was
+ *   issued to (NULL = the Services ID; native sign-ins store the app's bundle id).
  * - oauth_states: server-side OAuth state (the cookie only carries the random state).
  * - account_merges: merge proposals and their progress (retryable, idempotent).
  * Run once per isolate.
@@ -175,6 +176,7 @@ const linkingSchemaStep = async (db: D1Database) => {
       await addColumn(db, 'global_external_identities', 'is_private_email INTEGER')
       await addColumn(db, 'global_external_identities', 'email_disabled INTEGER')
       await addColumn(db, 'global_external_identities', 'refresh_token TEXT')
+      await addColumn(db, 'global_external_identities', 'refresh_token_client_id TEXT')
       await addColumn(db, 'global_external_identities', 'consent_revoked_at INTEGER')
       await db
         .prepare(

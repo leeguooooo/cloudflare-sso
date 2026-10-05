@@ -21,6 +21,13 @@ export const NATIVE_STORE_CLIENT_IDS: ReadonlySet<string> = new Set([
 export const CLIENT_APP_NAMES: Readonly<Record<string, string>> = {
   'leeguoo-pastyx-ios': 'Pastyx',
   'misonote-paste-macos': 'Pastyx',
+  'leeguoo-jrkan-tv': 'JRKAN',
+  'leeguoo-jrkan-ios': 'JRKAN',
+}
+
+/** Device named on the /device approval page for device-flow clients. */
+export const CLIENT_DEVICE_NAMES: Readonly<Record<string, string>> = {
+  'leeguoo-jrkan-tv': 'Apple TV',
 }
 
 type QueryLike = Record<string, unknown>
@@ -107,6 +114,8 @@ export const resolveProviderAvailability = (input: ProviderPolicyInput): Provide
 
 export const clientAppName = (clientId: string): string => CLIENT_APP_NAMES[clientId.trim()] || ''
 
+export const clientDeviceName = (clientId: string): string => CLIENT_DEVICE_NAMES[clientId.trim()] || ''
+
 // ---------------------------------------------------------------------------
 // Copy (the pages are standalone designs, so they carry their own strings)
 // ---------------------------------------------------------------------------
@@ -190,6 +199,25 @@ export type AuthCopy = {
   passwordTooShort: string
   passwordMismatch: string
   genericError: string
+  deviceKicker: string
+  deviceTitle: string
+  deviceSubtitle: string
+  deviceCodeLabel: string
+  deviceContinue: string
+  deviceRequest: string // {app} {device}
+  deviceDefaultName: string
+  deviceCompare: string
+  deviceSignedInAs: string
+  deviceSwitch: string
+  deviceApprove: string
+  deviceApproving: string
+  deviceDeny: string
+  deviceApproved: string // {device}
+  deviceDenied: string
+  deviceInvalid: string
+  deviceExpired: string
+  deviceUsed: string
+  deviceOtherCode: string
 }
 
 export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
@@ -251,6 +279,25 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     passwordTooShort: 'Password must be at least 8 characters.',
     passwordMismatch: 'Passwords do not match.',
     genericError: 'Something went wrong. Please try again.',
+    deviceKicker: '✦ connect a device ✦',
+    deviceTitle: 'Sign in on your TV',
+    deviceSubtitle: 'Enter the code shown on your TV screen.',
+    deviceCodeLabel: 'Code',
+    deviceContinue: 'Continue',
+    deviceRequest: '{app} on {device} wants to sign in with your leeguoo account.',
+    deviceDefaultName: 'your device',
+    deviceCompare: 'Only continue if this code matches the one on your screen.',
+    deviceSignedInAs: 'Signed in as',
+    deviceSwitch: 'Switch account',
+    deviceApprove: 'Allow',
+    deviceApproving: 'Allowing…',
+    deviceDeny: 'Deny',
+    deviceApproved: 'Done! {device} is signed in. You can go back to it now.',
+    deviceDenied: 'Request denied. Nothing was signed in.',
+    deviceInvalid: 'That code is not valid. Check the code on your screen and try again.',
+    deviceExpired: 'That code has expired. Start the sign-in again on your device to get a new one.',
+    deviceUsed: 'That code was already used.',
+    deviceOtherCode: 'Enter another code',
   },
   zh: {
     loginKicker: '✦ account center ✦',
@@ -310,6 +357,25 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     passwordTooShort: '密码至少 8 个字符。',
     passwordMismatch: '两次输入的密码不一致。',
     genericError: '出了点问题，请稍后再试。',
+    deviceKicker: '✦ connect a device ✦',
+    deviceTitle: '在电视上登录',
+    deviceSubtitle: '输入电视屏幕上显示的代码。',
+    deviceCodeLabel: '代码',
+    deviceContinue: '继续',
+    deviceRequest: '{device} 上的 {app} 请求使用你的 leeguoo 账号登录。',
+    deviceDefaultName: '你的设备',
+    deviceCompare: '请确认这个代码和屏幕上显示的一致，再继续。',
+    deviceSignedInAs: '当前账号',
+    deviceSwitch: '切换账号',
+    deviceApprove: '允许',
+    deviceApproving: '正在允许…',
+    deviceDeny: '拒绝',
+    deviceApproved: '完成！{device} 已登录，可以回到设备上继续了。',
+    deviceDenied: '已拒绝，设备没有登录。',
+    deviceInvalid: '代码无效，请核对屏幕上的代码后重试。',
+    deviceExpired: '代码已过期，请在设备上重新发起登录获取新代码。',
+    deviceUsed: '这个代码已经用过了。',
+    deviceOtherCode: '输入其他代码',
   },
   ja: {
     loginKicker: '✦ account center ✦',
@@ -369,6 +435,25 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     passwordTooShort: 'パスワードは 8 文字以上にしてください。',
     passwordMismatch: 'パスワードが一致しません。',
     genericError: '問題が発生しました。もう一度お試しください。',
+    deviceKicker: '✦ connect a device ✦',
+    deviceTitle: 'テレビでサインイン',
+    deviceSubtitle: 'テレビ画面に表示されているコードを入力してください。',
+    deviceCodeLabel: 'コード',
+    deviceContinue: '続ける',
+    deviceRequest: '{device} の {app} が leeguoo アカウントでのサインインを求めています。',
+    deviceDefaultName: 'お使いのデバイス',
+    deviceCompare: 'このコードが画面のコードと一致する場合のみ続けてください。',
+    deviceSignedInAs: 'サインイン中のアカウント',
+    deviceSwitch: 'アカウントを切り替える',
+    deviceApprove: '許可',
+    deviceApproving: '許可しています…',
+    deviceDeny: '拒否',
+    deviceApproved: '完了しました。{device} でサインインしました。デバイスに戻ってください。',
+    deviceDenied: 'リクエストを拒否しました。サインインは行われていません。',
+    deviceInvalid: 'コードが無効です。画面のコードを確認してもう一度お試しください。',
+    deviceExpired: 'コードの有効期限が切れました。デバイスでもう一度サインインを開始してください。',
+    deviceUsed: 'このコードはすでに使用されています。',
+    deviceOtherCode: '別のコードを入力',
   },
   ko: {
     loginKicker: '✦ account center ✦',
@@ -428,6 +513,25 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     passwordTooShort: '비밀번호는 8자 이상이어야 합니다.',
     passwordMismatch: '비밀번호가 일치하지 않습니다.',
     genericError: '문제가 발생했습니다. 다시 시도하세요.',
+    deviceKicker: '✦ connect a device ✦',
+    deviceTitle: 'TV에서 로그인',
+    deviceSubtitle: 'TV 화면에 표시된 코드를 입력하세요.',
+    deviceCodeLabel: '코드',
+    deviceContinue: '계속',
+    deviceRequest: '{device}의 {app}에서 leeguoo 계정으로 로그인하려고 합니다.',
+    deviceDefaultName: '기기',
+    deviceCompare: '이 코드가 화면의 코드와 같을 때만 계속하세요.',
+    deviceSignedInAs: '로그인한 계정',
+    deviceSwitch: '계정 전환',
+    deviceApprove: '허용',
+    deviceApproving: '허용하는 중…',
+    deviceDeny: '거부',
+    deviceApproved: '완료되었습니다. {device}에서 로그인되었습니다. 이제 기기로 돌아가세요.',
+    deviceDenied: '요청을 거부했습니다. 로그인되지 않았습니다.',
+    deviceInvalid: '유효하지 않은 코드입니다. 화면의 코드를 확인하고 다시 시도하세요.',
+    deviceExpired: '코드가 만료되었습니다. 기기에서 로그인을 다시 시작해 새 코드를 받으세요.',
+    deviceUsed: '이미 사용된 코드입니다.',
+    deviceOtherCode: '다른 코드 입력',
   },
 }
 

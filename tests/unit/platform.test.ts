@@ -85,6 +85,20 @@ describe('admin authorization', () => {
     expect(response.status).toBe(403)
   })
 
+  it('bootstraps JRKAN with a device-flow TV client and a PKCE iOS/Mac client', async () => {
+    const tokenValue = await accessToken('root@example.com', 'acct-web')
+    const response = await h.request('/api/admin/apps/bootstrap', { method: 'POST', bearer: tokenValue, json: { app_key: 'jrkan' } })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ tenant_id: 'tenant-jrkan', client_ids: ['leeguoo-jrkan-tv', 'leeguoo-jrkan-ios'] })
+    const clients = h.db.sqlite
+      .prepare(`SELECT client_id, redirect_uris, grant_types FROM clients WHERE tenant_id = 'tenant-jrkan' ORDER BY client_id`)
+      .all()
+    expect(clients).toEqual([
+      { client_id: 'leeguoo-jrkan-ios', redirect_uris: '["com.leeguoo.jrskan.tv:/oauth/callback"]', grant_types: 'authorization_code pkce refresh_token' },
+      { client_id: 'leeguoo-jrkan-tv', redirect_uris: '[]', grant_types: 'refresh_token urn:ietf:params:oauth:grant-type:device_code' },
+    ])
+  })
+
   it('admin APIs only accept tokens issued to the account center client', async () => {
     const viaSideApp = await accessToken('root@example.com', 'side-app')
     expect((await h.request('/api/admin/overview?tenant_id=t-platform', { bearer: viaSideApp })).status).toBe(403)

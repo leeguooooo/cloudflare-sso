@@ -109,8 +109,16 @@ const pemToDer = (pem: string) => {
 
 const encodeJson = (value: unknown) => base64UrlEncode(textEncoder.encode(JSON.stringify(value)))
 
-/** client_secret for Apple's token / revoke endpoints. Valid for at most 6 months; we use 5 minutes. */
-export const createAppleClientSecret = async (config: AppleConfig, nowSeconds = Math.floor(Date.now() / 1000)) => {
+/**
+ * client_secret for Apple's token / revoke endpoints. Valid for at most 6 months; we use 5 minutes.
+ * `sub` is the client the code or token belongs to: the Services ID for the web flow, the app's
+ * bundle id for codes minted natively on a device.
+ */
+export const createAppleClientSecret = async (
+  config: AppleConfig,
+  nowSeconds = Math.floor(Date.now() / 1000),
+  clientId = config.servicesId,
+) => {
   const key = await crypto.subtle.importKey(
     'pkcs8',
     pemToDer(config.privateKey),
@@ -124,7 +132,7 @@ export const createAppleClientSecret = async (config: AppleConfig, nowSeconds = 
     iat: nowSeconds,
     exp: nowSeconds + 300,
     aud: config.issuer,
-    sub: config.servicesId,
+    sub: clientId,
   })
   const signingInput = `${header}.${payload}`
   // WebCrypto ECDSA signatures are already the raw r||s form JWS wants.
@@ -236,16 +244,29 @@ export const parseAppleUserField = (raw: unknown): { name?: string; email?: stri
   }
 }
 
-export const exchangeAppleCode = async (
-  config: AppleConfig,
-  input: { code: string; redirectUri: string; nonce?: string; userField?: unknown },
-): Promise<AppleIdentity> => {
+/** Identity fields from verified id_token claims (Apple only sends the name outside the token). */
+export const appleIdentityFromClaims = (claims: Record<string, unknown>, extra: { name?: string; refreshToken?: string } = {}): AppleIdentity => {
+  const subject = typeof claims.sub === 'string' ? claims.sub : ''
+  if (!subject) throw invalid('missing subject')
+  const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : undefined
+  return {
+    subject,
+    email: email || undefined,
+    emailVerified: appleBool(claims.email_verified) ?? false,
+    isPrivateEmail: appleBool(claims.is_private_email) ?? Boolean(email?.endsWith('@privaterelay.appleid.com')),
+    name: extra.name,
+    refreshToken: extra.refreshToken,
+    claims,
+  }
+}
+
+const requestAppleToken = async (config: AppleConfig, clientId: string, code: string, redirectUri?: string) => {
   const body = new URLSearchParams()
-  body.set('client_id', config.servicesId)
-  body.set('client_secret', await createAppleClientSecret(config))
-  body.set('code', input.code)
+  body.set('client_id', clientId)
+  body.set('client_secret', await createAppleClientSecret(config, undefined, clientId))
+  body.set('code', code)
   body.set('grant_type', 'authorization_code')
-  body.set('redirect_uri', input.redirectUri)
+  if (redirectUri) body.set('redirect_uri', redirectUri)
   const response = await fetch(`${config.baseUrl}/auth/token`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
@@ -263,27 +284,40 @@ export const exchangeAppleCode = async (
       statusMessage: payload?.error_description || payload?.error || 'Failed to exchange Apple code',
     })
   }
-  const claims = await verifyAppleJwt(config, payload.id_token, { audiences: [config.servicesId], nonce: input.nonce })
-  const subject = typeof claims.sub === 'string' ? claims.sub : ''
-  if (!subject) throw invalid('missing subject')
-  const user = parseAppleUserField(input.userField)
-  const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : undefined
-  return {
-    subject,
-    email: email || undefined,
-    emailVerified: appleBool(claims.email_verified) ?? false,
-    isPrivateEmail: appleBool(claims.is_private_email) ?? Boolean(email?.endsWith('@privaterelay.appleid.com')),
-    name: user.name,
-    refreshToken: payload.refresh_token || undefined,
-    claims,
-  }
+  return { idToken: payload.id_token, refreshToken: payload.refresh_token || undefined }
 }
 
-/** Best effort: Apple answers 200 for unknown / already revoked tokens too. */
-export const revokeAppleToken = async (config: AppleConfig, refreshToken: string) => {
+export const exchangeAppleCode = async (
+  config: AppleConfig,
+  input: { code: string; redirectUri: string; nonce?: string; userField?: unknown },
+): Promise<AppleIdentity> => {
+  const token = await requestAppleToken(config, config.servicesId, input.code, input.redirectUri)
+  const claims = await verifyAppleJwt(config, token.idToken, { audiences: [config.servicesId], nonce: input.nonce })
+  return appleIdentityFromClaims(claims, { name: parseAppleUserField(input.userField).name, refreshToken: token.refreshToken })
+}
+
+/**
+ * Redeems an authorization code minted by ASAuthorizationAppleIDProvider on a device. Such codes
+ * belong to the app (client_id = bundle id, no redirect_uri); the bundle id must share the Sign
+ * in with Apple key's primary App ID group. Returns the refresh token only when Apple's id_token
+ * names the same user, so a code from another account can never be attached.
+ */
+export const exchangeNativeAppleCode = async (config: AppleConfig, input: { code: string; clientId: string; subject: string }) => {
+  const token = await requestAppleToken(config, input.clientId, input.code)
+  const claims = await verifyAppleJwt(config, token.idToken, { audiences: [input.clientId] })
+  if (claims.sub !== input.subject) throw invalid('code belongs to another user')
+  return { refreshToken: token.refreshToken }
+}
+
+/**
+ * Best effort: Apple answers 200 for unknown / already revoked tokens too. `clientId` is the
+ * client the token was issued to (null for tokens stored before it was recorded = Services ID).
+ */
+export const revokeAppleToken = async (config: AppleConfig, refreshToken: string, clientId?: string | null) => {
+  const client = clientId || config.servicesId
   const body = new URLSearchParams()
-  body.set('client_id', config.servicesId)
-  body.set('client_secret', await createAppleClientSecret(config))
+  body.set('client_id', client)
+  body.set('client_secret', await createAppleClientSecret(config, undefined, client))
   body.set('token', refreshToken)
   body.set('token_type_hint', 'refresh_token')
   const response = await fetch(`${config.baseUrl}/auth/revoke`, {
@@ -331,4 +365,10 @@ export const syntheticAppleEmail = async (subject: string) => {
   const digest = await crypto.subtle.digest('SHA-256', textEncoder.encode(`apple:${subject}`))
   const hex = [...new Uint8Array(digest)].slice(0, 10).map((b) => b.toString(16).padStart(2, '0')).join('')
   return `apple-${hex}@users.account.invalid`
+}
+
+/** Native apps pass SHA-256(raw nonce) as lowercase hex to Apple; the token's nonce claim carries that. */
+export const appleNonceHash = async (rawNonce: string) => {
+  const digest = await crypto.subtle.digest('SHA-256', textEncoder.encode(rawNonce))
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }

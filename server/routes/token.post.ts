@@ -3,11 +3,12 @@ import { getDb } from '../utils/env'
 import { assertUserActive, ensureSessionSchema, getSessionByRefreshToken, issueTokens, rotateSession } from '../utils/auth'
 import { nowInSeconds, base64UrlEncode } from '../utils/crypto'
 import { getUserRolesForClient } from '../utils/access'
-import { ensureClientManagementSchema } from '../utils/identity'
+import { ensureClientManagementSchema, findGlobalAccountById, provisionTenantUserForGlobalAccount } from '../utils/identity'
 import { writeAuditLog } from '../utils/audit'
 import { normalizeRedirectUriForMatch } from '../utils/redirect-uri'
 import { OAuthError, readClientCredentials, sendOAuthError } from '../utils/oauth-error'
 import { issueClientCredentialsToken, verifyClientSecret } from '../utils/client-auth'
+import { consumeApprovedDeviceCode, DEVICE_CODE_GRANT, findDeviceCodeByDeviceCode, recordDevicePoll } from '../utils/device'
 
 const hashVerifier = async (verifier: string) => {
   const data = new TextEncoder().encode(verifier)
@@ -150,6 +151,63 @@ const exchangeRefreshToken = async (event: H3Event, body: Record<string, unknown
   }
 }
 
+/** RFC 8628 §3.4: the device polls until the user approved, denied, or the code expired. */
+const exchangeDeviceCode = async (event: H3Event, body: Record<string, unknown>, client: ClientRow, clientId: string) => {
+  if (!(client.grant_types || '').split(/[\s,]+/).includes(DEVICE_CODE_GRANT)) {
+    throw new OAuthError('unauthorized_client', 'The device_code grant is not enabled for this client')
+  }
+  const deviceCode = str(body.device_code)
+  if (!deviceCode) throw new OAuthError('invalid_request', 'device_code required')
+  const row = await findDeviceCodeByDeviceCode(event, deviceCode)
+  if (!row || row.client_id !== client.id) throw new OAuthError('invalid_grant', 'Invalid device_code')
+  if (row.status === 'consumed') throw new OAuthError('invalid_grant', 'device_code already used')
+  if (row.status === 'denied') throw new OAuthError('access_denied', 'The user denied the request')
+  if (row.status === 'pending') {
+    if (nowInSeconds() > row.expires_at) throw new OAuthError('expired_token', 'device_code expired')
+    if ((await recordDevicePoll(event, row)) === 'slow_down') throw new OAuthError('slow_down', 'Polling too fast')
+    throw new OAuthError('authorization_pending', 'Waiting for the user to approve')
+  }
+
+  // Approved before it expired: still redeemable once, but not forever.
+  if (nowInSeconds() > row.expires_at + 60) throw new OAuthError('expired_token', 'device_code expired')
+  if (!(await consumeApprovedDeviceCode(event, row.id))) throw new OAuthError('invalid_grant', 'device_code already used')
+
+  const account = row.global_account_id ? await findGlobalAccountById(event, row.global_account_id) : null
+  if (!account || account.status !== 'active') throw new OAuthError('invalid_grant', 'Account unavailable')
+  const provisioned = await provisionTenantUserForGlobalAccount(event, {
+    tenantId: client.tenant_id,
+    globalAccountId: account.id,
+    email: account.email,
+    locale: account.locale || 'en',
+  })
+  try {
+    await assertUserActive(event, provisioned.user.id)
+  } catch {
+    throw new OAuthError('invalid_grant', 'User inactive')
+  }
+  const roles = await getUserRolesForClient(event, provisioned.user.id, client.tenant_id, client.id)
+  const tokens = await issueTokens(event, provisioned.user, { id: client.id, client_id: clientId }, row.scope, {
+    roles,
+    authTime: Number(row.auth_time || 0) || undefined,
+  })
+
+  await writeAuditLog(event, {
+    tenantId: client.tenant_id,
+    userId: provisioned.user.id,
+    action: 'auth.token.device_code',
+    payload: { client_id: clientId, scope: row.scope, global_account_id: account.id, provisioned_created: provisioned.created },
+  })
+
+  return {
+    token_type: 'Bearer',
+    access_token: tokens.accessToken,
+    id_token: tokens.idToken,
+    refresh_token: tokens.refreshToken,
+    expires_in: tokens.accessTokenExpiresIn,
+    scope: row.scope,
+  }
+}
+
 export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'cache-control', 'no-store')
   try {
@@ -170,6 +228,7 @@ export default defineEventHandler(async (event) => {
 
     if (grantType === 'authorization_code') return await exchangeAuthorizationCode(event, body, client, clientId)
     if (grantType === 'refresh_token') return await exchangeRefreshToken(event, body, client, clientId)
+    if (grantType === DEVICE_CODE_GRANT) return await exchangeDeviceCode(event, body, client, clientId)
     if (grantType === 'client_credentials') return await issueClientCredentialsToken(event, client, clientId, str(body.scope))
     throw new OAuthError('unsupported_grant_type', 'Unsupported grant_type')
   } catch (error) {
