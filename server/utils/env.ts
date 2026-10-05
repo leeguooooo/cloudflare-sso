@@ -56,6 +56,14 @@ type EnvBindings = {
   APPLE_DOMAIN_ASSOCIATION?: string
   /** JSON: tenant id → { entitlement_key, days } granted once per account on its first sign-in there. */
   TENANT_SIGNUP_TRIALS?: string
+  /** afdian (爱发电) creator user id; with AFDIAN_TOKEN (secret) enables the open API. */
+  AFDIAN_USER_ID?: string
+  AFDIAN_TOKEN?: string
+  /** JSON: afdian plan_id → { app_key, tenant_id, entitlement_key, days_per_month, price_label, name }. */
+  AFDIAN_PLANS?: string
+  /** Override of afdian's webhook signing key (PEM) and API base (tests / key rotation). */
+  AFDIAN_PUBLIC_KEY?: string
+  AFDIAN_API_BASE?: string
   /** Comma-separated base URLs of connected apps' account hooks (…/merge, …/delete are appended). */
   ACCOUNT_HOOK_URLS?: string
   /** Shared bearer secret sent to the account hooks. */

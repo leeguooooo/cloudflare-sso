@@ -384,3 +384,43 @@ CREATE TABLE IF NOT EXISTS trial_grants (
   valid_to INTEGER NOT NULL,
   PRIMARY KEY (global_account_id, tenant_id)
 );
+
+-- 爱发电 (afdian) memberships: checkouts started on /membership, afdian user ↔ account bindings,
+-- and every order afdian reported (applied at most once, keyed by out_trade_no)
+CREATE TABLE IF NOT EXISTS afdian_checkouts (
+  id TEXT PRIMARY KEY, -- sent to afdian as custom_order_id
+  global_account_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  plan_id TEXT NOT NULL,
+  month INTEGER NOT NULL,
+  consumed_order TEXT, -- first out_trade_no that came back with this id
+  created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS afdian_bindings (
+  afdian_user_id TEXT PRIMARY KEY,
+  global_account_id TEXT NOT NULL,
+  bound_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_afdian_bindings_account ON afdian_bindings (global_account_id);
+
+CREATE TABLE IF NOT EXISTS afdian_orders (
+  out_trade_no TEXT PRIMARY KEY,
+  plan_id TEXT,
+  afdian_user_id TEXT,
+  custom_order_id TEXT,
+  month INTEGER,
+  total_amount TEXT,
+  status TEXT NOT NULL CHECK (status IN ('processing', 'matched', 'unmatched', 'rejected', 'error')),
+  reason TEXT,
+  global_account_id TEXT,
+  tenant_id TEXT,
+  user_id TEXT,
+  entitlement_id TEXT,
+  valid_to INTEGER,
+  via TEXT, -- webhook / reconcile / admin
+  raw_json TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_afdian_orders_status ON afdian_orders (status, created_at DESC);

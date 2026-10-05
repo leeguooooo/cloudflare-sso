@@ -2,6 +2,7 @@ import { H3Event } from 'h3'
 import { getDb } from './env'
 import { nowInSeconds } from './crypto'
 import { ensureBillingSchema } from './billing'
+import { reconcileAfdianOrders } from './afdian'
 import { processSubscriptionEvent, syncPlanEntitlements, type SubscriptionEventRow, type SubscriptionRow } from './billing-events'
 
 /** Subscriptions that stopped renewing keep access this long past their period end. */
@@ -19,6 +20,8 @@ export type ReconcileReport = {
   failed_events: number
   overdue_without_renewal: string[]
   alerts: string[]
+  /** Paid afdian orders pulled from the open API (null when AFDIAN_TOKEN / AFDIAN_PLANS are unset). */
+  afdian?: { checked: number; matched: number; unmatched: number } | null
 }
 
 const planKeys = async (event: H3Event, planId: string) => {
@@ -44,7 +47,8 @@ const expectedAccessUntil = (sub: SubscriptionRow & { canceled_at?: number | nul
  * 2. expires subscriptions whose access ran out (cancel at period end, or past_due) after a grace;
  * 3. repairs plan entitlements whose window differs from the subscription;
  * 4. reports active subscriptions far past their period end with no renewal, failed events and
- *    sign-in failure spikes as alerts.
+ *    sign-in failure spikes as alerts;
+ * 5. applies paid afdian orders the webhook missed (when the afdian API is configured).
  * Every step is idempotent, so running it often is safe.
  */
 export const reconcileBilling = async (event: H3Event): Promise<ReconcileReport> => {
@@ -146,5 +150,13 @@ export const reconcileBilling = async (event: H3Event): Promise<ReconcileReport>
         .all<{ tenant_id: string; n: number }>()
     ).results || []
   for (const spike of spikes) report.alerts.push(`${spike.n} failed sign-ins in the last hour for ${spike.tenant_id}`)
+
+  try {
+    report.afdian = await reconcileAfdianOrders(event)
+    if (report.afdian?.unmatched) report.alerts.push(`${report.afdian.unmatched} afdian order(s) could not be matched to an account`)
+  } catch (error) {
+    report.afdian = null
+    report.alerts.push(`afdian reconcile failed: ${String((error as Error)?.message || error)}`)
+  }
   return report
 }

@@ -21,6 +21,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 | 密码 pepper 迁移 | secret `PASSWORD_PEPPER_V2`（**生产已启用**，2026-10-02；备份在 Bitwarden `backup` 文件夹「cloudflare-sso PASSWORD_PEPPER_V2」） | 新密码继续用旧 pepper |
 | App 内原生通过 Apple 登录 | 同上 Apple secrets；App 的 bundle id 加进 `APPLE_APP_IDS` | 接口返回 501 |
 | 首次使用免费试用 | 变量 `TENANT_SIGNUP_TRIALS='{"<tenant_id>":{"entitlement_key":"…","days":N}}'`（**生产**：`tenant-jrkan` → `jrkan.premium` 90 天） | 不发试用 |
+| 爱发电会员 | 变量 `AFDIAN_USER_ID`、`AFDIAN_PLANS`；可选 secret `AFDIAN_TOKEN`（下单二次确认 + 对账补单） | `/membership/<app>` 显示「会员购买暂未开放」，下单接口 404 |
 | 账单对账定时任务 | Pages secret `RECONCILE_SECRET` + 部署 `workers/billing-reconcile`（**生产已启用**，每 30 分钟） | 不对账 |
 
 ## 新增（统一登录简化方案，Phase 1）
@@ -100,6 +101,30 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - 发试用失败只记 `signup trial grant failed` 日志，不影响登录。
 - `GET /api/billing/entitlements` 的每一行多一个 `trial` 布尔值；试用行形如
   `{ entitlement_key: "jrkan.premium", source: "promo", trial: true, status: "granted", valid_from, valid_to, subscription_id: null, plan_key: null, … }`，客户端用 `valid_to` 算剩余天数。
+
+## 爱发电会员（afdian）
+- 购买页：`https://account.leeguoo.com/membership/<app_key>`（例如 `/membership/jrkan`）。要求账号域名下的登录会话，没登录跳 `/login?continue=…`；
+  显示当前账号（可切换）、会员状态（试用剩余天数 / 会员到期日 / 已过期 / 未开通）、价格和「开通/续费 1 个月」。页面不加载广告与统计。
+- 页面接口（只认 `sso_refresh_token` cookie，跨站 Origin 返回 403）：
+  - `GET /api/billing/afdian/membership?app_key=` → `{ signed_in, email, app_key, available, name, price_label, status: "member"|"trial"|"expired"|"none", valid_to }`
+  - `POST /api/billing/afdian/checkout { app_key, month: 1..12 }` → `{ url, checkout_id, month }`；`404 not_available`（没有该 app 的方案）/ `401 login_required` / `400 invalid_request` / `429 too_many_requests`
+- `POST /api/billing/afdian/webhook`：校验爱发电 RSA-SHA256 签名（失败 HTTP 401 `{ec:401}`，不入库）。订单按 `custom_order_id`（购买页生成）或之前绑定过的爱发电用户匹配账号，
+  匹配后记住「爱发电用户 ↔ 账号」，以后的自动续费和直接在爱发电下的单都能对上。每个 `out_trade_no` 只生效一次；对不上的订单记为 `unmatched` 等管理员处理。
+  配了 `AFDIAN_TOKEN` 时再用开放接口 `query-order` 确认金额 / 方案 / 用户一致，不一致记 `rejected`。最终结果都回 `{ec:200}`，临时失败回 `{ec:500}` 让爱发电重推。
+- 生效规则：权益（例如 `jrkan.premium`）从「现在」与「该权益当前最晚到期时间（含试用）」中较晚者起，延长 `month × days_per_month` 天；
+  权益行 `source = "plan"`、无订阅、`meta_json.provider = "afdian"`，续费时延长同一行。没开过 App 的账号会先开通租户用户。
+- 对账：`workers/billing-reconcile` 每 30 分钟的对账在配了 `AFDIAN_TOKEN` 时拉 `query-order` 第一页，补上漏推的已付款订单。
+- 管理：`GET /api/admin/afdian/orders?status=unmatched|matched|rejected|error`；`POST /api/admin/afdian/orders { out_trade_no, global_account_id | email }` 把未匹配订单绑定到账号（平台管理员）。
+- `GET /api/billing/entitlements` 每行有 `trial`、`provider`（`"afdian"` / `null`），并新增 `expired_entitlements: [{ entitlement_key, source, valid_to, trial, provider }]`：
+  当前已没有的权益各取最近一次过期的记录，App 用它显示「会员已过期」。
+
+上线步骤（owner）：
+1. 爱发电创作者后台新建方案：每月 ¥1.99，记下方案 ID（`plan_id`，方案链接里的那串）。
+2. 开发者页面（https://ifdian.net/dashboard/dev）拿 `user_id` 和 API `token`；Webhook URL 填 `https://account.leeguoo.com/api/billing/afdian/webhook`。
+3. `wrangler.account-prod.toml` 填 `AFDIAN_USER_ID = "<user_id>"` 和
+   `AFDIAN_PLANS = '{"<plan_id>":{"app_key":"jrkan","tenant_id":"tenant-jrkan","entitlement_key":"jrkan.premium","days_per_month":31,"price_label":"¥1.99/月","name":"JRKAN 会员"}}'`。
+4. `npx wrangler pages secret put AFDIAN_TOKEN --project-name cloudflare-sso`（粘贴 token）。
+5. `pnpm deploy`，然后用一个测试账号在 `/membership/jrkan` 买一个月，确认 `GET /api/admin/afdian/orders?status=matched` 里有这单、App 里到期日后延 31 天。
 
 ## 服务间调用（client_credentials）
 1. 在管理后台（或 `POST /api/admin/clients`）创建 client：`grant_types: "client_credentials"`、`scope: "billing:events.write billing:entitlements.read"`、`generate_secret: true`。响应里的 `client_secret` **只出现这一次**，库里只存哈希。

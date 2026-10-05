@@ -11,10 +11,12 @@ import { hideSocialLogin } from '~/utils/auth-client'
  *
  * Also skipped on the TV device-approval page and on the sign-in that leads
  * to it: an Auto Ad landing next to "Allow" on a page that grants a device
- * access to the account is one mis-tap away from a wrong approval.
+ * access to the account is one mis-tap away from a wrong approval. Same for the
+ * membership purchase page (and its sign-in): no ads next to a payment button.
  */
 const AUTH_PAGE_RE = /^\/(?:[a-z]{2}\/)?(?:login|register)\/?$/
 const DEVICE_PAGE_RE = /^\/(?:[a-z]{2}\/)?device\/?$/
+const MEMBERSHIP_PAGE_RE = /^\/(?:[a-z]{2}\/)?membership(?:\/[^/]+)?\/?$/
 
 const addScript = (attrs: Record<string, string | boolean>, inline?: string) => {
   const el = document.createElement('script')
@@ -35,7 +37,8 @@ export default defineNuxtPlugin(() => {
     return
   }
   const continuePath = (query.continue || '').split('?')[0]
-  if (DEVICE_PAGE_RE.test(url.pathname) || (AUTH_PAGE_RE.test(url.pathname) && DEVICE_PAGE_RE.test(continuePath))) {
+  const sensitive = (path: string) => DEVICE_PAGE_RE.test(path) || MEMBERSHIP_PAGE_RE.test(path)
+  if (sensitive(url.pathname) || (AUTH_PAGE_RE.test(url.pathname) && sensitive(continuePath))) {
     return
   }
 

@@ -1,17 +1,10 @@
-import { defineEventHandler, getRequestHeader, getRequestHost, H3Event, readBody, setResponseHeader, setResponseStatus } from 'h3'
-import { assertUserActive, getIssuer } from '../../../../utils/auth'
+import { defineEventHandler, H3Event, readBody, setResponseHeader, setResponseStatus } from 'h3'
+import { assertUserActive } from '../../../../utils/auth'
+import { isSameOriginRequest } from '../../../../utils/browser-session'
 import { nowInSeconds } from '../../../../utils/crypto'
 import { writeAuditLog } from '../../../../utils/audit'
 import { decideDeviceCode, describeDeviceClient, findDeviceCodeByUserCode, getDeviceApprover, normalizeUserCode } from '../../../../utils/device'
 import { consumeRateLimit, requestIp } from '../../../../utils/rate-limit'
-
-const originHost = (origin: string) => {
-  try {
-    return new URL(origin).host
-  } catch {
-    return ''
-  }
-}
 
 const fail = (event: H3Event, status: number, error: string, description: string) => {
   setResponseStatus(event, status)
@@ -24,9 +17,7 @@ const fail = (event: H3Event, status: number, error: string, description: string
  */
 export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'cache-control', 'no-store')
-  // The cookie is SameSite=Lax; refusing foreign origins also stops form posts from other sites.
-  const origin = getRequestHeader(event, 'origin')
-  if (origin && ![getRequestHost(event), originHost(getIssuer(event))].includes(originHost(origin))) return fail(event, 403, 'invalid_origin', 'Cross-origin request refused')
+  if (!isSameOriginRequest(event)) return fail(event, 403, 'invalid_origin', 'Cross-origin request refused')
 
   const body = ((await readBody(event).catch(() => ({}))) || {}) as { user_code?: unknown; action?: unknown }
   const action = body.action === 'approve' || body.action === 'deny' ? body.action : ''
