@@ -20,6 +20,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 | 微信小程序登录 | `WECHAT_MINIPROGRAMS='{"<client_id>":{"appid":"wx…"}}'` + secret `WECHAT_MP_SECRET_<APPID>` | 接口返回 400 |
 | 密码 pepper 迁移 | secret `PASSWORD_PEPPER_V2`（**生产已启用**，2026-10-02；备份在 Bitwarden `backup` 文件夹「cloudflare-sso PASSWORD_PEPPER_V2」） | 新密码继续用旧 pepper |
 | App 内原生通过 Apple 登录 | 同上 Apple secrets；App 的 bundle id 加进 `APPLE_APP_IDS` | 接口返回 501 |
+| 首次使用免费试用 | 变量 `TENANT_SIGNUP_TRIALS='{"<tenant_id>":{"entitlement_key":"…","days":N}}'`（**生产**：`tenant-jrkan` → `jrkan.premium` 90 天） | 不发试用 |
 | 账单对账定时任务 | Pages secret `RECONCILE_SECRET` + 部署 `workers/billing-reconcile`（**生产已启用**，每 30 分钟） | 不对账 |
 
 ## 新增（统一登录简化方案，Phase 1）
@@ -90,6 +91,15 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
   未知代码 `404 invalid_user_code`。带 `user_code` 时每 IP 10 分钟 30 次（`429 too_many_requests`）
 - `POST /api/auth/device/verify { user_code, action: "approve" | "deny" }` → `{ ok: true, status: "approved" | "denied", client_id, client_name, device_name }`；
   `401 login_required` / `404 invalid_user_code` / `409 already_handled` / `410 expired_user_code` / `403 invalid_origin`（跨站请求）/ `429 too_many_requests`（每 IP 10 分钟 20 次）。审计 `auth.device.approve` / `auth.device.deny`
+
+## 首次使用免费试用
+- 账号第一次登录某个配置了试用的租户（任何方式：密码、Apple 网页/原生、Google、GitHub、微信、授权码、设备授权，或刷新 token）时，
+  发一条权益：`source = "promo"`、`meta_json.trial = true`、`valid_from = 现在`、`valid_to = 现在 + days`。老账号（比如 Pastyx 用户）第一次用 JRKAN 也会拿到。
+- 每个 global account 每个租户只发一次：`trial_grants` 表记账（主键 `global_account_id, tenant_id`），重复登录、租户用户被删后重建、并发登录都不会再发；
+  账号合并时记账跟着转到保留的账号，合并也不会多出一次试用。删号时一起删除。
+- 发试用失败只记 `signup trial grant failed` 日志，不影响登录。
+- `GET /api/billing/entitlements` 的每一行多一个 `trial` 布尔值；试用行形如
+  `{ entitlement_key: "jrkan.premium", source: "promo", trial: true, status: "granted", valid_from, valid_to, subscription_id: null, plan_key: null, … }`，客户端用 `valid_to` 算剩余天数。
 
 ## 服务间调用（client_credentials）
 1. 在管理后台（或 `POST /api/admin/clients`）创建 client：`grant_types: "client_credentials"`、`scope: "billing:events.write billing:entitlements.read"`、`generate_secret: true`。响应里的 `client_secret` **只出现这一次**，库里只存哈希。

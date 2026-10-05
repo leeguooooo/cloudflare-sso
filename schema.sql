@@ -372,3 +372,15 @@ CREATE TABLE IF NOT EXISTS device_codes (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_device_codes_expires ON device_codes (expires_at);
+
+-- First-use trials (TENANT_SIGNUP_TRIALS): one row per account and tenant, ever
+CREATE TABLE IF NOT EXISTS trial_grants (
+  global_account_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  entitlement_key TEXT NOT NULL,
+  entitlement_id TEXT NOT NULL, -- the entitlements row this grant wrote (source 'promo', meta_json.trial = true)
+  user_id TEXT,
+  granted_at INTEGER NOT NULL,
+  valid_to INTEGER NOT NULL,
+  PRIMARY KEY (global_account_id, tenant_id)
+);

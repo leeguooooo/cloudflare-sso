@@ -25,6 +25,9 @@ SIWA_ENABLED = "1"
 STORE_CLIENTS_SOCIAL_LOGIN = "0"
 APPLE_APP_IDS = "com.paste.native,com.leeguoo.jrskan.tv"
 
+# Free trial on an account's first sign-in to a tenant (once per account, ever).
+TENANT_SIGNUP_TRIALS = '{"tenant-jrkan":{"entitlement_key":"jrkan.premium","days":90}}'
+
 # Password reset / email verification mail (secret: RESEND_API_KEY; misonote.com is verified in Resend).
 EMAIL_FROM = "leeguoo 账号 <no-reply@misonote.com>"
 

@@ -54,6 +54,8 @@ type EnvBindings = {
   APPLE_AUTH_BASE_URL?: string
   /** Served at /.well-known/apple-developer-domain-association.txt when set. */
   APPLE_DOMAIN_ASSOCIATION?: string
+  /** JSON: tenant id → { entitlement_key, days } granted once per account on its first sign-in there. */
+  TENANT_SIGNUP_TRIALS?: string
   /** Comma-separated base URLs of connected apps' account hooks (…/merge, …/delete are appended). */
   ACCOUNT_HOOK_URLS?: string
   /** Shared bearer secret sent to the account hooks. */
