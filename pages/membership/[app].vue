@@ -94,12 +94,13 @@ const route = useRoute()
 const appKey = String(route.params.app || '').trim().toLowerCase()
 const pageLocale = ref<AuthLocale>(detectAuthLocale(route.query, process.client ? navigator.languages || [navigator.language] : []))
 const t = computed(() => AUTH_COPY[pageLocale.value])
+
+const info = ref<MembershipPayload>({ signed_in: false, email: null, app_key: appKey, available: false, name: null, price_label: null, status: 'none', valid_to: null })
+// After `info`: the title getter runs immediately on the client.
 useHead({
   title: () => info.value.name || t.value.membershipTitle,
   htmlAttrs: { lang: () => (pageLocale.value === 'zh' ? 'zh-CN' : pageLocale.value) },
 })
-
-const info = ref<MembershipPayload>({ signed_in: false, email: null, app_key: appKey, available: false, name: null, price_label: null, status: 'none', valid_to: null })
 const loading = ref(true)
 const busy = ref(false)
 const message = ref('')
