@@ -15,6 +15,16 @@ type EntitlementRow = {
   plan_name: string | null
   product_key: string | null
   app_key: string | null
+  meta_json?: string | null
+}
+
+const parseMeta = (raw: string | null | undefined): Record<string, unknown> => {
+  try {
+    const value = JSON.parse(raw || '{}')
+    return value && typeof value === 'object' ? value : {}
+  } catch {
+    return {}
+  }
 }
 
 const isAdminPrincipal = (principal: { roles: string[]; perms: string[] }) => {
@@ -71,6 +81,7 @@ export default defineEventHandler(async (event) => {
          e.valid_from,
          e.valid_to,
          e.subscription_id,
+         e.meta_json,
          p.plan_key AS plan_key,
          p.name AS plan_name,
          pr.product_key AS product_key,
@@ -89,8 +100,30 @@ export default defineEventHandler(async (event) => {
     .bind(tenantId, targetUserId, Math.floor(asOf), Math.floor(asOf), includeInactive ? 1 : 0)
     .all<EntitlementRow>()
 
-  const rows = entitlements.results || []
+  const rows = (entitlements.results || []).map(({ meta_json: metaJson, ...row }) => {
+    const meta = parseMeta(metaJson)
+    return { ...row, trial: meta.trial === true, provider: typeof meta.provider === 'string' ? meta.provider : null }
+  })
   const activeEntitlementKeys = [...new Set(rows.filter((item) => item.status === 'granted').map((item) => item.entitlement_key))]
+
+  // The latest lapsed grant of every key the user no longer has, so apps can say "expired".
+  const lapsed =
+    (
+      await db
+        .prepare(
+          `SELECT entitlement_key, source, max(valid_to) AS valid_to, meta_json FROM entitlements
+           WHERE tenant_id = ? AND user_id = ? AND status = 'granted' AND valid_to IS NOT NULL AND valid_to <= ?
+           GROUP BY entitlement_key ORDER BY valid_to DESC`,
+        )
+        .bind(tenantId, targetUserId, Math.floor(asOf))
+        .all<{ entitlement_key: string; source: string; valid_to: number; meta_json: string | null }>()
+    ).results || []
+  const expiredEntitlements = lapsed
+    .filter((row) => !activeEntitlementKeys.includes(row.entitlement_key))
+    .map(({ meta_json: metaJson, ...row }) => {
+      const meta = parseMeta(metaJson)
+      return { ...row, trial: meta.trial === true, provider: typeof meta.provider === 'string' ? meta.provider : null }
+    })
 
   return {
     tenant_id: tenantId,
@@ -98,5 +131,6 @@ export default defineEventHandler(async (event) => {
     as_of: Math.floor(asOf),
     active_entitlement_keys: activeEntitlementKeys,
     entitlements: rows,
+    expired_entitlements: expiredEntitlements,
   }
 })

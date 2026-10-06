@@ -113,6 +113,9 @@ export const buildIssuerMergeStatements = (input: {
 
   push('global_external_identities', `UPDATE global_external_identities SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   push('api_keys', `UPDATE api_keys SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
+  // Trials already used by either account stay used: a merge must not open a second one.
+  push('trial_grants', `UPDATE OR IGNORE trial_grants SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
+  push('trial_grants', `DELETE FROM trial_grants WHERE global_account_id = ?`, [from.id])
   push('global_accounts', `DELETE FROM global_accounts WHERE id = ?`, [from.id])
   if (adopt) {
     push(

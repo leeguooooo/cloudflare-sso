@@ -218,6 +218,19 @@ export type AuthCopy = {
   deviceExpired: string
   deviceUsed: string
   deviceOtherCode: string
+  membershipKicker: string
+  membershipTitle: string
+  membershipUnavailable: string
+  membershipStatusTrial: string // {date} {days}
+  membershipStatusMember: string // {date}
+  membershipStatusForever: string
+  membershipStatusExpired: string // {date}
+  membershipStatusNone: string
+  membershipBuy: string
+  membershipRenew: string
+  membershipRedirecting: string
+  membershipAfterPay: string
+  membershipRefresh: string
 }
 
 export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
@@ -298,6 +311,19 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     deviceExpired: 'That code has expired. Start the sign-in again on your device to get a new one.',
     deviceUsed: 'That code was already used.',
     deviceOtherCode: 'Enter another code',
+    membershipKicker: '✦ membership ✦',
+    membershipTitle: 'Membership',
+    membershipUnavailable: 'Membership purchase is not open yet.',
+    membershipStatusTrial: 'Free trial · {days} days left (until {date})',
+    membershipStatusMember: 'Member until {date}',
+    membershipStatusForever: 'Member',
+    membershipStatusExpired: 'Membership expired on {date}',
+    membershipStatusNone: 'Not a member yet',
+    membershipBuy: 'Get 1 month',
+    membershipRenew: 'Renew 1 month',
+    membershipRedirecting: 'Opening afdian…',
+    membershipAfterPay: 'After paying it takes effect within a few seconds. Go back to the app and refresh.',
+    membershipRefresh: 'Refresh status',
   },
   zh: {
     loginKicker: '✦ account center ✦',
@@ -376,6 +402,19 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     deviceExpired: '代码已过期，请在设备上重新发起登录获取新代码。',
     deviceUsed: '这个代码已经用过了。',
     deviceOtherCode: '输入其他代码',
+    membershipKicker: '✦ membership ✦',
+    membershipTitle: '会员',
+    membershipUnavailable: '会员购买暂未开放。',
+    membershipStatusTrial: '免费试用 · 剩余 {days} 天（到 {date}）',
+    membershipStatusMember: '会员有效期至 {date}',
+    membershipStatusForever: '永久会员',
+    membershipStatusExpired: '会员已于 {date} 过期',
+    membershipStatusNone: '还不是会员',
+    membershipBuy: '开通 1 个月',
+    membershipRenew: '续费 1 个月',
+    membershipRedirecting: '正在打开爱发电…',
+    membershipAfterPay: '支付完成后几秒内生效，回到 App 刷新即可。',
+    membershipRefresh: '刷新状态',
   },
   ja: {
     loginKicker: '✦ account center ✦',
@@ -454,6 +493,19 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     deviceExpired: 'コードの有効期限が切れました。デバイスでもう一度サインインを開始してください。',
     deviceUsed: 'このコードはすでに使用されています。',
     deviceOtherCode: '別のコードを入力',
+    membershipKicker: '✦ membership ✦',
+    membershipTitle: 'メンバーシップ',
+    membershipUnavailable: 'メンバーシップの購入はまだ受け付けていません。',
+    membershipStatusTrial: '無料トライアル · 残り {days} 日（{date} まで）',
+    membershipStatusMember: '{date} までメンバー',
+    membershipStatusForever: 'メンバー',
+    membershipStatusExpired: 'メンバーシップは {date} に終了しました',
+    membershipStatusNone: 'まだメンバーではありません',
+    membershipBuy: '1 か月分を購入',
+    membershipRenew: '1 か月延長',
+    membershipRedirecting: '爱发电を開いています…',
+    membershipAfterPay: '支払い後、数秒で反映されます。アプリに戻って更新してください。',
+    membershipRefresh: '状態を更新',
   },
   ko: {
     loginKicker: '✦ account center ✦',
@@ -532,6 +584,19 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     deviceExpired: '코드가 만료되었습니다. 기기에서 로그인을 다시 시작해 새 코드를 받으세요.',
     deviceUsed: '이미 사용된 코드입니다.',
     deviceOtherCode: '다른 코드 입력',
+    membershipKicker: '✦ membership ✦',
+    membershipTitle: '멤버십',
+    membershipUnavailable: '멤버십 구매는 아직 열리지 않았습니다.',
+    membershipStatusTrial: '무료 체험 · {days}일 남음 ({date}까지)',
+    membershipStatusMember: '{date}까지 멤버',
+    membershipStatusForever: '멤버',
+    membershipStatusExpired: '멤버십이 {date}에 만료되었습니다',
+    membershipStatusNone: '아직 멤버가 아닙니다',
+    membershipBuy: '1개월 구매',
+    membershipRenew: '1개월 연장',
+    membershipRedirecting: '爱发电을 여는 중…',
+    membershipAfterPay: '결제 후 몇 초 안에 적용됩니다. 앱으로 돌아가 새로고침하세요.',
+    membershipRefresh: '상태 새로고침',
   },
 }
 

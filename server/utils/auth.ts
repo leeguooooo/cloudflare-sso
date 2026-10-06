@@ -4,6 +4,7 @@ import { hashToken, nowInSeconds, randomId } from './crypto'
 import { signJwt } from './jwt'
 import { oncePerDb } from './schema-once'
 import { flattenPermissions, RoleWithPermissions } from './access'
+import { grantSignupTrialSafely } from './trials'
 
 export type BasicUser = {
   id: string
@@ -151,6 +152,8 @@ export const issueTokens = async (
     )
     .run()
 
+  // Every sign-in into a tenant ends here, so this is where a tenant's first-use trial is granted.
+  await grantSignupTrialSafely(event, user)
   const signed = await signTokenPair(event, user, client, scope, sessionId, { ...options, authTime })
   return {
     sessionId,
@@ -206,6 +209,8 @@ export const rotateSession = async (
     .bind(refreshTokenHash, now, expiresAt, session.id, session.refresh_token_hash)
     .run()
   if (!result.meta?.changes) throw createError({ statusCode: 401, statusMessage: 'Invalid refresh token' })
+  // Long-lived sessions that predate a tenant's trial get it on their next refresh.
+  await grantSignupTrialSafely(event, user)
 
   const scope = session.scope || 'openid profile email'
   const authTime = Number(session.auth_time || session.created_at || now)

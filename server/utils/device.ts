@@ -8,9 +8,9 @@
  * - The device polls /token with grant_type=urn:ietf:params:oauth:grant-type:device_code until
  *   the code is approved (tokens issued exactly once), denied or expired.
  */
-import { getCookie, H3Event } from 'h3'
+import { H3Event } from 'h3'
 import { clientAppName, clientDeviceName } from '../../utils/auth-client'
-import { getSessionByRefreshToken } from './auth'
+import { getBrowserSessionAccount } from './browser-session'
 import { getDb } from './env'
 import { hashToken, nowInSeconds, randomId } from './crypto'
 import { oncePerDb } from './schema-once'
@@ -200,31 +200,8 @@ export const decideDeviceCode = async (
   return Boolean(result.meta?.changes)
 }
 
-/**
- * The browser's first-party session (sso_refresh_token cookie), trusted exactly like /authorize
- * trusts it. Bearer tokens are not accepted: a leaked token must not be able to approve devices.
- */
-export const getDeviceApprover = async (event: H3Event) => {
-  const refreshToken = getCookie(event, 'sso_refresh_token')
-  if (!refreshToken) return null
-  const session = await getSessionByRefreshToken(event, refreshToken)
-  if (!session) return null
-  const user = await getDb(event)
-    .prepare(
-      `SELECT u.id, u.global_account_id, COALESCE(g.email, u.email) AS email
-       FROM users u LEFT JOIN global_accounts g ON g.id = u.global_account_id
-       WHERE u.id = ?`,
-    )
-    .bind(session.user_id)
-    .first<{ id: string; global_account_id?: string | null; email: string }>()
-  if (!user) return null
-  return {
-    userId: user.id,
-    globalAccountId: user.global_account_id || null,
-    email: user.email,
-    authTime: Number(session.auth_time || session.created_at || 0),
-  }
-}
+/** The browser's first-party session (sso_refresh_token cookie), trusted exactly like /authorize trusts it. */
+export const getDeviceApprover = getBrowserSessionAccount
 
 /** How the approval page names the requesting app and device. */
 export const describeDeviceClient = (row: { public_client_id: string; client_name: string }) => ({
