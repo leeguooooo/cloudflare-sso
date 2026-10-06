@@ -24,7 +24,7 @@ export const CLIENT_APP_NAMES: Readonly<Record<string, string>> = {
   'misonote-paste-macos': 'Pastyx',
   'leeguoo-jrkan-tv': 'JRKAN',
   'leeguoo-jrkan-ios': 'JRKAN',
-  'leeguoo-fishing-ios': 'Fishing',
+  'leeguoo-fishing-ios': 'Haul',
 }
 
 /** Device named on the /device approval page for device-flow clients. */
