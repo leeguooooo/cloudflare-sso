@@ -9,6 +9,7 @@ import { createHarness, decodeJwt } from '../helpers/harness'
 const enc = new TextEncoder()
 const b64json = (value: unknown) => base64UrlEncode(enc.encode(JSON.stringify(value)))
 const BUNDLE_ID = 'com.leeguoo.jrskan.tv'
+const FISHING_BUNDLE_ID = 'com.leeguoo.fishing'
 const SERVICES_ID = 'com.leeguoo.account.siwa'
 
 let rsa: CryptoKeyPair
@@ -44,7 +45,7 @@ const appleEnv = () => ({
   APPLE_SERVICES_ID: SERVICES_ID,
   APPLE_KEY_ID: 'KEY123',
   APPLE_PRIVATE_KEY: applePrivateKey,
-  APPLE_APP_IDS: `com.paste.native,${BUNDLE_ID}`,
+  APPLE_APP_IDS: `com.paste.native,${BUNDLE_ID},${FISHING_BUNDLE_ID}`,
   SIWA_ENABLED: '1',
 })
 
@@ -61,6 +62,7 @@ const setup = async (env: Record<string, string> = appleEnv()) => {
     env,
   )
   h.db.sqlite.exec(readFileSync(new URL('../../scripts/sql/jrkan-clients.sql', import.meta.url), 'utf8'))
+  h.db.sqlite.exec(readFileSync(new URL('../../scripts/sql/fishing-clients.sql', import.meta.url), 'utf8'))
   h.db.sqlite
     .prepare(`INSERT INTO global_accounts (id, email, password_hash) VALUES ('ga-pw', 'taken@example.com', ?)`)
     .run(await hashPassword('correct horse battery', 'pepper'))
@@ -134,6 +136,27 @@ describe('native Sign in with Apple', () => {
     const again = await signIn({ client_id: 'leeguoo-jrkan-ios', identity_token: await identityToken('n2', { email: undefined }), nonce: 'n2' })
     expect(again.status).toBe(200)
     expect((h.db.sqlite.prepare(`SELECT count(*) AS n FROM global_external_identities`).get() as { n: number }).n).toBe(1)
+  })
+
+  it('the fishing app signs in to its own tenant and shares the account with the other grouped apps', async () => {
+    tokenResponse = async () => ({ id_token: await identityToken('f', { aud: FISHING_BUNDLE_ID }), refresh_token: 'fishing-refresh' })
+    const response = await signIn({
+      client_id: 'leeguoo-fishing-ios',
+      identity_token: await identityToken('f', { aud: FISHING_BUNDLE_ID }),
+      nonce: 'f',
+      authorization_code: 'fishing-code',
+    })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as Record<string, string>
+    expect(decodeJwt(body.access_token)).toMatchObject({ aud: 'leeguoo-fishing-ios', tid: 'tenant-fishing' })
+    expect(appleCalls.find((call) => call.url.endsWith('/auth/token'))!.body.get('client_id')).toBe(FISHING_BUNDLE_ID)
+
+    // Same Apple user (same `sub` across the App ID group) on JRKAN: one global account, two tenants.
+    const jrkan = await signIn({ client_id: 'leeguoo-jrkan-ios', identity_token: await identityToken('j'), nonce: 'j' })
+    expect(jrkan.status).toBe(200)
+    expect((h.db.sqlite.prepare(`SELECT count(*) AS n FROM global_accounts WHERE id != 'ga-pw'`).get() as { n: number }).n).toBe(1)
+    const tenants = h.db.sqlite.prepare(`SELECT tenant_id FROM users WHERE global_account_id IS NOT NULL ORDER BY tenant_id`).all()
+    expect(tenants).toEqual([{ tenant_id: 'tenant-fishing' }, { tenant_id: 'tenant-jrkan' }])
   })
 
   it('account deletion revokes the Apple token with the client it belongs to', async () => {

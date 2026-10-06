@@ -17,6 +17,8 @@
    选 **Group with an existing primary App ID**，填 `com.paste.native`。这样它和 Pastyx、网页登录是同一组：同一个 Apple ID 在各 App 里拿到的 `sub` 相同，
    上面那把 Key（primary 是 `com.paste.native`）才能用 `client_id = com.leeguoo.jrskan.tv` 去 `/auth/token` 换原生授权码、去 `/auth/revoke` 撤销。
    改了分组后重新生成该 App ID 的 provisioning profile。不需要新 Key，也不需要新 Services ID。
+5. **App ID `com.leeguoo.fishing`**（钓鱼 App，iOS，上 App Store）→ 同第 4 步：勾选 **Sign in with Apple**，
+   **Group with an existing primary App ID** 填 `com.paste.native`。
 
 ## Secrets（Cloudflare Pages 项目 cloudflare-sso）
 
@@ -67,6 +69,18 @@ Pages 的变量和 secret 在下一次部署后生效：改完要重新部署（
 4. 部署：`pnpm deploy`。
 5. 验证：TV 上发起设备登录，用手机打开 `https://account.leeguoo.com/device?user_code=…`，用 Apple 登录后允许；iPhone 上原生 Apple 登录；
    在账号中心删号，确认日志里没有撤销失败。
+
+### 钓鱼 App 上线步骤
+
+bundle id `com.leeguoo.fishing`，租户 `tenant-fishing`，client `leeguoo-fishing-ios`（App Store 客户端，受 Guideline 4.8 约束，已在 `NATIVE_STORE_CLIENT_IDS` 里）。
+
+1. Apple 后台：按上面第 5 步把 `com.leeguoo.fishing` 归到 `com.paste.native` 组，App 端开 Sign in with Apple capability。
+2. `APPLE_APP_IDS` 已加上 `com.leeguoo.fishing`（`wrangler.toml`、`wrangler.account-prod.toml`），随部署生效。
+3. 注册 client（二选一）：
+   - 平台管理员调用 `POST /api/admin/apps/bootstrap { "app_key": "fishing" }`；或
+   - `pnpm wrangler:config:prod && npx wrangler d1 execute DB --remote --file=./scripts/sql/fishing-clients.sql`（幂等）。
+4. 部署：`pnpm deploy`。
+5. 验证：iPhone 上原生 Apple 登录，access token 的 `tid` 是 `tenant-fishing`；同一个 Apple ID 登过 JRKAN / Pastyx 的，落到同一个账号。
 
 ## 行为说明
 

@@ -26,7 +26,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 
 ## 新增（统一登录简化方案，Phase 1）
 - 全局账号模型：`global_accounts` 作为统一凭据源，`users.global_account_id` 做租户映射
-- 应用开通接口：`POST /api/admin/apps/bootstrap`（`blog`/`paste`/`misonote`/`cherry`）
+- 应用开通接口：`POST /api/admin/apps/bootstrap`（`blog`/`paste`/`misonote`/`cherry`/`jrkan`/`fishing`）
 - 自动开通租户用户：`POST /api/auth/provision-tenant-user`
 - 管理面安全收口：`/api/admin/*`、`/api/access/*`、billing 管理接口要求 Bearer Access Token、admin 权限，且 token 必须签发给账号中心 client（`DEFAULT_CLIENT_ID` 或 `ADMIN_CLIENT_IDS`）
 - Web 双轨：登录仍返回 Bearer Token，并写入 HttpOnly refresh cookie
@@ -64,7 +64,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| `client_id` | 是 | SSO client，例如 `leeguoo-jrkan-tv` / `leeguoo-jrkan-ios` |
+| `client_id` | 是 | SSO client，例如 `leeguoo-jrkan-tv` / `leeguoo-jrkan-ios` / `leeguoo-fishing-ios` |
 | `identity_token` | 是 | `ASAuthorizationAppleIDCredential.identityToken`，`aud` 必须在 `APPLE_APP_IDS` 里 |
 | `nonce` | 是 | 原始 nonce；发给 Apple 的是它的 SHA-256 小写 hex，token 的 `nonce` claim 必须等于它 |
 | `authorization_code` | 否 | 带上时服务端用 `client_id = token 的 aud`（bundle id）去 Apple 换 refresh token，删号时用来撤销。换失败只记日志，不影响登录 |
@@ -143,7 +143,7 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
   - 鉴权：Bearer Access Token
   - 行为：将当前用户按 global account 映射开通到目标 tenant（幂等）
 - `POST /api/admin/apps/bootstrap`
-  - 入参：`app_key`（单个）或 `app_keys`（批量，字符串数组）；可选值 `blog` / `paste` / `misonote` / `cherry` / `jrkan`
+  - 入参：`app_key`（单个）或 `app_keys`（批量，字符串数组）；可选值 `blog` / `paste` / `misonote` / `cherry` / `jrkan` / `fishing`
   - 鉴权：Bearer Access Token，**平台管理员**（`DEFAULT_CLIENT_ID` 所在租户、或 `PLATFORM_TENANT_ID` 的 admin）
   - 行为：创建 tenant、默认 clients、`admin/user` roles 与基础权限绑定
   - 示例：可一次传 `["misonote","paste"]`，完成 `misonote-app-web`、`misonote-paste-web`、`misonote-paste-macos`、`paste-web`、`paste-macos` 注册
@@ -168,6 +168,10 @@ JRKAN 客户端约定（tvOS / iOS / Mac，bundle id 都是 `com.leeguoo.jrskan.
 - `leeguoo-jrkan-tv`：Apple TV，设备授权（`refresh_token` + `urn:ietf:params:oauth:grant-type:device_code`），没有 redirect URI；也可以用 `/api/auth/apple/native`
 - `leeguoo-jrkan-ios`：iPhone / iPad / Mac，授权码 + PKCE，`redirect_uri` 为 `com.leeguoo.jrskan.tv:/oauth/callback`；也可以用 `/api/auth/apple/native`
 - 生产注册：`POST /api/admin/apps/bootstrap { "app_key": "jrkan" }`，或执行 `scripts/sql/jrkan-clients.sql`（幂等，效果相同，只是不会把调用者设为租户 admin）
+
+钓鱼 App 客户端约定（iOS，bundle id `com.leeguoo.fishing`，租户 `tenant-fishing`，App Store 客户端）：
+- `leeguoo-fishing-ios`：主路径是 `/api/auth/apple/native`；其他登录方式走授权码 + PKCE（ASWebAuthenticationSession），`redirect_uri` 为 `com.leeguoo.fishing:/oauth/callback`。在 `NATIVE_STORE_CLIENT_IDS` 里，Google / GitHub 跟随 `STORE_CLIENTS_SOCIAL_LOGIN`
+- 生产注册：`POST /api/admin/apps/bootstrap { "app_key": "fishing" }`，或执行 `scripts/sql/fishing-clients.sql`；上线步骤见 `docs/SIGN_IN_WITH_APPLE.md`
 - `GET /api/admin/clients`
   - 入参：`tenant_id`，可选 `include_disabled=true`
   - 鉴权：Bearer Access Token（tenant admin）

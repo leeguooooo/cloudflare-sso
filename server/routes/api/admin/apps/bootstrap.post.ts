@@ -141,6 +141,17 @@ const APP_SEEDS: Record<string, AppSeed> = {
       },
     ],
   },
+  fishing: {
+    tenantId: 'tenant-fishing',
+    tenantName: 'Fishing',
+    clients: [
+      {
+        client_id: 'leeguoo-fishing-ios',
+        name: 'Fishing iOS',
+        redirect_uris: ['com.leeguoo.fishing:/oauth/callback'],
+      },
+    ],
+  },
 }
 
 const ensurePermission = async (db: D1Database, tenantId: string, action: string, resource: string) => {

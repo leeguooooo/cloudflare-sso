@@ -15,6 +15,7 @@ const authorizeContinue = (clientId: string, extra = '') =>
 describe('auth-client: native App Store clients (Guideline 4.8)', () => {
   it('hides social login for the iOS and Mac App Store clients via client_id', () => {
     expect(hideSocialLogin({ client_id: 'leeguoo-pastyx-ios' })).toBe(true)
+    expect(hideSocialLogin({ client_id: 'leeguoo-fishing-ios' })).toBe(true)
     expect(hideSocialLogin({ client_id: 'misonote-paste-macos' })).toBe(true)
   })
 

@@ -15,6 +15,7 @@
 export const NATIVE_STORE_CLIENT_IDS: ReadonlySet<string> = new Set([
   'leeguoo-pastyx-ios',
   'misonote-paste-macos',
+  'leeguoo-fishing-ios',
 ])
 
 /** Friendly product name shown in the sign-in sheet ("to continue to Pastyx"). */
@@ -23,6 +24,7 @@ export const CLIENT_APP_NAMES: Readonly<Record<string, string>> = {
   'misonote-paste-macos': 'Pastyx',
   'leeguoo-jrkan-tv': 'JRKAN',
   'leeguoo-jrkan-ios': 'JRKAN',
+  'leeguoo-fishing-ios': 'Fishing',
 }
 
 /** Device named on the /device approval page for device-flow clients. */

@@ -20,10 +20,10 @@ OAUTH_GITHUB_REDIRECT_URI = "https://account.leeguoo.com/api/auth/oauth/callback
 # Sign in with Apple (secrets: APPLE_TEAM_ID, APPLE_SERVICES_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY).
 # SIWA_ENABLED: "0" off | "test" only on /login?siwa=1 | "1" on for everyone.
 SIWA_ENABLED = "1"
-# "1" = native App Store clients (leeguoo-pastyx-ios, misonote-paste-macos) also get Google/GitHub.
+# "1" = native App Store clients (leeguoo-pastyx-ios, misonote-paste-macos, leeguoo-fishing-ios) also get Google/GitHub.
 # Only takes effect while SIWA_ENABLED = "1" and the Apple secrets exist (Guideline 4.8).
 STORE_CLIENTS_SOCIAL_LOGIN = "0"
-APPLE_APP_IDS = "com.paste.native,com.leeguoo.jrskan.tv"
+APPLE_APP_IDS = "com.paste.native,com.leeguoo.jrskan.tv,com.leeguoo.fishing"
 
 # Free trial on an account's first sign-in to a tenant (once per account, ever).
 TENANT_SIGNUP_TRIALS = '{"tenant-jrkan":{"entitlement_key":"jrkan.premium","days":90}}'

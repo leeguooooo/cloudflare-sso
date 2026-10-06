@@ -99,6 +99,17 @@ describe('admin authorization', () => {
     ])
   })
 
+  it('bootstraps the fishing app with a PKCE iOS client', async () => {
+    const tokenValue = await accessToken('root@example.com', 'acct-web')
+    const response = await h.request('/api/admin/apps/bootstrap', { method: 'POST', bearer: tokenValue, json: { app_key: 'fishing' } })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ tenant_id: 'tenant-fishing', client_ids: ['leeguoo-fishing-ios'] })
+    const clients = h.db.sqlite.prepare(`SELECT client_id, redirect_uris, grant_types FROM clients WHERE tenant_id = 'tenant-fishing'`).all()
+    expect(clients).toEqual([
+      { client_id: 'leeguoo-fishing-ios', redirect_uris: '["com.leeguoo.fishing:/oauth/callback"]', grant_types: 'authorization_code pkce refresh_token' },
+    ])
+  })
+
   it('admin APIs only accept tokens issued to the account center client', async () => {
     const viaSideApp = await accessToken('root@example.com', 'side-app')
     expect((await h.request('/api/admin/overview?tenant_id=t-platform', { bearer: viaSideApp })).status).toBe(403)
