@@ -35,7 +35,7 @@
         <template v-else>
           <p v-if="message" class="miso-msg">{{ message }}</p>
           <button type="button" class="submit doodle-box" :disabled="busy" @click="buy">
-            {{ busy ? t.membershipRedirecting : info.status === 'member' || info.status === 'trial' ? t.membershipRenew : t.membershipBuy }}
+            {{ busy ? t.membershipRedirecting : info.status === 'member' ? t.membershipRenew : t.membershipBuy }}
             <span class="arrow">→</span>
           </button>
           <div v-if="returned" class="sent-box after-pay" role="status">
