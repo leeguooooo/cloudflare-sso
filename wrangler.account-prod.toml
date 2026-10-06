@@ -30,8 +30,8 @@ TENANT_SIGNUP_TRIALS = '{"tenant-jrkan":{"entitlement_key":"jrkan.premium","days
 
 # 爱发电 (afdian) memberships (secret: AFDIAN_TOKEN). Empty AFDIAN_PLANS = purchase not open yet. Format:
 # '{"<plan_id>":{"app_key":"jrkan","tenant_id":"tenant-jrkan","entitlement_key":"jrkan.premium","days_per_month":31,"price_label":"¥1.99/月","name":"JRKAN 会员"}}'
-AFDIAN_USER_ID = ""
-AFDIAN_PLANS = ""
+AFDIAN_USER_ID = "180e0426c11e11f18b9e52540025c377"
+AFDIAN_PLANS = '{"1f4abb0ac13511f1a1945254001e7c00":{"app_key":"jrkan","tenant_id":"tenant-jrkan","entitlement_key":"jrkan.premium","days_per_month":93,"price_label":"¥5 / 3 个月","name":"JRKAN 会员"}}'
 
 # Password reset / email verification mail (secret: RESEND_API_KEY; misonote.com is verified in Resend).
 EMAIL_FROM = "leeguoo 账号 <no-reply@misonote.com>"
