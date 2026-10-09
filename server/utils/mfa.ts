@@ -40,15 +40,17 @@ const mfaSchema = oncePerDb(async (db) => {
 
 export const ensureMfaSchema = (event: H3Event) => mfaSchema(getDb(event))
 
-type KeySource = 'mfa_key' | 'pepper_v2' | 'pepper'
+type KeySource = 'mfa_key' | 'pepper_v2'
 
-/** The server secret the TOTP secrets are sealed with. Recorded per row so a later MFA_SECRET_KEY does not orphan old rows. */
+/**
+ * The server secret the TOTP secrets are sealed with. Recorded per row so a later MFA_SECRET_KEY
+ * does not orphan old rows. Never PASSWORD_PEPPER: that one is public (committed toml).
+ */
 const keyMaterial = (event: H3Event, source?: KeySource): { source: KeySource; material: string } => {
   const env = getEnv(event) as Record<string, string | undefined>
   const candidates: Array<[KeySource, string | undefined]> = [
     ['mfa_key', env.MFA_SECRET_KEY],
     ['pepper_v2', env.PASSWORD_PEPPER_V2],
-    ['pepper', env.PASSWORD_PEPPER],
   ]
   for (const [name, value] of candidates) {
     if ((!source || source === name) && value) return { source: name, material: value }

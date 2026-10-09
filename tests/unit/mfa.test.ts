@@ -20,7 +20,7 @@ const PASSWORD = 'correct horse battery'
 let h: Awaited<ReturnType<typeof createHarness>>
 
 beforeEach(async () => {
-  h = await createHarness(ROUTES, { DEFAULT_CLIENT_ID: 'acct-web' })
+  h = await createHarness(ROUTES, { DEFAULT_CLIENT_ID: 'acct-web', MFA_SECRET_KEY: 'test-mfa-key' })
   const hash = await hashPassword(PASSWORD, 'pepper')
   h.db.sqlite.exec(`
     INSERT INTO tenants (id, name) VALUES ('t-platform', 'Platform'), ('t-app', 'App');
@@ -178,6 +178,18 @@ describe('two-step verification', () => {
     expect(off.status).toBe(200)
     const after = (await (await passwordLogin('user@example.com')).json()) as { access_token?: string }
     expect(after.access_token).toBeTruthy()
+  })
+
+  it('is unavailable when no secret key is configured (the public pepper is never used)', async () => {
+    h = await createHarness(ROUTES, { DEFAULT_CLIENT_ID: 'acct-web' })
+    const hash = await hashPassword(PASSWORD, 'pepper')
+    h.db.sqlite.exec(`INSERT INTO tenants (id, name) VALUES ('t-platform', 'Platform');
+      INSERT INTO clients (id, tenant_id, client_id, name, redirect_uris, grant_types, scope)
+        VALUES ('c-acct', 't-platform', 'acct-web', 'Account', '["https://sso.test/"]', 'authorization_code pkce refresh_token', 'openid profile email');`)
+    h.db.sqlite.prepare(`INSERT INTO global_accounts (id, email, password_hash, password_set) VALUES ('ga-user', 'user@example.com', ?, 1)`).run(hash)
+    const token = await tokenFor('user@example.com')
+    const start = await h.request('/api/account/mfa', { method: 'POST', bearer: token, json: { action: 'start' } })
+    expect(start.status).toBe(500)
   })
 
   it('accounts without a password cannot enrol', async () => {
