@@ -208,7 +208,7 @@ Admin console:
 - [x] W8-05 Audit log explorer (`/admin/audit`, `GET /api/admin/audit`): tenant / action prefix / account filters, cursor paging
 
 Account center (C 端):
-- [ ] W8-06 Split `pages/account/index.vue` into `components/account/*` sections (no behaviour change)
+- [x] W8-06 Split `pages/account/index.vue` into `components/account/*` sections + `useAccountCenter` (no behaviour change; screenshots pixel-identical)
 - [ ] W8-07 Two-step verification: TOTP authenticator + one-time recovery codes for password sign-in
 
 Acceptance:

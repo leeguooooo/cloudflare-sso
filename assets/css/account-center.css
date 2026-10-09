@@ -1,0 +1,611 @@
+/* Account center (/account and its section components). Every rule is scoped under .account-shell. */
+.account-shell .merge-block { border: 2px solid var(--color-primary-600); border-radius: 14px; padding: 14px 16px; }
+.account-shell .merge-list { margin: 8px 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--color-text-secondary); }
+.account-shell .email-field { display: flex; flex-direction: column; gap: 8px; }
+.account-shell .email-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.account-shell .email-change { display: flex; flex-direction: column; gap: 8px; border: 1px dashed var(--color-border); border-radius: 12px; padding: 12px; }
+.account-shell .danger-block { border: 2px solid var(--color-danger, #c5221f); border-radius: 14px; padding: 14px 16px; }
+.account-shell .merge-refusal { color: var(--color-danger, #c5221f); font-size: 13px; font-weight: 600; margin: 6px 0; }
+.account-shell .reauth-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--color-text-secondary); background: var(--color-primary-50); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+.account-shell {
+  min-height: 100vh;
+  font-family: var(--font-family-sans);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.account-shell .topbar {
+  height: 64px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.account-shell .brand {
+  font-size: clamp(1.45rem, 2.3vw, 2.25rem);
+  font-weight: 500;
+}
+
+.account-shell .top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-shell .apps-wrap {
+  position: relative;
+}
+
+.account-shell .apps-menu {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  z-index: 20;
+}
+
+.account-shell .apps-menu a {
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+}
+
+.account-shell .apps-menu a:hover {
+  background: var(--color-neutral-100);
+}
+
+.account-shell .icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-neutral-300);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.account-shell .icon-btn:hover {
+  background: var(--color-neutral-50);
+}
+
+.account-shell .mini-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-600);
+  color: var(--color-surface);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+}
+
+.account-shell .mini-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.account-shell .body-wrap {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  padding: 10px 24px 22px;
+}
+
+.account-shell .left-nav {
+  width: 248px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-shell .nav-pill {
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-full);
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  font-size: 1.02rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-shell .nav-pill:hover {
+  background: var(--color-neutral-100);
+}
+
+.account-shell .nav-pill.active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.account-shell .pill-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: grid;
+  place-items: center;
+  font-size: 0.95rem;
+}
+
+.account-shell .center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+.account-shell .profile-block {
+  text-align: center;
+}
+
+.account-shell .hero-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  margin: 0 auto 8px;
+  background: var(--color-primary-600);
+  color: var(--color-surface);
+  font-size: 2.1rem;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.account-shell .hero-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+
+.account-shell .profile-block h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 500;
+}
+
+.account-shell .profile-block p {
+  margin: 4px 0 0;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  color: var(--color-text-secondary);
+}
+
+.account-shell .search-wrap {
+  width: min(860px, 95%);
+  margin-top: 22px;
+  position: relative;
+  display: flex;
+}
+
+.account-shell .search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+}
+
+.account-shell .search-input-field {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-full);
+  padding: 0 96px 0 44px;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-neutral-50);
+}
+
+.account-shell .search-input-field::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.account-shell .search-input-field:focus {
+  outline: 2px solid color-mix(in srgb, var(--color-primary-600) 30%, transparent);
+  border-color: var(--color-primary-600);
+}
+
+.account-shell .search-submit {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 34px;
+  border-radius: var(--radius-full);
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.account-shell .search-submit:hover {
+  background: var(--color-neutral-50);
+}
+
+.account-shell .search-results {
+  width: min(860px, 95%);
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.account-shell .search-result-btn {
+  border: 1px solid var(--color-neutral-300);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-shell .search-result-btn:hover {
+  background: var(--color-neutral-50);
+}
+
+.account-shell .search-result-btn small {
+  color: var(--color-text-tertiary);
+  font-size: 0.76rem;
+}
+
+.account-shell .search-empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.account-shell .quick-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.account-shell .chip {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.account-shell .chip:hover {
+  background: var(--color-neutral-50);
+}
+
+.account-shell .summary-card {
+  margin-top: 22px;
+  width: min(860px, 95%);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+}
+
+.account-shell .summary-desc {
+  margin: 8px 0 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.account-shell .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.account-shell .summary-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+}
+
+.account-shell .summary-label {
+  color: var(--color-text-tertiary);
+  font-size: 0.82rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.account-shell .form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.account-shell .inline-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+
+.account-shell .section-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.account-shell .stack-block {
+  background: var(--color-surface);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.account-shell .stack-block h3 {
+  margin: 0;
+  font-weight: 500;
+  font-size: var(--font-size-base);
+}
+
+.account-shell .block-hint {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.account-shell .list-wrap {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.account-shell .list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-50);
+}
+
+.account-shell .list-item p,
+.account-shell .list-item small {
+  margin: 2px 0 0;
+  color: var(--color-text-tertiary);
+}
+
+.account-shell .list-item p {
+  font-size: var(--font-size-sm);
+}
+
+.account-shell .list-item small {
+  font-size: 0.78rem;
+}
+
+.account-shell .list-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-shell .tag-current,
+.account-shell .tag-muted {
+  font-size: 0.76rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+}
+
+.account-shell .tag-current {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border: 1px solid var(--color-primary-100);
+}
+
+.account-shell .tag-muted {
+  background: var(--color-neutral-100);
+  color: var(--color-text-secondary);
+}
+
+.account-shell .provider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.account-shell .provider-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-shell .provider-card p {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+}
+
+.account-shell .provider-actions {
+  display: flex;
+  align-items: center;
+}
+
+.account-shell .entitlement-wrap {
+  margin-top: 12px;
+}
+
+.account-shell .entitlement-list {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.account-shell .entitlement-chip {
+  border-radius: var(--radius-full);
+  padding: 2px 12px;
+  border: 1px solid var(--color-primary-100);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  font-size: 0.8rem;
+}
+
+.account-shell .empty-text {
+  margin-top: 10px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.account-shell .notice-text {
+  width: min(860px, 95%);
+  margin-top: 14px;
+  border: 1px solid var(--color-primary-100);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: var(--font-size-sm);
+}
+
+.account-shell .privacy-copy {
+  width: min(860px, 95%);
+  margin-top: 18px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.account-shell .bottom-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 24px 16px;
+  font-size: 0.82rem;
+}
+
+.account-shell .bottom-links a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.account-shell .bottom-links a:hover {
+  color: var(--color-text-primary);
+}
+
+.account-shell .logout-btn {
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  height: 34px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.account-shell .logout-btn:hover {
+  background: var(--color-neutral-50);
+}
+
+.account-shell .state-text {
+  padding: 24px;
+}
+
+.account-shell .state-text.error {
+  color: var(--color-danger);
+}
+
+.account-shell .fade-in {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeIn 480ms ease forwards;
+}
+
+.account-shell .delay-1 {
+  animation-delay: 120ms;
+}
+
+.account-shell .delay-2 {
+  animation-delay: 220ms;
+}
+
+.account-shell .delay-3 {
+  animation-delay: 320ms;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 980px) {
+  .account-shell .body-wrap {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .account-shell .left-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-shell .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-shell .provider-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .account-shell .topbar {
+    padding: 0 14px;
+  }
+
+  .account-shell .body-wrap {
+    padding: 10px 14px 16px;
+  }
+
+  .account-shell .left-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .account-shell .bottom-links {
+    padding: 12px 14px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .account-shell .logout-btn {
+    margin-left: 0;
+  }
+}
