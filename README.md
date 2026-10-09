@@ -56,6 +56,11 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - `GET /api/account/export`：下载账号数据（资料、登录方式、会话、完整活动记录、订阅与权益）
 - `POST /api/auth/wechat/miniprogram { client_id, code }`：`wx.login()` 的 code 换 SSO token（同 `/token` 响应）。有 unionid 时网站与各小程序落到同一个账号
 - `POST /api/auth/apple/native { client_id, identity_token, nonce, authorization_code?, given_name?, family_name? }`：App 内原生「通过 Apple 登录」换 SSO token（同 `/token` 响应），详见下文
+- 管理后台（平台管理员可管理所有租户，租户管理员只能管自己的租户）：
+  - `GET /api/admin/tenants`：可管理的租户列表（含用户数、client 数），后台各页的租户下拉框用它
+  - `GET /api/admin/accounts?q=&status=`、`GET /api/admin/accounts/:id`（仅平台管理员）：全局账号目录与详情，详情包括各 App 的租户用户、登录方式、会话、权益、订阅、最近活动；不返回密码哈希和第三方 refresh token
+  - `POST /api/admin/accounts/:id { action }`（仅平台管理员）：`suspend` / `restore`（停用期间不能登录任何 App，停用时立即登出所有会话）、`revoke_sessions`、`grant_entitlement { tenant_id, entitlement_key, valid_to?, note? }` / `revoke_entitlement { tenant_id, entitlement_key }`。手动权益写成 `provider = manual` 的账单事件，收回只影响手动发放的权益
+  - `GET /api/admin/audit?tenant_id=&action=&account=&before=&limit=`：审计日志，`action` 按前缀匹配，`account`（全局账号 id，仅平台管理员）查这个人在所有 App 的记录，用返回的 `next_before` 翻页
 - 管理：`GET/POST /api/admin/users`（禁用/启用/全部登出）、`GET /api/admin/metrics`（登录健康度）、`GET /api/billing/subscriptions`、`GET /api/billing/events`
 - 内部：`POST /api/internal/billing/reconcile`（`RECONCILE_SECRET`，由 `workers/billing-reconcile` 每 30 分钟调用；可配 `ALERT_WEBHOOK_URL` 推送告警到飞书/Discord/Slack）
 

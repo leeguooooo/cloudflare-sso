@@ -6,7 +6,7 @@
         <p>Manage OIDC clients and bootstrap standard application environments.</p>
       </div>
       <div class="header-controls">
-        <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
+        <AdminTenantPicker v-model="tenantId" class="control-input" @change="loadClients" />
         <UiCheckbox v-model="includeDisabled" label="Show disabled" class="checkbox-control" />
         <UiButton variant="ghost" @click="loadClients" :loading="loading">
           Refresh
@@ -591,7 +591,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
-  tenantId.value = storedTokenTenantId()
+  tenantId.value ||= storedTokenTenantId()
   loadClients()
 })
 </script>

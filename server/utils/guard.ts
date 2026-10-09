@@ -100,12 +100,13 @@ export const requireTenantAdmin = async (event: H3Event, tenantId: string): Prom
   if (!tenantId) {
     throw createError({ statusCode: 400, statusMessage: 'tenant_id required' })
   }
-  if (principal.tid !== tenantId) {
-    throw createError({ statusCode: 403, statusMessage: 'Tenant mismatch' })
-  }
   requireAdminAudience(event, principal)
   if (!isAdminPrincipal(principal)) {
     throw createError({ statusCode: 403, statusMessage: 'Admin role required' })
+  }
+  // Platform admins run every app's tenant from one console; everyone else stays in their own.
+  if (principal.tid !== tenantId && principal.tid !== (await platformTenantId(event))) {
+    throw createError({ statusCode: 403, statusMessage: 'Tenant mismatch' })
   }
   return principal
 }

@@ -4,7 +4,7 @@
       <div class="header-content">
         <h2 class="section-title">Overview</h2>
         <div class="tenant-selector">
-          <UiInput v-model="tenantId" label="Tenant ID" class="tenant-input" />
+          <AdminTenantPicker v-model="tenantId" class="tenant-input" @change="refresh" />
           <UiButton variant="ghost" @click="refresh" :loading="loading">
             Refresh
           </UiButton>
@@ -209,7 +209,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
-  tenantId.value = storedTokenTenantId()
+  tenantId.value ||= storedTokenTenantId()
   void refresh()
 })
 </script>

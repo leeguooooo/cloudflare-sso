@@ -6,7 +6,7 @@
         <p>Manage the product catalog and pricing plans, see subscriptions and billing events, and grant entitlements by hand.</p>
       </div>
       <div class="header-controls">
-        <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
+        <AdminTenantPicker v-model="tenantId" class="control-input" @change="refreshAll" />
         <UiCheckbox v-model="includeArchived" label="Show archived" class="checkbox-control" />
         <UiButton variant="ghost" @click="refreshAll" :loading="loading">
           Refresh
@@ -980,7 +980,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
-  tenantId.value = storedTokenTenantId()
+  tenantId.value ||= storedTokenTenantId()
   void refreshAll()
 })
 </script>

@@ -50,6 +50,15 @@
           </div>
           Users
         </NuxtLink>
+        <NuxtLink to="/admin/accounts" class="nav-item" active-class="active">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+            </svg>
+          </div>
+          Accounts
+        </NuxtLink>
         <NuxtLink to="/admin/apps" class="nav-item" active-class="active">
           <div class="nav-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -69,6 +78,17 @@
           </div>
           Billing
         </NuxtLink>
+        <NuxtLink to="/admin/audit" class="nav-item" active-class="active">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="8" y1="13" x2="16" y2="13" />
+              <line x1="8" y1="17" x2="16" y2="17" />
+            </svg>
+          </div>
+          Audit log
+        </NuxtLink>
       </nav>
     </aside>
 
@@ -87,6 +107,8 @@ const route = useRoute()
 const pageTitle = computed(() => {
   if (route.path.startsWith('/admin/access')) return 'Admin - Access Control'
   if (route.path.startsWith('/admin/users')) return 'Admin - Users'
+  if (route.path.startsWith('/admin/accounts')) return 'Admin - Accounts'
+  if (route.path.startsWith('/admin/audit')) return 'Admin - Audit log'
   if (route.path.startsWith('/admin/apps')) return 'Admin - Applications'
   if (route.path.startsWith('/admin/billing')) return 'Admin - Billing'
   if (route.path.startsWith('/admin')) return 'Admin Console'

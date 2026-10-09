@@ -1,6 +1,6 @@
 # Unified Identity Program Plan (2026 Q1)
 
-Last updated: 2026-02-26
+Last updated: 2026-10-09
 Program owner: platform
 Single source of truth: this file
 
@@ -194,6 +194,27 @@ Acceptance:
 Acceptance:
 - Can detect auth regressions in < 10 minutes by dashboard + alert
 - Can prove fallback trend is converging to zero before removal
+
+### W8. Account Center Platform (2026 Q4)
+Goal: the account center is the platform every leeguoo app builds on. Admins run all apps
+from one console; users manage one account across all apps.
+Owner: platform. Started 2026-10-09.
+
+Admin console:
+- [x] W8-01 Platform admins administer any tenant; tenant admins stay in their own (`requireTenantAdmin`)
+- [x] W8-02 Tenant directory (`GET /api/admin/tenants`) + tenant picker on every admin page (`?tenant=` in the URL)
+- [x] W8-03 Global account directory and detail (`/admin/accounts`, `GET /api/admin/accounts[/:id]`): apps, sign-in methods, sessions, entitlements, subscriptions, activity
+- [x] W8-04 Account actions (`POST /api/admin/accounts/:id`): suspend / restore, sign out everywhere, manual entitlement grant / revoke (recorded as `manual` billing events)
+- [x] W8-05 Audit log explorer (`/admin/audit`, `GET /api/admin/audit`): tenant / action prefix / account filters, cursor paging
+
+Account center (C 端):
+- [ ] W8-06 Split `pages/account/index.vue` into `components/account/*` sections (no behaviour change)
+- [ ] W8-07 Two-step verification: TOTP authenticator + one-time recovery codes for password sign-in
+
+Acceptance:
+- `pnpm lint`, `pnpm build`, `pnpm test` pass; every new API has route-level tests in `tests/unit`
+- A tenant admin cannot read or change another tenant, list global accounts, or filter audit by account
+- Admin detail responses never contain password hashes or provider refresh tokens
 
 ## 6. Cross-Repo Task Map
 - `cloudflare-sso`

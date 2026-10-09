@@ -6,7 +6,7 @@
         <p>Find users in a tenant, disable or re-enable them, and sign them out everywhere.</p>
       </div>
       <form class="header-controls" @submit.prevent="loadUsers">
-        <UiInput v-model="tenantId" label="Tenant ID" class="control-input" />
+        <AdminTenantPicker v-model="tenantId" class="control-input" @change="loadUsers" />
         <UiInput v-model="search" label="Search email" placeholder="name@example.com" class="search-input" />
         <UiButton type="submit" variant="ghost" :loading="loading">Search</UiButton>
       </form>
@@ -191,7 +191,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
-  tenantId.value = storedTokenTenantId()
+  tenantId.value ||= storedTokenTenantId()
   void loadUsers()
 })
 </script>

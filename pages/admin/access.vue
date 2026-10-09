@@ -6,7 +6,7 @@
         <p class="page-subtitle">{{ t('access.subtitle') }}</p>
       </div>
       <div class="header-controls">
-        <UiInput v-model="tenantId" :placeholder="t('access.tenant')" class="control-input" />
+        <AdminTenantPicker v-model="tenantId" class="control-input" @change="loadSnapshot" />
         <UiInput v-model="clientId" :placeholder="t('access.client')" class="control-input" />
         <UiInput v-model="userId" :placeholder="t('access.user')" class="control-input" />
         <UiButton @click="loadSnapshot" :loading="loading">
@@ -263,7 +263,7 @@ onMounted(() => {
     navigateTo('/login')
     return
   }
-  tenantId.value = storedTokenTenantId()
+  tenantId.value ||= storedTokenTenantId()
   loadSnapshot()
 })
 </script>
