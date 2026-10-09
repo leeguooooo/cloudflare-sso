@@ -180,7 +180,7 @@ export const verifyPasskeyLogin = async (event: H3Event, input: { challengeId: s
     .prepare(`UPDATE passkeys SET sign_count = ?, backed_up = ?, last_used_at = ? WHERE id = ?`)
     .bind(result.signCount, result.backedUp ? 1 : 0, now(), stored.id)
     .run()
-  return { globalAccountId: stored.global_account_id, credentialId: stored.id }
+  return { globalAccountId: stored.global_account_id, credentialId: stored.id, userVerified: result.userVerified }
 }
 
 export const listPasskeys = async (event: H3Event, globalAccountId: string) => {

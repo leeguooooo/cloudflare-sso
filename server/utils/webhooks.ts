@@ -121,6 +121,8 @@ export const validateWebhookUrl = (raw: string) => {
     throw createError({ statusCode: 400, statusMessage: 'url must be an absolute https URL' })
   }
   const host = url.hostname.toLowerCase()
+  // Workers cannot reach private networks anyway and redirects are not followed; this is a
+  // courtesy check for obvious mistakes, not the SSRF boundary (172.16/12 etc. are not listed).
   const local = host === 'localhost' || host.endsWith('.localhost') || /^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host) || host === '[::1]'
   if (url.protocol !== 'https:' || local || url.username || url.password) {
     throw createError({ statusCode: 400, statusMessage: 'url must be a public https URL without credentials' })

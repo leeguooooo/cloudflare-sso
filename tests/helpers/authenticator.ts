@@ -81,9 +81,9 @@ export const createAuthenticator = async (rpId: string, origin: string) => {
     }
   }
 
-  const assert = async (options: { challenge: string }, overrides: { counter?: number; origin?: string } = {}) => {
+  const assert = async (options: { challenge: string }, overrides: { counter?: number; origin?: string; flags?: number } = {}) => {
     counter = overrides.counter ?? counter + 1
-    const authData = new Uint8Array([...rpIdHash, 0x05, (counter >>> 24) & 255, (counter >>> 16) & 255, (counter >>> 8) & 255, counter & 255])
+    const authData = new Uint8Array([...rpIdHash, overrides.flags ?? 0x05, (counter >>> 24) & 255, (counter >>> 16) & 255, (counter >>> 8) & 255, counter & 255])
     const clientDataJSON = new TextEncoder().encode(JSON.stringify({ type: 'webauthn.get', challenge: options.challenge, origin: overrides.origin || origin }))
     const signed = new Uint8Array([...authData, ...(await sha256(clientDataJSON))])
     const raw = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, pair.privateKey, signed))

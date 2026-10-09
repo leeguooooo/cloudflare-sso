@@ -110,6 +110,21 @@ describe('passkeys', () => {
     expect(rejected.status).toBe(400)
   })
 
+  it('without user verification, an account with two-step verification still gets the code step', async () => {
+    const { authenticator } = await enroll()
+    h.db.sqlite.exec(`INSERT INTO account_mfa (global_account_id, key_source, totp_secret, recovery_codes_json, last_step, enabled_at, updated_at)
+      VALUES ('ga-user', 'mfa_key', 'v1.x.y', '[]', -1, 1, 1)`)
+    const presenceOnly = await signIn(authenticator, { flags: 0x01 })
+    expect(presenceOnly.status).toBe(200)
+    const body = (await presenceOnly.json()) as { mfa_required?: boolean; access_token?: string }
+    expect(body.mfa_required).toBe(true)
+    expect(body.access_token).toBeUndefined()
+    expect(cookieFrom(presenceOnly, 'sso_refresh_token')).toBeFalsy()
+
+    const verified = await signIn(authenticator)
+    expect(((await verified.json()) as { access_token?: string }).access_token).toBeTruthy()
+  })
+
   it('a suspended account cannot sign in with its passkey', async () => {
     const { authenticator } = await enroll()
     h.db.sqlite.exec(`UPDATE global_accounts SET status = 'disabled' WHERE id = 'ga-user'`)

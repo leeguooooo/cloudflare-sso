@@ -83,10 +83,11 @@ App 后端验完 access token 后只认这几个 claim：
 - `POST /api/auth/password/reset { token, password }`：一次性令牌；成功后吊销该账号所有会话，并视为邮箱已验证
 - `POST /api/account/email/verify`：给当前邮箱发验证链接；`POST /api/account/email/change { new_email }`：需近期登录，向新邮箱发确认链接，点开后才生效
 - `GET /api/auth/email/verify?token=`：邮件链接落地，回跳账号中心
-- 新设备登录提醒：账号在 180 天内没用过的浏览器 / App（按 User-Agent）上登录成功时，发邮件给账号邮箱（密码、两步验证、通行密钥和第三方登录都算；注册时的第一次登录不发）。需要邮件已配置；用户在账号中心「安全性与登录」关闭，接口 `GET` / `PATCH /api/account/preferences { sign_in_alerts }`。邮件在响应之后发送，不拖慢、也不影响登录
+- 新设备登录提醒：账号在 180 天内没用过的浏览器 / App（按去掉版本号的 User-Agent 比较，浏览器升级不算新设备）上登录成功时，发邮件给账号邮箱（密码、两步验证、通行密钥和第三方登录都算；注册时的第一次登录不发）。需要邮件已配置；用户在账号中心「安全性与登录」关闭，接口 `GET` / `PATCH /api/account/preferences { sign_in_alerts }`。邮件在响应之后发送，不拖慢、也不影响登录
 - 通行密钥（passkey / WebAuthn）：
   - 登录：`POST /api/auth/passkey/options` → `{ challenge_id, publicKey }` 给 `navigator.credentials.get()`；`POST /api/auth/passkey/verify { challenge_id, client_id?, credential }`（二进制字段 base64url），成功响应与 `/api/auth/login` 相同，不再要两步验证码。按凭据和 IP 限流
   - 管理：`GET /api/account/passkeys`；`POST /api/account/passkeys { action: register_options | register | rename | delete }`，添加和删除要求 15 分钟内登录过；每个账号最多 10 个
+  - 认证器没有验证用户（没有指纹 / 面容 / PIN）时，开了两步验证的账号仍会收到 `mfa_required`，要再输验证码
   - RP ID 是 `WEBAUTHN_RP_ID`，默认取 `JWT_ISSUER` 的主机名（`account.leeguoo.com`）：只能在账号域名上用，其他 leeguoo.com 子站拿不到。只支持 ES256 / RS256，不校验 attestation；签名计数不前进视为克隆，拒绝登录
   - 账号合并时通行密钥转到保留的账号，删号时一起删除
 - 两步验证（TOTP + 备用码，只保护邮箱密码登录；Apple / Google / GitHub / 微信登录不受影响）：

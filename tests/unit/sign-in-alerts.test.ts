@@ -50,6 +50,13 @@ describe('new-device sign-in alerts', () => {
     expect(capturedEmails[0].text).toContain('Account center')
   })
 
+  it('a browser update is not a new device', async () => {
+    await signIn(MAC)
+    age()
+    await signIn(MAC.replace('Chrome/140.0', 'Chrome/141.0.7390.54'))
+    expect(capturedEmails).toHaveLength(0)
+  })
+
   it('can be switched off from the account center', async () => {
     const first = await signIn(MAC)
     const token = ((await first.json()) as { access_token: string }).access_token

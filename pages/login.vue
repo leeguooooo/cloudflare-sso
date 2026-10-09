@@ -362,10 +362,18 @@ const handlePasskey = async () => {
       return
     }
     const credential = await getPasskey(options.publicKey)
-    const data = await $fetch<{ access_token?: string; user?: { email?: string } }>(`${config.public.apiBase}/auth/passkey/verify`, {
-      method: 'POST',
-      body: { challenge_id: options.challenge_id, client_id: resolveClientId(), credential },
-    })
+    const data = await $fetch<{ access_token?: string; user?: { email?: string }; mfa_required?: boolean; challenge?: string }>(
+      `${config.public.apiBase}/auth/passkey/verify`,
+      { method: 'POST', body: { challenge_id: options.challenge_id, client_id: resolveClientId(), credential } },
+    )
+    if (data.mfa_required && data.challenge) {
+      // The authenticator did not verify the user: the account's two-step code is still needed.
+      mfaChallenge.value = data.challenge
+      mfaCode.value = ''
+      await nextTick()
+      mfaInput.value?.focus()
+      return
+    }
     if (data.user?.email) form.email = data.user.email
     await finishLogin(data)
   } catch (err) {
