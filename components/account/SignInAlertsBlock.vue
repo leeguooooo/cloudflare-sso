@@ -1,14 +1,14 @@
 <template>
   <div class="stack-block">
-    <h3>登录提醒</h3>
-    <p class="block-hint">账号在一台新设备或新浏览器上登录时，给 {{ center?.profile.email || '你的邮箱' }} 发一封邮件。180 天内用过的设备不提醒。</p>
-    <UiCheckbox :model-value="enabled" :disabled="loading || saving" label="新设备登录时发邮件提醒我" @update:model-value="save" />
+    <h3>{{ tr('登录提醒', 'Sign-in alerts') }}</h3>
+    <p class="block-hint">{{ tr(`账号在一台新设备或新浏览器上登录时，给 ${center?.profile.email || '你的邮箱'} 发一封邮件。180 天内用过的设备不提醒。`, `Email ${center?.profile.email || 'you'} when your account signs in on a new device or browser. Devices used in the last 180 days don’t trigger an alert.`) }}</p>
+    <UiCheckbox :model-value="enabled" :disabled="loading || saving" :label="tr('新设备登录时发邮件提醒我', 'Email me when a new device signs in')" @update:model-value="save" />
   </div>
 </template>
 
 <script setup lang="ts">
 const config = useRuntimeConfig()
-const { withAuthFetch, center, notice, explainError } = useAccountCenter()
+const { tr, withAuthFetch, center, notice, explainError } = useAccountCenter()
 const enabled = ref(true)
 const loading = ref(true)
 const saving = ref(false)
@@ -23,10 +23,10 @@ const save = async (value: boolean) => {
       body: { sign_in_alerts: value },
     })
     enabled.value = data.sign_in_alerts
-    notice.value = value ? '已开启登录提醒' : '已关闭登录提醒'
+    notice.value = value ? tr('已开启登录提醒', 'Sign-in alerts on') : tr('已关闭登录提醒', 'Sign-in alerts off')
   } catch (err) {
     enabled.value = previous
-    notice.value = explainError(err, '保存失败，请稍后再试')
+    notice.value = explainError(err, tr('保存失败，请稍后再试', 'Save failed. Try again later.'))
   } finally {
     saving.value = false
   }

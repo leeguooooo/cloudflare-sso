@@ -1,19 +1,19 @@
 <template>
   <div class="section-stack">
     <div class="stack-block">
-      <h3>用户与分享</h3>
-      <p class="block-hint">当前账号在各应用中的会话与访问范围。</p>
+      <h3>{{ tr('用户与分享', 'People & sharing') }}</h3>
+      <p class="block-hint">{{ tr('当前账号在各应用中的会话与访问范围。', 'Your sessions and access in each app.') }}</p>
       <div class="summary-grid">
         <div class="summary-item">
-          <span class="summary-label">角色</span>
+          <span class="summary-label">{{ tr('角色', 'Roles') }}</span>
           <strong>{{ roleLabel }}</strong>
         </div>
         <div class="summary-item">
-          <span class="summary-label">应用数</span>
+          <span class="summary-label">{{ tr('应用数', 'Apps') }}</span>
           <strong>{{ center?.sharing.clients.length || 0 }}</strong>
         </div>
         <div class="summary-item">
-          <span class="summary-label">权限数</span>
+          <span class="summary-label">{{ tr('权限数', 'Permissions') }}</span>
           <strong>{{ center?.profile.perms.length || 0 }}</strong>
         </div>
       </div>
@@ -23,10 +23,10 @@
           <div>
             <strong>{{ client.client_name }}</strong>
             <p>{{ client.client_id }}</p>
-            <small>最近访问 {{ formatDateTime(client.last_seen_at) }}</small>
+            <small>{{ tr(`最近访问 ${formatDateTime(client.last_seen_at)}`, `Last used ${formatDateTime(client.last_seen_at)}`) }}</small>
           </div>
           <div class="list-actions">
-            <span class="tag-muted">活动会话 {{ client.active_sessions }}</span>
+            <span class="tag-muted">{{ tr(`活动会话 ${client.active_sessions}`, `Active sessions ${client.active_sessions}`) }}</span>
             <UiButton
               v-if="revocableSessionsForClient(client.client_id).length"
               variant="ghost"
@@ -34,18 +34,19 @@
               :loading="revokingBulk === client.client_id"
               @click="revokeClientAccess(client.client_id, client.client_name)"
             >
-              撤销访问
+              {{ tr('撤销访问', 'Remove access') }}
             </UiButton>
           </div>
         </div>
       </div>
-      <p v-else class="empty-text">暂无跨应用会话记录</p>
+      <p v-else class="empty-text">{{ tr('暂无跨应用会话记录', 'No app sessions yet') }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 const {
+  tr,
   loading,
   center,
   revokingBulk,

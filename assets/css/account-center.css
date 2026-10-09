@@ -517,6 +517,24 @@
   color: var(--color-text-primary);
 }
 
+.account-shell .lang-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.account-shell .lang-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.account-shell .lang-btn.active {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
 .account-shell .logout-btn {
   margin-left: auto;
   border: 1px solid var(--color-border);

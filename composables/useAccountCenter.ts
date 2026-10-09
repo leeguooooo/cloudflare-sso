@@ -128,9 +128,30 @@ export type MergePayload = {
 
 export type MethodRow = { key: string; label: string; detail: string; action: 'unlink' | 'link' | 'password' | ''; provider: string; id?: string; isLast?: boolean }
 
+export type AccountLang = 'zh' | 'en'
+
+const ACCOUNT_LANG_KEY = 'sso_account_lang'
+
+/** Saved choice first, then the browser language; Chinese when there is no window. */
+const initialLang = (): AccountLang => {
+  if (typeof window === 'undefined') return 'zh'
+  try {
+    const saved = localStorage.getItem(ACCOUNT_LANG_KEY)
+    if (saved === 'zh' || saved === 'en') return saved
+  } catch {}
+  return (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
 const createAccountCenter = () => {
-
-
+  const lang = ref<AccountLang>(initialLang())
+  const tr = (zh: string, en: string) => (lang.value === 'en' ? en : zh)
+  const setLang = (value: AccountLang) => {
+    lang.value = value
+    try {
+      localStorage.setItem(ACCOUNT_LANG_KEY, value)
+    } catch {}
+    document.documentElement.lang = value === 'en' ? 'en' : 'zh-CN'
+  }
 
   const ACCOUNT_SECTIONS: AccountSection[] = [
     'home',
@@ -186,24 +207,24 @@ const createAccountCenter = () => {
     confirm_password: '',
   })
 
-  const navItems: Array<{ key: AccountSection; label: string; icon: string; color: string }> = [
-    { key: 'home', label: '首页', icon: '⌂', color: '#b8cdfa' },
-    { key: 'profile', label: '个人信息', icon: '◍', color: '#a8ddb5' },
-    { key: 'security', label: '安全性与登录', icon: '⌁', color: '#9dd7ff' },
-    { key: 'password', label: 'leeguoo 密码', icon: '•••', color: '#8ab4f8' },
-    { key: 'linked', label: '登录方式', icon: '◎', color: '#97d5f7' },
-    { key: 'privacy', label: '数据和隐私设置', icon: '◌', color: '#ccb3f7' },
-    { key: 'share', label: '用户和分享', icon: '◔', color: '#f6b2de' },
-    { key: 'billing', label: '付费和订阅', icon: '▣', color: '#f7c089' },
-  ]
+  const navItems = computed<Array<{ key: AccountSection; label: string; icon: string; color: string }>>(() => [
+    { key: 'home', label: tr('首页', 'Home'), icon: '⌂', color: '#b8cdfa' },
+    { key: 'profile', label: tr('个人信息', 'Personal info'), icon: '◍', color: '#a8ddb5' },
+    { key: 'security', label: tr('安全性与登录', 'Security & sign-in'), icon: '⌁', color: '#9dd7ff' },
+    { key: 'password', label: tr('leeguoo 密码', 'leeguoo password'), icon: '•••', color: '#8ab4f8' },
+    { key: 'linked', label: tr('登录方式', 'Sign-in methods'), icon: '◎', color: '#97d5f7' },
+    { key: 'privacy', label: tr('数据和隐私设置', 'Data & privacy'), icon: '◌', color: '#ccb3f7' },
+    { key: 'share', label: tr('用户和分享', 'People & sharing'), icon: '◔', color: '#f6b2de' },
+    { key: 'billing', label: tr('付费和订阅', 'Payments & subscriptions'), icon: '▣', color: '#f7c089' },
+  ])
 
-  const quickActions: Array<{ label: string; section: AccountSection; panel?: QuickPanel }> = [
-    { label: '我的密码', section: 'password' },
-    { label: '设备', section: 'security', panel: 'sessions' },
-    { label: '我的活动记录', section: 'security', panel: 'activity' },
-    { label: '通行密钥', section: 'security' },
-    { label: '两步验证', section: 'security' },
-  ]
+  const quickActions = computed<Array<{ label: string; section: AccountSection; panel?: QuickPanel }>>(() => [
+    { label: tr('我的密码', 'My password'), section: 'password' },
+    { label: tr('设备', 'Devices'), section: 'security', panel: 'sessions' },
+    { label: tr('我的活动记录', 'My activity'), section: 'security', panel: 'activity' },
+    { label: tr('通行密钥', 'Passkeys'), section: 'security' },
+    { label: tr('两步验证', '2-Step Verification'), section: 'security' },
+  ])
 
   const activeNav = computed<AccountSection>(() => {
     const section = Array.isArray(route.query.section) ? route.query.section[0] : route.query.section
@@ -225,7 +246,7 @@ const createAccountCenter = () => {
     const name = (center.value?.profile.name || '').trim()
     if (name) return name
     const email = center.value?.profile.email || ''
-    if (!email) return '账户用户'
+    if (!email) return tr('账户用户', 'Account user')
     return email.split('@')[0]
   })
 
@@ -243,25 +264,25 @@ const createAccountCenter = () => {
   })
 
   const sectionTitle = computed(() => {
-    if (activeNav.value === 'profile') return '个人信息'
-    if (activeNav.value === 'security') return '安全性与登录'
-    if (activeNav.value === 'password') return '密码设置'
-    if (activeNav.value === 'linked') return '登录方式'
-    if (activeNav.value === 'privacy') return '数据和隐私设置'
-    if (activeNav.value === 'share') return '用户和分享'
-    if (activeNav.value === 'billing') return '付费和订阅'
-    return '账户概览'
+    if (activeNav.value === 'profile') return tr('个人信息', 'Personal info')
+    if (activeNav.value === 'security') return tr('安全性与登录', 'Security & sign-in')
+    if (activeNav.value === 'password') return tr('密码设置', 'Password')
+    if (activeNav.value === 'linked') return tr('登录方式', 'Sign-in methods')
+    if (activeNav.value === 'privacy') return tr('数据和隐私设置', 'Data & privacy')
+    if (activeNav.value === 'share') return tr('用户和分享', 'People & sharing')
+    if (activeNav.value === 'billing') return tr('付费和订阅', 'Payments & subscriptions')
+    return tr('账户概览', 'Account overview')
   })
 
   const sectionDesc = computed(() => {
-    if (activeNav.value === 'profile') return '管理显示名称、邮箱和区域设置。'
-    if (activeNav.value === 'security') return '通行密钥、两步验证、设备会话与近期账号活动。'
-    if (activeNav.value === 'password') return '修改密码并管理密码安全策略。'
-    if (activeNav.value === 'linked') return '绑定 Apple、Google、GitHub 或设置密码；把重复的账号合并成一个。'
-    if (activeNav.value === 'privacy') return '下载账号信息，或永久删除账号。'
-    if (activeNav.value === 'share') return '查看跨应用会话和访问范围。'
-    if (activeNav.value === 'billing') return '查看订阅与权益状态。'
-    return '同一邮箱一次登录，可自动开通到不同应用租户。'
+    if (activeNav.value === 'profile') return tr('管理显示名称、邮箱和区域设置。', 'Manage your display name, email and locale.')
+    if (activeNav.value === 'security') return tr('通行密钥、两步验证、设备会话与近期账号活动。', 'Passkeys, 2-Step Verification, device sessions and recent account activity.')
+    if (activeNav.value === 'password') return tr('修改密码并管理密码安全策略。', 'Change your password and keep it secure.')
+    if (activeNav.value === 'linked') return tr('绑定 Apple、Google、GitHub 或设置密码；把重复的账号合并成一个。', 'Link Apple, Google, GitHub or set a password; merge duplicate accounts into one.')
+    if (activeNav.value === 'privacy') return tr('下载账号信息，或永久删除账号。', 'Download your account data, or permanently delete your account.')
+    if (activeNav.value === 'share') return tr('查看跨应用会话和访问范围。', 'See your sessions and access across apps.')
+    if (activeNav.value === 'billing') return tr('查看订阅与权益状态。', 'See your subscriptions and entitlements.')
+    return tr('同一邮箱一次登录，可自动开通到不同应用租户。', 'Sign in once with one email and get access to every app tenant.')
   })
 
 
@@ -283,8 +304,8 @@ const createAccountCenter = () => {
     const rows: MethodRow[] = [
       {
         key: 'password',
-        label: '邮箱和密码',
-        detail: payload.has_password ? payload.email : '未设置密码',
+        label: tr('邮箱和密码', 'Email and password'),
+        detail: payload.has_password ? payload.email : tr('未设置密码', 'No password set'),
         action: 'password',
         provider: 'password',
       },
@@ -295,22 +316,25 @@ const createAccountCenter = () => {
       >
       for (const item of linked) {
         const notes = [
-          item.is_private_email ? '隐藏邮箱' : '',
-          item.email_disabled ? '邮件转发已关闭' : '',
-          item.consent_revoked ? '已在 Apple 设置中停用，再次登录即可恢复' : '',
+          item.is_private_email ? tr('隐藏邮箱', 'hidden email') : '',
+          item.email_disabled ? tr('邮件转发已关闭', 'email forwarding off') : '',
+          item.consent_revoked ? tr('已在 Apple 设置中停用，再次登录即可恢复', 'turned off in Apple settings; sign in again to restore') : '',
         ].filter(Boolean)
         rows.push({
           key: item.id,
           id: item.id,
           provider,
           label: providerName(provider),
-          detail: `已绑定 ${item.email || item.name || ''}${notes.length ? `（${notes.join('，')}）` : ''}`,
+          detail: tr(
+            `已绑定 ${item.email || item.name || ''}${notes.length ? `（${notes.join('，')}）` : ''}`,
+            `Linked ${item.email || item.name || ''}${notes.length ? ` (${notes.join(', ')})` : ''}`,
+          ),
           action: 'unlink',
           isLast: total <= 1,
         })
       }
       if (!linked.length && payload.linkable[provider as 'apple' | 'google' | 'github']) {
-        rows.push({ key: `link-${provider}`, provider, label: providerName(provider), detail: '未绑定', action: 'link' })
+        rows.push({ key: `link-${provider}`, provider, label: providerName(provider), detail: tr('未绑定', 'Not linked'), action: 'link' })
       }
     }
     return rows
@@ -320,8 +344,8 @@ const createAccountCenter = () => {
     const other = merge.value?.other
     if (!other) return ''
     const parts = other.sign_in_methods.map((m) => `${providerName(m.provider)}${m.email ? ` ${m.email}` : ''}`)
-    if (other.has_password) parts.unshift(`${other.email} 的密码`)
-    return parts.join('、') || '无'
+    if (other.has_password) parts.unshift(tr(`${other.email} 的密码`, `password for ${other.email}`))
+    return parts.join(tr('、', ', ')) || tr('无', 'none')
   })
 
   const appDataText = computed(() =>
@@ -329,12 +353,12 @@ const createAccountCenter = () => {
       .filter((app) => app.ok && app.data)
       .map((app) => {
         const data = app.data || {}
-        const name = typeof data.app === 'string' ? data.app : '应用'
+        const name = typeof data.app === 'string' ? data.app : tr('应用', 'App')
         const clips = Number(data.clips || 0)
         const tags = Number(data.tags || 0)
-        return `${name}：${clips} 条记录、${tags} 个分组`
+        return tr(`${name}：${clips} 条记录、${tags} 个分组`, `${name}: ${clips} items, ${tags} groups`)
       })
-      .join('；'),
+      .join(tr('；', '; ')),
   )
 
   const refusedApps = computed(() =>
@@ -343,12 +367,15 @@ const createAccountCenter = () => {
       .map((app) => ({
         message:
           app.code === 'E2EE_MERGE_REFUSED'
-            ? 'Pastyx：至少一个账号开启了端到端加密。加密的内容只能在你的设备上解密，服务器无法把它转到另一个账号。请先在 Pastyx 里关闭两个账号的端到端加密，再回来合并。'
-            : app.message || '一个已连接的应用暂时无法合并，请稍后再试。',
+            ? tr(
+                'Pastyx：至少一个账号开启了端到端加密。加密的内容只能在你的设备上解密，服务器无法把它转到另一个账号。请先在 Pastyx 里关闭两个账号的端到端加密，再回来合并。',
+                'Pastyx: end-to-end encryption is on for at least one account. Encrypted content can only be decrypted on your devices, so the server can’t move it to another account. Turn off end-to-end encryption for both accounts in Pastyx, then come back to merge.',
+              )
+            : app.message || tr('一个已连接的应用暂时无法合并，请稍后再试。', 'A connected app can’t be merged right now. Try again later.'),
       })),
   )
 
-  const formatDate = (timestamp?: number | null) => (timestamp ? new Date(timestamp * 1000).toLocaleDateString('zh-CN') : '--')
+  const formatDate = (timestamp?: number | null) => (timestamp ? new Date(timestamp * 1000).toLocaleDateString(lang.value === 'en' ? 'en-US' : 'zh-CN') : '--')
 
   const loadMethods = async () => {
     try {
@@ -367,7 +394,7 @@ const createAccountCenter = () => {
     try {
       merge.value = await withAuthFetch<MergePayload>(`${config.public.apiBase}/account/merge/${encodeURIComponent(mergeId.value)}`)
     } catch (err: any) {
-      notice.value = err?.data?.message || err?.message || '读取合并请求失败'
+      notice.value = err?.data?.message || err?.message || tr('读取合并请求失败', 'Couldn’t load the merge request')
       merge.value = null
     } finally {
       mergeLoading.value = false
@@ -387,10 +414,10 @@ const createAccountCenter = () => {
     notice.value = ''
     try {
       await withAuthFetch(`${config.public.apiBase}/account/merge/${encodeURIComponent(mergeId.value)}`, { method: 'POST' })
-      notice.value = '账号已合并'
+      notice.value = tr('账号已合并', 'Accounts merged')
       await Promise.all([loadMerge(), loadMethods(), loadCenter()])
     } catch (err: any) {
-      notice.value = explainError(err, '合并失败')
+      notice.value = explainError(err, tr('合并失败', 'Merge failed'))
       await loadMerge()
     } finally {
       merging.value = false
@@ -401,14 +428,14 @@ const createAccountCenter = () => {
     if (mergeId.value) {
       await withAuthFetch(`${config.public.apiBase}/account/merge/${encodeURIComponent(mergeId.value)}`, { method: 'DELETE' }).catch(() => undefined)
     }
-    notice.value = '已取消合并，两个账号都保持不变'
+    notice.value = tr('已取消合并，两个账号都保持不变', 'Merge canceled. Both accounts are unchanged.')
     await closeMerge()
   }
 
   const explainError = (err: any, fallback: string) => {
     const message = err?.data?.statusMessage || err?.data?.message || err?.statusMessage || err?.message || ''
-    if (message === 'reauth_required') return '为了安全，请先点「重新验证身份」重新登录，再完成这个操作。'
-    if (message === 'last_method') return '这是唯一的登录方式，不能移除。请先绑定其他方式或设置密码。'
+    if (message === 'reauth_required') return tr('为了安全，请先点「重新验证身份」重新登录，再完成这个操作。', 'For your security, click “Verify it’s you” and sign in again, then try this again.')
+    if (message === 'last_method') return tr('这是唯一的登录方式，不能移除。请先绑定其他方式或设置密码。', 'This is your only sign-in method and can’t be removed. Link another method or set a password first.')
     return message || fallback
   }
 
@@ -425,17 +452,17 @@ const createAccountCenter = () => {
   }
 
   const searchTargets = computed(() => {
-    const navTargets = navItems.map((item) => ({
+    const navTargets = navItems.value.map((item) => ({
       id: `nav-${item.key}`,
       label: item.label,
-      group: '导航',
+      group: tr('导航', 'Navigation'),
       section: item.key,
       panel: undefined as QuickPanel | undefined,
     }))
-    const actionTargets = quickActions.map((item, idx) => ({
+    const actionTargets = quickActions.value.map((item, idx) => ({
       id: `quick-${idx}`,
       label: item.label,
-      group: '快捷入口',
+      group: tr('快捷入口', 'Shortcuts'),
       section: item.section,
       panel: item.panel,
     }))
@@ -536,10 +563,10 @@ const createAccountCenter = () => {
     profileForm.locale = center.value?.profile.locale || 'en'
   }
 
-  const EMAIL_LINK_ERRORS: Record<string, string> = {
-    invalid_or_expired_token: '链接无效或已过期，请重新发送。',
-    'Email already in use': '这个邮箱已被其他账号使用。',
-  }
+  const emailLinkErrors = (): Record<string, string> => ({
+    invalid_or_expired_token: tr('链接无效或已过期，请重新发送。', 'The link is invalid or has expired. Send a new one.'),
+    'Email already in use': tr('这个邮箱已被其他账号使用。', 'This email is already used by another account.'),
+  })
 
   const consumeQueryNotice = async () => {
     const queryText = (key: string) => (typeof route.query[key] === 'string' ? String(route.query[key]) : '')
@@ -549,14 +576,20 @@ const createAccountCenter = () => {
     const emailChanged = queryText('email_changed')
     const emailError = queryText('email_error')
     if (linked) {
-      notice.value = `已绑定 ${providerName(linked)}`
+      notice.value = tr(`已绑定 ${providerName(linked)}`, `Linked ${providerName(linked)}`)
     }
     if (linkError) {
-      notice.value = linkError === 'reauth_required' ? explainError({ message: linkError }, '') : `绑定失败：${linkError}`
+      notice.value = linkError === 'reauth_required' ? explainError({ message: linkError }, '') : tr(`绑定失败：${linkError}`, `Linking failed: ${linkError}`)
     }
-    if (emailVerified) notice.value = '邮箱已验证'
-    if (emailChanged) notice.value = `邮箱已更改为 ${center.value?.profile.email || '新邮箱'}`
-    if (emailError) notice.value = `邮箱确认失败：${EMAIL_LINK_ERRORS[emailError] || emailError}`
+    if (emailVerified) notice.value = tr('邮箱已验证', 'Email verified')
+    if (emailChanged) {
+      const changedTo = center.value?.profile.email || tr('新邮箱', 'your new email')
+      notice.value = tr(`邮箱已更改为 ${changedTo}`, `Email changed to ${changedTo}`)
+    }
+    if (emailError) {
+      const reason = emailLinkErrors()[emailError] || emailError
+      notice.value = tr(`邮箱确认失败：${reason}`, `Email confirmation failed: ${reason}`)
+    }
     if (!linked && !linkError && !emailVerified && !emailChanged && !emailError) return
 
     const nextQuery = { ...route.query }
@@ -574,9 +607,12 @@ const createAccountCenter = () => {
         method: 'POST',
         body: {},
       })
-      notice.value = `验证邮件已发送到 ${data?.sent_to || center.value?.profile.email || '你的邮箱'}，请在邮件里点击链接完成验证`
+      const sentTo = data?.sent_to || center.value?.profile.email || tr('你的邮箱', 'your email')
+      notice.value = tr(`验证邮件已发送到 ${sentTo}，请在邮件里点击链接完成验证`, `Verification email sent to ${sentTo}. Click the link in it to verify.`)
     } catch (err: any) {
-      notice.value = isThrottled(err) ? '发送太频繁了，请稍后再试' : explainError(err, '发送验证邮件失败，请稍后再试')
+      notice.value = isThrottled(err)
+        ? tr('发送太频繁了，请稍后再试', 'Too many requests. Try again later.')
+        : explainError(err, tr('发送验证邮件失败，请稍后再试', 'Couldn’t send the verification email. Try again later.'))
     } finally {
       sendingVerify.value = false
     }
@@ -600,7 +636,7 @@ const createAccountCenter = () => {
     const target = newEmail.value.trim()
     if (!target) return
     if (target.toLowerCase() === (center.value?.profile.email || '').toLowerCase()) {
-      emailChangeError.value = '新邮箱和当前邮箱相同'
+      emailChangeError.value = tr('新邮箱和当前邮箱相同', 'The new email is the same as your current one')
       return
     }
     changingEmail.value = true
@@ -611,17 +647,17 @@ const createAccountCenter = () => {
         body: { new_email: target },
       })
       closeEmailChange()
-      notice.value = `已向 ${data?.sent_to || target} 发送确认链接，点击后生效`
+      notice.value = tr(`已向 ${data?.sent_to || target} 发送确认链接，点击后生效`, `Confirmation link sent to ${data?.sent_to || target}. The change takes effect once you click it.`)
     } catch (err: any) {
       const status = Number(err?.status || err?.statusCode || err?.response?.status || 0)
       if (isReauthError(err)) {
         emailChangeReauth.value = true
       } else if (status === 409) {
-        emailChangeError.value = '这个邮箱已被其他账号使用'
+        emailChangeError.value = tr('这个邮箱已被其他账号使用', 'This email is already used by another account')
       } else if (status === 429) {
-        emailChangeError.value = '发送太频繁了，请稍后再试'
+        emailChangeError.value = tr('发送太频繁了，请稍后再试', 'Too many requests. Try again later.')
       } else {
-        emailChangeError.value = explainError(err, '更改邮箱失败，请稍后再试')
+        emailChangeError.value = explainError(err, tr('更改邮箱失败，请稍后再试', 'Couldn’t change your email. Try again later.'))
       }
     } finally {
       changingEmail.value = false
@@ -643,7 +679,7 @@ const createAccountCenter = () => {
         await navigateTo('/login')
         return
       }
-      error.value = err?.data?.message || err?.message || '加载账户信息失败，请重新登录'
+      error.value = err?.data?.message || err?.message || tr('加载账户信息失败，请重新登录', 'Couldn’t load your account. Please sign in again.')
     } finally {
       loading.value = false
     }
@@ -672,11 +708,11 @@ const createAccountCenter = () => {
   const runSearch = () => {
     const first = searchResults.value[0]
     if (!first) {
-      notice.value = '没有找到匹配设置项'
+      notice.value = tr('没有找到匹配设置项', 'No matching settings found')
       return
     }
     goToTarget(first)
-    notice.value = `已跳转到：${first.label}`
+    notice.value = tr(`已跳转到：${first.label}`, `Went to: ${first.label}`)
   }
 
   const toggleAppsMenu = () => {
@@ -710,9 +746,9 @@ const createAccountCenter = () => {
         center.value.profile.name = result.profile.name || ''
         center.value.profile.locale = result.profile.locale || 'en'
       }
-      notice.value = '个人信息已更新'
+      notice.value = tr('个人信息已更新', 'Personal info updated')
     } catch (err: any) {
-      notice.value = err?.data?.message || err?.message || '保存失败'
+      notice.value = err?.data?.message || err?.message || tr('保存失败', 'Save failed')
     } finally {
       savingProfile.value = false
     }
@@ -721,11 +757,11 @@ const createAccountCenter = () => {
   const changePassword = async () => {
     const settingFirst = Boolean(methods.value && !methods.value.has_password)
     if ((!settingFirst && !passwordForm.current_password) || !passwordForm.new_password) {
-      notice.value = settingFirst ? '请填写新密码' : '请填写当前密码和新密码'
+      notice.value = settingFirst ? tr('请填写新密码', 'Enter a new password') : tr('请填写当前密码和新密码', 'Enter your current and new password')
       return
     }
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      notice.value = '两次输入的新密码不一致'
+      notice.value = tr('两次输入的新密码不一致', 'The new passwords don’t match')
       return
     }
 
@@ -742,10 +778,12 @@ const createAccountCenter = () => {
       passwordForm.current_password = ''
       passwordForm.new_password = ''
       passwordForm.confirm_password = ''
-      notice.value = settingFirst ? '密码已设置，其他设备会话已撤销' : '密码已更新，其他设备会话已撤销'
+      notice.value = settingFirst
+        ? tr('密码已设置，其他设备会话已撤销', 'Password set. You’ve been signed out on other devices.')
+        : tr('密码已更新，其他设备会话已撤销', 'Password updated. You’ve been signed out on other devices.')
       await Promise.all([loadCenter(), loadMethods()])
     } catch (err: any) {
-      notice.value = explainError(err, '修改密码失败')
+      notice.value = explainError(err, tr('修改密码失败', 'Couldn’t change your password'))
     } finally {
       changingPassword.value = false
     }
@@ -767,10 +805,10 @@ const createAccountCenter = () => {
         return
       }
 
-      notice.value = '会话已撤销'
+      notice.value = tr('会话已撤销', 'Session revoked')
       await loadCenter()
     } catch (err: any) {
-      notice.value = err?.data?.message || err?.message || '撤销会话失败'
+      notice.value = err?.data?.message || err?.message || tr('撤销会话失败', 'Couldn’t revoke the session')
     } finally {
       revokingSessionId.value = ''
     }
@@ -806,20 +844,21 @@ const createAccountCenter = () => {
         failed += 1
       }
     }
-    notice.value = failed ? `${done}，但有 ${failed} 个会话撤销失败，请重试` : done
+    notice.value = failed ? tr(`${done}，但有 ${failed} 个会话撤销失败，请重试`, `${done}, but ${failed} sessions couldn’t be revoked. Try again.`) : done
     revokingBulk.value = ''
     await loadCenter()
   }
 
   const revokeOtherSessions = async () => {
-    if (!process.client || !window.confirm(`退出其他 ${otherActiveSessions.value.length} 个设备上的登录？`)) return
-    await revokeSessions('others', otherActiveSessions.value.map((session) => session.id), '已退出其他所有设备')
+    const count = otherActiveSessions.value.length
+    if (!process.client || !window.confirm(tr(`退出其他 ${count} 个设备上的登录？`, `Sign out on ${count} other devices?`))) return
+    await revokeSessions('others', otherActiveSessions.value.map((session) => session.id), tr('已退出其他所有设备', 'Signed out on all other devices'))
   }
 
   const revokeClientAccess = async (clientId: string, clientName: string) => {
     const sessions = revocableSessionsForClient(clientId)
-    if (!process.client || !window.confirm(`撤销 ${clientName} 的访问？该应用在 ${sessions.length} 个设备上的登录都会失效。`)) return
-    await revokeSessions(clientId, sessions.map((session) => session.id), `已撤销 ${clientName} 的访问`)
+    if (!process.client || !window.confirm(tr(`撤销 ${clientName} 的访问？该应用在 ${sessions.length} 个设备上的登录都会失效。`, `Remove access for ${clientName}? It will be signed out on ${sessions.length} devices.`))) return
+    await revokeSessions(clientId, sessions.map((session) => session.id), tr(`已撤销 ${clientName} 的访问`, `Removed access for ${clientName}`))
   }
 
   const deleteConfirmTarget = computed(() => {
@@ -852,7 +891,7 @@ const createAccountCenter = () => {
       if (isReauthError(err)) {
         deleteStep.value = 'reauth'
       } else {
-        deleteError.value = explainError(err, '暂时无法删除这个账号，请稍后再试')
+        deleteError.value = explainError(err, tr('暂时无法删除这个账号，请稍后再试', 'This account can’t be deleted right now. Try again later.'))
         deleteStep.value = 'blocked'
       }
     } finally {
@@ -873,7 +912,7 @@ const createAccountCenter = () => {
       if (isReauthError(err)) {
         deleteStep.value = 'reauth'
       } else {
-        deleteError.value = explainError(err, '删除失败，请稍后再试')
+        deleteError.value = explainError(err, tr('删除失败，请稍后再试', 'Delete failed. Try again later.'))
       }
     } finally {
       deletingAccount.value = false
@@ -904,10 +943,10 @@ const createAccountCenter = () => {
       await withAuthFetch(`${config.public.apiBase}/account/linked?id=${encodeURIComponent(row.id)}`, {
         method: 'DELETE',
       })
-      notice.value = `已解绑 ${row.label}`
+      notice.value = tr(`已解绑 ${row.label}`, `Unlinked ${row.label}`)
       await Promise.all([loadCenter(), loadMethods()])
     } catch (err: any) {
-      notice.value = explainError(err, '解绑失败')
+      notice.value = explainError(err, tr('解绑失败', 'Unlink failed'))
     } finally {
       unlinkingProvider.value = ''
     }
@@ -931,9 +970,9 @@ const createAccountCenter = () => {
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
-      notice.value = '数据导出已开始'
+      notice.value = tr('数据导出已开始', 'Export started')
     } catch (err: any) {
-      notice.value = explainError(err, '导出失败，请稍后再试')
+      notice.value = explainError(err, tr('导出失败，请稍后再试', 'Export failed. Try again later.'))
     } finally {
       exportingData.value = false
     }
@@ -949,7 +988,7 @@ const createAccountCenter = () => {
   const formatDateTime = (timestamp?: number | null) => {
     if (!timestamp) return '--'
     try {
-      return new Intl.DateTimeFormat('zh-CN', {
+      return new Intl.DateTimeFormat(lang.value === 'en' ? 'en-US' : 'zh-CN', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -995,6 +1034,9 @@ const createAccountCenter = () => {
   })
 
   return {
+    lang,
+    tr,
+    setLang,
     loading,
     error,
     notice,

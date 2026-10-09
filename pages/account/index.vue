@@ -1,7 +1,7 @@
 <template>
   <div class="account-shell">
     <header class="topbar">
-      <div class="brand">leeguoo 账号</div>
+      <div class="brand">{{ tr('leeguoo 账号', 'leeguoo account') }}</div>
       <div class="top-actions">
         <NuxtLink to="/help">
           <UiButton unstyled type="button" class="icon-btn" aria-label="help">?</UiButton>
@@ -18,11 +18,11 @@
             ⋮
           </UiButton>
           <div v-if="appsOpen && isAdmin" class="apps-menu">
-            <NuxtLink to="/portal" @click="appsOpen = false">用户门户</NuxtLink>
-            <NuxtLink to="/admin" @click="appsOpen = false">管理后台</NuxtLink>
-            <NuxtLink to="/admin/users" @click="appsOpen = false">用户管理</NuxtLink>
-            <NuxtLink to="/admin/apps" @click="appsOpen = false">应用管理</NuxtLink>
-            <NuxtLink to="/admin/billing" @click="appsOpen = false">订阅管理</NuxtLink>
+            <NuxtLink to="/portal" @click="appsOpen = false">{{ tr('用户门户', 'User portal') }}</NuxtLink>
+            <NuxtLink to="/admin" @click="appsOpen = false">{{ tr('管理后台', 'Admin console') }}</NuxtLink>
+            <NuxtLink to="/admin/users" @click="appsOpen = false">{{ tr('用户管理', 'Users') }}</NuxtLink>
+            <NuxtLink to="/admin/apps" @click="appsOpen = false">{{ tr('应用管理', 'Apps') }}</NuxtLink>
+            <NuxtLink to="/admin/billing" @click="appsOpen = false">{{ tr('订阅管理', 'Subscriptions') }}</NuxtLink>
           </div>
         </div>
         <div class="mini-avatar">
@@ -37,7 +37,7 @@
       </div>
     </header>
 
-    <div v-if="loading" class="state-text">正在加载账户信息...</div>
+    <div v-if="loading" class="state-text">{{ tr('正在加载账户信息...', 'Loading your account...') }}</div>
     <div v-else-if="error" class="state-text error">{{ error }}</div>
 
     <div v-else class="body-wrap">
@@ -68,7 +68,7 @@
             <span v-else>{{ initials }}</span>
           </div>
           <h1>{{ displayName }}</h1>
-          <p>{{ center?.profile.email || '未设置邮箱' }}</p>
+          <p>{{ center?.profile.email || tr('未设置邮箱', 'No email set') }}</p>
         </div>
 
         <form class="search-wrap fade-in delay-1" @submit.prevent="runSearch">
@@ -76,9 +76,9 @@
           <input
             v-model="searchText"
             class="search-input-field"
-            placeholder="搜索账号设置（如：密码、设备、订阅）"
+            :placeholder="tr('搜索账号设置（如：密码、设备、订阅）', 'Search account settings (e.g. password, devices, subscriptions)')"
           />
-          <UiButton unstyled type="submit" class="search-submit">搜索</UiButton>
+          <UiButton unstyled type="submit" class="search-submit">{{ tr('搜索', 'Search') }}</UiButton>
         </form>
 
         <div v-if="searchText.trim()" class="search-results">
@@ -93,7 +93,7 @@
             {{ target.label }}
             <small>{{ target.group }}</small>
           </UiButton>
-          <p v-if="!searchResults.length" class="search-empty">未找到匹配项</p>
+          <p v-if="!searchResults.length" class="search-empty">{{ tr('未找到匹配项', 'No matches') }}</p>
         </div>
 
         <div class="quick-actions fade-in delay-2">
@@ -133,17 +133,19 @@
         <p v-if="notice" class="notice-text">{{ notice }}</p>
 
         <p class="privacy-copy">
-          只有你本人可以查看你的设置。你可以在这里统一管理登录、安全、应用授权与订阅权益。
+          {{ tr('只有你本人可以查看你的设置。你可以在这里统一管理登录、安全、应用授权与订阅权益。', 'Only you can see your settings. Manage sign-in, security, app access and subscriptions in one place.') }}
         </p>
       </main>
     </div>
 
     <footer class="bottom-links">
-      <NuxtLink to="/privacy">隐私权</NuxtLink>
-      <NuxtLink to="/terms">条款</NuxtLink>
-      <NuxtLink to="/help">帮助</NuxtLink>
-      <NuxtLink to="/about">关于</NuxtLink>
-      <UiButton unstyled type="button" class="logout-btn" @click="logout">退出登录</UiButton>
+      <NuxtLink to="/privacy">{{ tr('隐私权', 'Privacy') }}</NuxtLink>
+      <NuxtLink to="/terms">{{ tr('条款', 'Terms') }}</NuxtLink>
+      <NuxtLink to="/help">{{ tr('帮助', 'Help') }}</NuxtLink>
+      <NuxtLink to="/about">{{ tr('关于', 'About') }}</NuxtLink>
+      <UiButton unstyled type="button" class="lang-btn" :class="{ active: lang === 'zh' }" @click="setLang('zh')">中文</UiButton>
+      <UiButton unstyled type="button" class="lang-btn" :class="{ active: lang === 'en' }" @click="setLang('en')">English</UiButton>
+      <UiButton unstyled type="button" class="logout-btn" @click="logout">{{ tr('退出登录', 'Sign out') }}</UiButton>
     </footer>
   </div>
 </template>
@@ -156,6 +158,9 @@ definePageMeta({
 })
 
 const {
+  lang,
+  tr,
+  setLang,
   loading,
   error,
   notice,
