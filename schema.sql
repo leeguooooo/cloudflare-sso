@@ -378,6 +378,19 @@ CREATE TABLE IF NOT EXISTS device_codes (
 CREATE INDEX IF NOT EXISTS idx_device_codes_expires ON device_codes (expires_at);
 
 -- First-use trials (TENANT_SIGNUP_TRIALS): one row per account and tenant, ever
+-- Two-step verification (TOTP + recovery codes) for email + password sign-in, per global account
+CREATE TABLE IF NOT EXISTS account_mfa (
+  global_account_id TEXT PRIMARY KEY REFERENCES global_accounts(id) ON DELETE CASCADE,
+  key_source TEXT NOT NULL, -- which server secret seals totp_secret: mfa_key | pepper_v2 | pepper
+  totp_secret TEXT, -- AES-GCM sealed; NULL until enrolment is confirmed
+  pending_secret TEXT,
+  pending_created_at INTEGER,
+  recovery_codes_json TEXT DEFAULT '[]' NOT NULL, -- [{ hash, used_at }]
+  last_step INTEGER DEFAULT -1 NOT NULL, -- last accepted TOTP step (no replay)
+  enabled_at INTEGER,
+  updated_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

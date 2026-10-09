@@ -116,6 +116,10 @@ export const buildIssuerMergeStatements = (input: {
   // Trials already used by either account stay used: a merge must not open a second one.
   push('trial_grants', `UPDATE OR IGNORE trial_grants SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   push('trial_grants', `DELETE FROM trial_grants WHERE global_account_id = ?`, [from.id])
+  // Two-step verification follows the merge when the kept account has none, so the other
+  // account's password (which may be adopted below) does not lose its second factor.
+  push('account_mfa', `UPDATE OR IGNORE account_mfa SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
+  push('account_mfa', `DELETE FROM account_mfa WHERE global_account_id = ?`, [from.id])
   push('global_accounts', `DELETE FROM global_accounts WHERE id = ?`, [from.id])
   if (adopt) {
     push(

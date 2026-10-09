@@ -209,7 +209,10 @@ Admin console:
 
 Account center (C 端):
 - [x] W8-06 Split `pages/account/index.vue` into `components/account/*` sections + `useAccountCenter` (no behaviour change; screenshots pixel-identical)
-- [ ] W8-07 Two-step verification: TOTP authenticator + one-time recovery codes for password sign-in
+- [x] W8-07 Two-step verification: TOTP authenticator + one-time recovery codes for password sign-in
+  - Scope: email + password only (`/api/auth/login` → challenge → `/api/auth/mfa/verify`). Provider sign-ins carry the provider's own 2FA; refresh, device approval and `/authorize` ride on a session that already passed it
+  - Enrol / regenerate / disable in the account center (security section), recent sign-in required; admins can `reset_mfa`
+  - Covered by `tests/unit/mfa.test.ts` (RFC 6238 vector, replay, recovery single-use, rate limit, suspended account) and a manual run through the hosted login page
 
 Acceptance:
 - `pnpm lint`, `pnpm build`, `pnpm test` pass; every new API has route-level tests in `tests/unit`

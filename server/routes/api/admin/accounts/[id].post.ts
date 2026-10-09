@@ -4,9 +4,10 @@ import { requirePlatformAdmin } from '../../../../utils/guard'
 import { writeAuditLog } from '../../../../utils/audit'
 import { ensureBillingSchema } from '../../../../utils/billing'
 import { processSubscriptionEvent } from '../../../../utils/billing-events'
+import { disableMfa } from '../../../../utils/mfa'
 
-type Action = 'suspend' | 'restore' | 'revoke_sessions' | 'grant_entitlement' | 'revoke_entitlement'
-const ACTIONS: readonly Action[] = ['suspend', 'restore', 'revoke_sessions', 'grant_entitlement', 'revoke_entitlement']
+type Action = 'suspend' | 'restore' | 'revoke_sessions' | 'reset_mfa' | 'grant_entitlement' | 'revoke_entitlement'
+const ACTIONS: readonly Action[] = ['suspend', 'restore', 'revoke_sessions', 'reset_mfa', 'grant_entitlement', 'revoke_entitlement']
 
 type Body = {
   action?: Action
@@ -22,6 +23,8 @@ type Body = {
  * - `suspend` / `restore`: the account cannot sign in to any app while suspended; suspending
  *   signs it out everywhere at once.
  * - `revoke_sessions`: sign out of every app and device.
+ * - `reset_mfa`: turn off two-step verification for a locked-out user (lost phone and codes);
+ *   also signs them out everywhere so the next sign-in starts clean.
  * - `grant_entitlement` / `revoke_entitlement` { tenant_id, entitlement_key, valid_to? }: a manual
  *   entitlement, recorded as a `manual` billing event so it shows in the billing event log.
  *   Revoking only ends manual grants; paid and trial entitlements follow their own events.
@@ -60,6 +63,13 @@ export default defineEventHandler(async (event) => {
     await (action === 'suspend' ? db.batch([update, revokeAll]) : update.run())
     await audit({ previous_status: account.status, note: body.note || undefined })
     return { ok: true, status }
+  }
+
+  if (action === 'reset_mfa') {
+    const removed = await disableMfa(event, id)
+    await revokeAll.run()
+    await audit({ removed, note: body.note || undefined })
+    return { ok: true, removed }
   }
 
   if (action === 'revoke_sessions') {

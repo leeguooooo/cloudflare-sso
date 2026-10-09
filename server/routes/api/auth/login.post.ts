@@ -1,17 +1,16 @@
-import { createError, defineEventHandler, readBody, setCookie } from 'h3'
+import { createError, defineEventHandler, readBody } from 'h3'
 import { getDb, getEnv } from '../../../utils/env'
 import { hashAccountPassword, verifyAccountPassword } from '../../../utils/password'
 import { hashPassword } from '../../../utils/crypto'
-import { issueTokens } from '../../../utils/auth'
-import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from '../../../utils/rate-limit'
-import { getUserRolesForClient } from '../../../utils/access'
+import { assertLoginAllowed, recordLoginFailure } from '../../../utils/rate-limit'
+import { completePasswordSignIn } from '../../../utils/password-login'
+import { isMfaEnabled, issueMfaChallenge } from '../../../utils/mfa'
 import { writeAuditLog } from '../../../utils/audit'
 import { resolveDefaultClientId } from '../../../utils/default-client'
 import {
   ensureGlobalIdentitySchema,
   findGlobalAccountByEmail,
   getClientByPublicId,
-  provisionTenantUserForGlobalAccount,
 } from '../../../utils/identity'
 
 type LoginBody = {
@@ -114,54 +113,17 @@ export default defineEventHandler(async (event) => {
   if (globalAccount.status !== 'active') {
     throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })
   }
-  await clearLoginFailures(event, email)
 
-  const provisioned = await provisionTenantUserForGlobalAccount(event, {
-    tenantId: client.tenant_id,
-    globalAccountId: globalAccount.id,
-    email: globalAccount.email,
-    locale: globalAccount.locale || 'en',
-  })
-
-  if (provisioned.user.status !== 'active') {
-    throw createError({ statusCode: 403, statusMessage: 'User disabled or locked' })
+  // Two-step verification: no session yet. Failures are not cleared, so the per-email budget
+  // also caps guesses at the second step.
+  if (await isMfaEnabled(event, globalAccount.id)) {
+    await writeAuditLog(event, { tenantId: client.tenant_id, userId: null, action: 'auth.mfa_challenge', payload: { client_id: client.client_id, global_account_id: globalAccount.id } })
+    return {
+      mfa_required: true,
+      challenge: await issueMfaChallenge(event, { globalAccountId: globalAccount.id, clientId: client.client_id, email }),
+      methods: ['totp', 'recovery'],
+    }
   }
 
-  const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
-  const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', { roles })
-
-  setCookie(event, 'sso_refresh_token', tokens.refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-    expires: new Date(tokens.refreshTokenExpiresAt * 1000),
-  })
-
-  await writeAuditLog(event, {
-    tenantId: provisioned.user.tenant_id,
-    userId: provisioned.user.id,
-    action: 'auth.login',
-    payload: {
-      client_id: client.client_id,
-      global_account_id: provisioned.user.global_account_id || null,
-      provisioned_created: provisioned.created,
-    },
-  })
-
-  return {
-    token_type: 'Bearer',
-    access_token: tokens.accessToken,
-    id_token: tokens.idToken,
-    refresh_token: tokens.refreshToken,
-    expires_in: tokens.accessTokenExpiresIn,
-    scope: client.scope,
-    user: {
-      id: provisioned.user.id,
-      email: provisioned.user.email,
-      tenant_id: provisioned.user.tenant_id,
-      locale: provisioned.user.locale,
-      global_account_id: provisioned.user.global_account_id,
-    },
-  }
+  return completePasswordSignIn(event, client, globalAccount, email)
 })

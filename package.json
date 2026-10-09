@@ -26,7 +26,8 @@
     "@nuxtjs/i18n": "^9.0.0",
     "@pinia/nuxt": "^0.11.2",
     "nuxt": "^4.2.0",
-    "pinia": "^3.0.3"
+    "pinia": "^3.0.3",
+    "uqr": "0.1.2"
   },
   "devDependencies": {
     "@typescript-eslint/parser": "^8.47.0",

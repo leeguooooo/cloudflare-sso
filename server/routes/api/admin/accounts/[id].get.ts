@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getRouterParam, setResponseHeader } fr
 import { getDb } from '../../../../utils/env'
 import { requirePlatformAdmin } from '../../../../utils/guard'
 import { ensureAdminConsoleSchema, parseJsonObject } from '../../../../utils/admin-console'
+import { getMfaStatus } from '../../../../utils/mfa'
 
 type Row = Record<string, unknown>
 
@@ -90,6 +91,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     account: { ...account, password_set: account.password_set !== 0 },
+    mfa: await getMfaStatus(event, id),
     users: results(users).map((row) => ({ ...row, roles: row.roles ? [...new Set(String(row.roles).split(','))] : [] })),
     identities: results(identities).map((row) => ({
       ...row,

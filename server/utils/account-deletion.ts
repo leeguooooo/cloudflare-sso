@@ -108,6 +108,7 @@ export const buildAccountDeletionStatements = (
       [globalAccountId],
     )
     push('trial_grants', `DELETE FROM trial_grants WHERE global_account_id = ?`, [globalAccountId])
+    push('account_mfa', `DELETE FROM account_mfa WHERE global_account_id = ?`, [globalAccountId])
     push('global_accounts', `DELETE FROM global_accounts WHERE id = ?`, [globalAccountId])
   }
 

@@ -3,6 +3,7 @@ import { getDb } from '../../../utils/env'
 import { requireAccountUserContext } from '../../../utils/account'
 import { writeAuditLog } from '../../../utils/audit'
 import center from './center.get'
+import { getMfaStatus } from '../../../utils/mfa'
 
 /**
  * GET /api/account/export — everything the identity service keeps about the caller, as a
@@ -44,6 +45,8 @@ export default defineEventHandler(async (event) => {
     exported_at: new Date().toISOString(),
     account: overview.profile,
     sign_in_methods: overview.linked_identities,
+    // Status only: the authenticator secret and recovery codes never leave the server.
+    two_step_verification: gaid ? await getMfaStatus(event, gaid) : null,
     tenant_users: tenantUsers,
     sessions: overview.sessions,
     activity,

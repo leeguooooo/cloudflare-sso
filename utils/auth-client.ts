@@ -172,6 +172,13 @@ export type AuthCopy = {
   toLogin: string
   registered: string
   signedIn: string
+  mfaTitle: string
+  mfaHint: string
+  mfaCode: string
+  mfaSubmit: string
+  mfaBack: string
+  mfaInvalid: string
+  mfaExpired: string
   footer: string
   /** A provider sign-in whose email belongs to an existing account that is not linked to it. */
   accountExistsTitle: string
@@ -266,6 +273,13 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     toLogin: 'Sign in →',
     registered: 'Account created. Please sign in.',
     signedIn: 'Signed in',
+    mfaTitle: 'Two-step verification',
+    mfaHint: 'Enter the 6-digit code from your authenticator app, or one of your recovery codes.',
+    mfaCode: 'Verification code',
+    mfaSubmit: 'Verify',
+    mfaBack: 'Use a different account',
+    mfaInvalid: "That code didn't work. Try the next code from your app.",
+    mfaExpired: 'This sign-in took too long. Enter your password again.',
     footer: 'account.leeguoo.com · secure sign-in',
     accountExistsTitle: 'An account with this email already exists',
     accountExistsBody: '{email} is already registered, but this {provider} sign-in is not linked to it yet. For your security we never link accounts automatically. Sign in with the method you used before, then open Account → Sign-in methods and link {provider}.',
@@ -357,6 +371,13 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     toLogin: '去登录 →',
     registered: '账号已创建，请登录。',
     signedIn: '登录成功',
+    mfaTitle: '两步验证',
+    mfaHint: '输入身份验证器 App 里的 6 位验证码，或者一个备用码。',
+    mfaCode: '验证码',
+    mfaSubmit: '验证',
+    mfaBack: '换个账号',
+    mfaInvalid: '验证码不对，请用 App 里的下一个验证码再试。',
+    mfaExpired: '登录超时了，请重新输入密码。',
     footer: 'account.leeguoo.com · 安全登录',
     accountExistsTitle: '这个邮箱已经有账号了',
     accountExistsBody: '{email} 已经注册过，但还没有绑定这个 {provider} 账号。为了你的账号安全，我们不会自动合并。请先用原来的方式登录，再到「账号中心 → 登录方式」绑定 {provider}。',
@@ -448,6 +469,13 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     toLogin: 'サインイン →',
     registered: 'アカウントを作成しました。サインインしてください。',
     signedIn: 'サインインしました',
+    mfaTitle: '2 段階認証',
+    mfaHint: '認証アプリの 6 桁のコード、またはバックアップコードを入力してください。',
+    mfaCode: '確認コード',
+    mfaSubmit: '確認',
+    mfaBack: '別のアカウントを使う',
+    mfaInvalid: 'コードが正しくありません。アプリの次のコードでお試しください。',
+    mfaExpired: '時間切れです。もう一度パスワードを入力してください。',
     footer: 'account.leeguoo.com · 安全なサインイン',
     accountExistsTitle: 'このメールアドレスのアカウントは既に存在します',
     accountExistsBody: '{email} は登録済みですが、この {provider} アカウントはまだリンクされていません。安全のため、アカウントを自動でリンクすることはありません。以前の方法でサインインしてから、「アカウント → ログイン方法」で {provider} をリンクしてください。',
@@ -539,6 +567,13 @@ export const AUTH_COPY: Readonly<Record<AuthLocale, AuthCopy>> = {
     toLogin: '로그인 →',
     registered: '계정이 생성되었습니다. 로그인하세요.',
     signedIn: '로그인됨',
+    mfaTitle: '2단계 인증',
+    mfaHint: '인증 앱의 6자리 코드 또는 백업 코드를 입력하세요.',
+    mfaCode: '인증 코드',
+    mfaSubmit: '확인',
+    mfaBack: '다른 계정 사용',
+    mfaInvalid: '코드가 올바르지 않습니다. 앱의 다음 코드로 다시 시도하세요.',
+    mfaExpired: '시간이 초과되었습니다. 비밀번호를 다시 입력하세요.',
     footer: 'account.leeguoo.com · 안전한 로그인',
     accountExistsTitle: '이 이메일로 된 계정이 이미 있습니다',
     accountExistsBody: "{email}은(는) 이미 가입되어 있지만 이 {provider} 계정은 아직 연결되지 않았습니다. 보안을 위해 계정을 자동으로 연결하지 않습니다. 이전에 사용한 방법으로 로그인한 다음 '계정 → 로그인 방법'에서 {provider}을(를) 연결하세요.",

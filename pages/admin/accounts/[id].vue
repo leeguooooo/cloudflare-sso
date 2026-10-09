@@ -20,6 +20,7 @@
               <UiBadge :variant="data.account.status === 'active' ? 'success' : 'danger'" :label="data.account.status === 'disabled' ? 'suspended' : data.account.status" />
               <UiBadge variant="neutral" :label="data.account.password_set ? 'password set' : 'no password'" />
               <UiBadge variant="neutral" :label="`locale ${data.account.locale || 'en'}`" />
+              <UiBadge :variant="data.mfa.enabled ? 'success' : 'neutral'" :label="data.mfa.enabled ? `2FA on · ${data.mfa.recovery_codes_remaining} codes left` : '2FA off'" />
             </div>
             <div class="text-xs muted">Created {{ formatAdminTime(data.account.created_at) }}</div>
           </div>
@@ -34,6 +35,14 @@
               Suspend
             </UiButton>
             <UiButton v-else variant="outline" :disabled="busy" @click="act('restore', `Restore ${data.account.email}?`)">Restore</UiButton>
+            <UiButton
+              v-if="data.mfa.enabled"
+              variant="ghost"
+              :disabled="busy"
+              @click="act('reset_mfa', `Turn off two-step verification for ${data.account.email}? Only do this after confirming who they are (lost phone and recovery codes). They are also signed out everywhere.`)"
+            >
+              Reset 2FA
+            </UiButton>
             <UiButton
               variant="ghost"
               :disabled="busy || !activeSessions"
@@ -189,6 +198,7 @@
 type Row = Record<string, unknown>
 type Detail = {
   account: { id: string; email: string; display_name: string | null; avatar_url: string | null; locale: string | null; status: string; password_set: boolean; created_at: number }
+  mfa: { enabled: boolean; enabled_at: number | null; recovery_codes_remaining: number }
   users: Row[]
   identities: { provider: string; email: string | null; is_private_email: boolean; consent_revoked_at: number | null; created_at: number }[]
   sessions: Row[]
@@ -265,9 +275,9 @@ const run = async (body: Record<string, unknown>, done: string) => {
   }
 }
 
-const DONE: Record<string, string> = { suspend: 'Account suspended', restore: 'Account restored', revoke_sessions: 'Signed out everywhere' }
+const DONE: Record<string, string> = { suspend: 'Account suspended', restore: 'Account restored', revoke_sessions: 'Signed out everywhere', reset_mfa: 'Two-step verification turned off' }
 
-const act = (action: 'suspend' | 'restore' | 'revoke_sessions', confirmText: string) => {
+const act = (action: 'suspend' | 'restore' | 'revoke_sessions' | 'reset_mfa', confirmText: string) => {
   if (!process.client || !window.confirm(confirmText)) return
   void run({ action }, DONE[action])
 }

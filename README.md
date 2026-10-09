@@ -53,6 +53,13 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - `POST /api/auth/password/reset { token, password }`：一次性令牌；成功后吊销该账号所有会话，并视为邮箱已验证
 - `POST /api/account/email/verify`：给当前邮箱发验证链接；`POST /api/account/email/change { new_email }`：需近期登录，向新邮箱发确认链接，点开后才生效
 - `GET /api/auth/email/verify?token=`：邮件链接落地，回跳账号中心
+- 两步验证（TOTP + 备用码，只保护邮箱密码登录；Apple / Google / GitHub / 微信登录不受影响）：
+  - `POST /api/auth/login` 对开启了两步验证的账号不发 token，返回 `{ mfa_required: true, challenge, methods: ["totp", "recovery"] }`；`challenge` 5 分钟有效
+  - `POST /api/auth/mfa/verify { challenge, code }`：`code` 是 6 位验证码或备用码，成功响应与 `/api/auth/login` 相同（用了备用码时多一个 `recovery_codes_remaining`）。错误码 `401 invalid_code` / `401 mfa_challenge_expired`；输错计入该邮箱的登录失败次数（15 分钟 10 次后 `429`）。每个 30 秒的验证码只能用一次
+  - `GET /api/account/mfa` → `{ enabled, enabled_at, recovery_codes_remaining }`；`POST /api/account/mfa { action }`：`start` → `{ secret, otpauth_uri }`，`confirm { code }` → `{ recovery_codes }`（只出现这一次），`regenerate_recovery_codes { code }`，`disable { code }`。都要求 15 分钟内登录过（否则 `403 reauth_required`），账号要先有密码（否则 `400 password_required`）
+  - 密钥用 AES-GCM 加密存放，密钥材料依次取 secret `MFA_SECRET_KEY` / `PASSWORD_PEPPER_V2` / `PASSWORD_PEPPER`（每行记下用的是哪个）；备用码只存 HMAC。账号合并时，保留的账号没开两步验证就继承被合并账号的
+  - 用户丢了手机和备用码：平台管理员在 `/admin/accounts/:id` 点「Reset 2FA」（`POST /api/admin/accounts/:id { action: "reset_mfa" }`），同时登出所有会话
+  - 直接调 `/api/auth/login` 的客户端（非托管登录页）要处理 `mfa_required`，否则开了两步验证的用户登录不了
 - `GET /api/account/export`：下载账号数据（资料、登录方式、会话、完整活动记录、订阅与权益）
 - `POST /api/auth/wechat/miniprogram { client_id, code }`：`wx.login()` 的 code 换 SSO token（同 `/token` 响应）。有 unionid 时网站与各小程序落到同一个账号
 - `POST /api/auth/apple/native { client_id, identity_token, nonce, authorization_code?, given_name?, family_name? }`：App 内原生「通过 Apple 登录」换 SSO token（同 `/token` 响应），详见下文

@@ -52,7 +52,7 @@
       <!-- Sign-in providers. Which ones show is decided server side (/api/auth/providers):
            native App Store clients only get Google / GitHub when Sign in with Apple is
            offered next to them (Guideline 4.8). Apple comes first, at least as prominent. -->
-      <div v-if="anySocial" class="oauth">
+      <div v-if="anySocial && !mfaChallenge" class="oauth">
         <button v-if="providers.apple" type="button" class="obtn obtn-apple" :disabled="loading" @click="startSocialLogin('apple')">
           <svg class="apple-logo" width="17" height="20" viewBox="0 0 814 1000" aria-hidden="true"><path fill="currentColor" d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z" /></svg>
           <span>{{ t.apple }}</span>
@@ -72,10 +72,41 @@
       </div>
 
       <!-- divider -->
-      <div v-if="anySocial" class="divider"><span class="dline" /><span class="dor">{{ t.or }}</span><span class="dline" /></div>
+      <div v-if="anySocial && !mfaChallenge" class="divider"><span class="dline" /><span class="dor">{{ t.or }}</span><span class="dline" /></div>
 
       <!-- email / password -->
-      <form class="form" @submit.prevent="handleSubmit">
+      <form v-if="mfaChallenge" class="form" @submit.prevent="handleMfaSubmit">
+        <p class="mfa-title">{{ t.mfaTitle }}</p>
+        <p class="mfa-hint">{{ t.mfaHint }}</p>
+        <label class="field-label">
+          <span class="flabel">{{ t.mfaCode }}</span>
+          <span class="field doodle-box">
+            <input
+              ref="mfaInput"
+              v-model="mfaCode"
+              type="text"
+              inputmode="text"
+              autocomplete="one-time-code"
+              autocapitalize="off"
+              spellcheck="false"
+              maxlength="12"
+              required
+              placeholder="123456"
+              :disabled="loading"
+            />
+          </span>
+        </label>
+
+        <p v-if="message" class="miso-msg" :class="{ ok: success }">{{ message }}</p>
+
+        <button type="submit" class="submit doodle-box" :disabled="loading || !mfaCode.trim()">
+          {{ t.mfaSubmit }}
+          <span class="arrow">→</span>
+        </button>
+        <button type="button" class="mfa-back" :disabled="loading" @click="resetMfa">{{ t.mfaBack }}</button>
+      </form>
+
+      <form v-else class="form" @submit.prevent="handleSubmit">
         <label class="field-label">
           <span class="flabel">{{ t.email }}</span>
           <span class="field doodle-box">
@@ -102,7 +133,7 @@
         </button>
       </form>
 
-      <p class="signup">{{ t.noAccount }} <NuxtLink :to="registerPath" class="signup-link">{{ t.createOne }}</NuxtLink></p>
+      <p v-if="!mfaChallenge" class="signup">{{ t.noAccount }} <NuxtLink :to="registerPath" class="signup-link">{{ t.createOne }}</NuxtLink></p>
     </div>
 
     <!-- status footer -->
@@ -284,20 +315,68 @@ const handleSubmit = async () => {
       },
     })
 
-    if (process.client) {
-      const accessToken = (data as { access_token?: string }).access_token
-      if (accessToken) {
-        localStorage.setItem('sso_access_token', accessToken)
-      }
-      localStorage.setItem('sso_last_email', form.email)
+    const challenge = (data as { mfa_required?: boolean; challenge?: string }).mfa_required ? (data as { challenge?: string }).challenge : ''
+    if (challenge) {
+      // Password was right; the session opens only after the second step.
+      mfaChallenge.value = challenge
+      mfaCode.value = ''
+      form.password = ''
+      await nextTick()
+      mfaInput.value?.focus()
+      return
     }
 
-    message.value = t.value.signedIn
-    success.value = true
-    await redirectAfterLogin()
+    await finishLogin(data as { access_token?: string })
   } catch (err: any) {
     const detail = err?.data?.message || err?.message || 'Login failed'
     message.value = detail
+  } finally {
+    loading.value = false
+  }
+}
+
+const mfaChallenge = ref('')
+const mfaCode = ref('')
+const mfaInput = ref<HTMLInputElement | null>(null)
+
+const finishLogin = async (data: { access_token?: string }) => {
+  if (process.client) {
+    if (data.access_token) localStorage.setItem('sso_access_token', data.access_token)
+    localStorage.setItem('sso_last_email', form.email)
+  }
+  message.value = t.value.signedIn
+  success.value = true
+  await redirectAfterLogin()
+}
+
+const resetMfa = () => {
+  mfaChallenge.value = ''
+  mfaCode.value = ''
+  message.value = ''
+}
+
+const handleMfaSubmit = async () => {
+  loading.value = true
+  message.value = ''
+  success.value = false
+  try {
+    const data = await $fetch<{ access_token?: string }>(`${config.public.apiBase}/auth/mfa/verify`, {
+      method: 'POST',
+      body: { challenge: mfaChallenge.value, code: mfaCode.value.trim() },
+    })
+    await finishLogin(data)
+  } catch (err: any) {
+    const reason = err?.data?.message || err?.data?.statusMessage || ''
+    const status = Number(err?.status || err?.statusCode || 0)
+    if (reason === 'mfa_challenge_expired') {
+      resetMfa()
+      message.value = t.value.mfaExpired
+    } else if (reason === 'invalid_code') {
+      message.value = t.value.mfaInvalid
+    } else {
+      message.value = status === 429 ? reason || 'Too many attempts' : reason || err?.message || 'Verification failed'
+    }
+    mfaCode.value = ''
   } finally {
     loading.value = false
   }
@@ -655,5 +734,28 @@ onMounted(() => {
 :lang(ja) .title, :lang(ko) .title { font-size: clamp(24px, 5.6vw, 30px); }
 @media (prefers-reduced-motion: reduce) {
   .miso-page *:not(input) { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
+}
+
+.mfa-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.mfa-hint {
+  font-size: 0.875rem;
+  opacity: 0.75;
+  margin: 0 0 4px;
+}
+
+.mfa-back {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.75;
 }
 </style>
