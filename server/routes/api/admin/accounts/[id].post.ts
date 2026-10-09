@@ -5,6 +5,7 @@ import { writeAuditLog } from '../../../../utils/audit'
 import { ensureBillingSchema } from '../../../../utils/billing'
 import { processSubscriptionEvent } from '../../../../utils/billing-events'
 import { disableMfa } from '../../../../utils/mfa'
+import { emitAccountEvent, emitTenantEvent } from '../../../../utils/webhooks'
 
 type Action = 'suspend' | 'restore' | 'revoke_sessions' | 'reset_mfa' | 'grant_entitlement' | 'revoke_entitlement'
 const ACTIONS: readonly Action[] = ['suspend', 'restore', 'revoke_sessions', 'reset_mfa', 'grant_entitlement', 'revoke_entitlement']
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event) => {
     const update = db.prepare(`UPDATE global_accounts SET status = ?, updated_at = strftime('%s', 'now') WHERE id = ?`).bind(status, id)
     await (action === 'suspend' ? db.batch([update, revokeAll]) : update.run())
     await audit({ previous_status: account.status, note: body.note || undefined })
+    await emitAccountEvent(event, { globalAccountId: id, type: action === 'suspend' ? 'account.suspended' : 'account.restored' })
     return { ok: true, status }
   }
 
@@ -69,12 +71,14 @@ export default defineEventHandler(async (event) => {
     const removed = await disableMfa(event, id)
     await revokeAll.run()
     await audit({ removed, note: body.note || undefined })
+    await emitAccountEvent(event, { globalAccountId: id, type: 'account.mfa_reset' })
     return { ok: true, removed }
   }
 
   if (action === 'revoke_sessions') {
     const result = await revokeAll.run()
     await audit({ revoked: result.meta?.changes ?? null })
+    await emitAccountEvent(event, { globalAccountId: id, type: 'account.sessions_revoked' })
     return { ok: true }
   }
 

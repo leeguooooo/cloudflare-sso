@@ -432,6 +432,38 @@ CREATE TABLE IF NOT EXISTS legacy_auth_daily (
   PRIMARY KEY (tenant_id, day, client_id, path)
 ) WITHOUT ROWID;
 
+-- Event webhooks per tenant (admin console /admin/webhooks) and their delivery log
+CREATE TABLE IF NOT EXISTS webhook_endpoints (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  events TEXT NOT NULL, -- '*' or space-separated event types
+  secret_sealed TEXT NOT NULL, -- AES-GCM sealed signing secret
+  key_source TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+  description TEXT,
+  created_by TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_tenant ON webhook_endpoints (tenant_id);
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id TEXT PRIMARY KEY,
+  endpoint_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'succeeded', 'failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_status INTEGER,
+  last_error TEXT,
+  next_attempt_at INTEGER,
+  created_at INTEGER NOT NULL,
+  delivered_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries (endpoint_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_due ON webhook_deliveries (next_attempt_at) WHERE status = 'pending';
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

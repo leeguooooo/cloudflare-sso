@@ -214,6 +214,8 @@ Account center (C 端):
   - Enrol / regenerate / disable in the account center (security section), recent sign-in required; admins can `reset_mfa`
   - Covered by `tests/unit/mfa.test.ts` (RFC 6238 vector, replay, recovery single-use, rate limit, suspended account) and a manual run through the hosted login page
 
+- [x] W8-08 Event webhooks per tenant (`/admin/webhooks`): signed deliveries for account suspended / restored / deleted / merged / sessions revoked / 2FA reset and entitlement changes, delivery log, retries from the reconcile cron, redeliver
+
 Acceptance:
 - `pnpm lint`, `pnpm build`, `pnpm test` pass; every new API has route-level tests in `tests/unit`
 - A tenant admin cannot read or change another tenant, list global accounts, or filter audit by account

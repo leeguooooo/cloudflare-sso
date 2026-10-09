@@ -61,6 +61,13 @@ App 后端验完 access token 后只认这几个 claim：
 | `roles` / `perms` | 该租户里的角色和权限 | 管理功能鉴权 |
 | `sid` | 会话 id | 想立刻感知登出就调 `/userinfo` |
 
+事件 Webhook（App 后端订阅自己用户的变化，不用轮询）：
+- 后台 `/admin/webhooks` 或 `POST /api/admin/webhooks { tenant_id, action: create, url, events }` 注册 https 地址；创建和 `rotate_secret` 时返回签名密钥，只出现这一次
+- 事件：`account.suspended` / `account.restored` / `account.deleted` / `account.merged` / `account.sessions_revoked` / `account.mfa_reset` / `entitlement.changed`（另有测试用的 `webhook.ping`）。请求体 `{ id, type, created, tenant_id, data: { sub, global_account_id, … } }`，`sub` 是该 App 租户里的用户 id
+- 校验：`X-Leeguoo-Signature: t=<unix>,v1=<hex>`，v1 = HMAC-SHA256(密钥, `"<t>.<原始请求体>"`)；拒绝太旧的 t，按 `X-Leeguoo-Delivery` 去重（重试用同一个 id）
+- 非 2xx 会在 5 分钟、30 分钟、2 小时、12 小时、24 小时后重试（由每 30 分钟的对账任务执行），之后标为 failed，可在后台手动重发。签名密钥加密存放，需要 secret `MFA_SECRET_KEY` 或 `PASSWORD_PEPPER_V2`
+- 这是通知；账号合并、删除时阻塞调用的 `ACCOUNT_HOOK_URLS` 保持不变
+
 旧登录路径下线（各 App 自己的 header 身份、KV 会话、本地 cookie）：
 - App 后端定期（例如每 5 分钟）汇总上报：`POST /api/metrics/legacy-auth { tenant_id, reports: [{ client_id, path, legacy_hits, total_requests }] }`，次数按 UTC 天累加。服务 token 需 `metrics:legacy.write`
 - 后台首页「Legacy sign-in paths」卡片（`GET /api/admin/legacy-auth?tenant_id=`）显示每条旧路径的占比；连续 7 天都有上报且都低于 0.1% 时标为 `ready to remove`，这时可以删掉那条兼容代码

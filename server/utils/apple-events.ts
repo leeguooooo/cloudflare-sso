@@ -13,6 +13,7 @@
  */
 import { H3Event } from 'h3'
 import { callAccountHooks } from './account-hooks'
+import { emitAccountEvent } from './webhooks'
 import {
   buildAccountDeletionStatements,
   collectAccountUserIds,
@@ -44,7 +45,9 @@ export const deleteAccountEverywhere = async (event: H3Event, gaid: string) => {
   if (await hasAdminRole(db, userIds, tables)) return { deleted: false, reason: 'admin' as const }
   const hooks = await callAccountHooks(event, 'delete', { userId: gaid })
   if (hooks.some((hook) => !hook.ok)) return { deleted: false, reason: 'hook_failed' as const, hooks }
+  const tenantUsers = (await db.prepare(`SELECT id, tenant_id FROM users WHERE global_account_id = ?`).bind(gaid).all<{ id: string; tenant_id: string }>()).results || []
   await executeAccountDeletion(db, buildAccountDeletionStatements(userIds, gaid, tables))
+  await emitAccountEvent(event, { globalAccountId: gaid, type: 'account.deleted', tenantUsers })
   return { deleted: true as const, hooks }
 }
 

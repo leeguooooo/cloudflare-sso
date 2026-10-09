@@ -26,6 +26,7 @@
  */
 import { createError, H3Event } from 'h3'
 import { callAccountHooks, type HookResult } from './account-hooks'
+import { emitAccountEvent } from './webhooks'
 import { hasAdminRole, listExistingTables } from './account-deletion'
 import { getDb } from './env'
 import { ensureGlobalIdentitySchema } from './identity'
@@ -320,5 +321,6 @@ export const executeMerge = async (event: H3Event, proposal: MergeProposal) => {
   // 4. Sweep anything written between 2 and 3 (best effort; the merge is done either way).
   const sweep = await callAccountHooks(event, 'merge', { fromUserId: fromId, toUserId: toId })
   await setStatus(db, proposal.id, 'done', null, { hooks, sweep })
+  await emitAccountEvent(event, { globalAccountId: toId, type: 'account.merged', data: { merged_from_global_account_id: fromId } })
   return { status: 'done' as const, hooks, adoptedPassword: adoptsFromPassword(from, to) }
 }

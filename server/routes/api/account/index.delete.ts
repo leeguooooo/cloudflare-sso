@@ -3,6 +3,7 @@ import { getDb, getEnv } from '../../../utils/env'
 import { readAppleConfig, revokeAppleToken } from '../../../utils/apple'
 import { requireAccountUserContext } from '../../../utils/account'
 import { writeAuditLog } from '../../../utils/audit'
+import { emitAccountEvent } from '../../../utils/webhooks'
 import {
   buildAccountDeletionStatements,
   collectAccountUserIds,
@@ -68,8 +69,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Who to tell, read before the users are gone.
+  const tenantUsers = globalAccountId
+    ? (await db.prepare(`SELECT id, tenant_id FROM users WHERE global_account_id = ?`).bind(globalAccountId).all<{ id: string; tenant_id: string }>()).results || []
+    : []
   const statements = buildAccountDeletionStatements(userIds, globalAccountId, tables)
   await executeAccountDeletion(db, statements)
+  if (globalAccountId) await emitAccountEvent(event, { globalAccountId, type: 'account.deleted', tenantUsers })
 
   deleteCookie(event, 'sso_refresh_token', { path: '/' })
 

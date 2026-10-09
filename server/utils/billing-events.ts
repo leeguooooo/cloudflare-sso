@@ -1,4 +1,5 @@
 import { H3Event } from 'h3'
+import { emitTenantEvent } from './webhooks'
 import { getDb } from './env'
 import { nowInSeconds } from './crypto'
 import { provisionTenantUserForGlobalAccount } from './identity'
@@ -288,6 +289,34 @@ const apply = async (event: H3Event, row: SubscriptionEventRow): Promise<Outcome
   return { status: 'ignored', subscriptionId: existing.id, note: 'unknown subscription event' }
 }
 
+/** Tells the tenant's webhooks whose entitlements an applied billing event touched. */
+const notifyEntitlementChange = async (event: H3Event, row: SubscriptionEventRow, subscriptionId: string | null) => {
+  const db = getDb(event)
+  const payload = parseJson<Record<string, unknown>>(row.payload_json, {})
+  let userId = ''
+  if (subscriptionId) {
+    userId = (await db.prepare(`SELECT user_id FROM subscriptions WHERE id = ?`).bind(subscriptionId).first<{ user_id: string }>())?.user_id || ''
+  } else if (text(payload.user_id)) {
+    userId = text(payload.user_id)
+  } else if (text(payload.global_account_id)) {
+    userId =
+      (await db.prepare(`SELECT id FROM users WHERE tenant_id = ? AND global_account_id = ?`).bind(row.tenant_id, text(payload.global_account_id)).first<{ id: string }>())?.id || ''
+  }
+  if (!userId) return
+  const user = await db.prepare(`SELECT global_account_id FROM users WHERE id = ?`).bind(userId).first<{ global_account_id: string | null }>()
+  await emitTenantEvent(event, {
+    tenantId: row.tenant_id,
+    type: 'entitlement.changed',
+    data: {
+      sub: userId,
+      global_account_id: user?.global_account_id || null,
+      billing_event_type: row.event_type,
+      entitlement_key: text(payload.entitlement_key) || null,
+      subscription_id: subscriptionId,
+    },
+  })
+}
+
 /** Applies the event and records the outcome on the event row. Never throws for bad events. */
 export const processSubscriptionEvent = async (event: H3Event, row: SubscriptionEventRow) => {
   const db = getDb(event)
@@ -297,6 +326,7 @@ export const processSubscriptionEvent = async (event: H3Event, row: Subscription
       .prepare(`UPDATE subscription_events SET status = ?, subscription_id = COALESCE(?, subscription_id), error_message = ?, processed_at = ? WHERE id = ?`)
       .bind(outcome.status, outcome.subscriptionId || null, outcome.note || null, nowInSeconds(), row.id)
       .run()
+    if (outcome.status === 'applied') await notifyEntitlementChange(event, row, outcome.subscriptionId || null)
     return { status: outcome.status, error: null as string | null }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

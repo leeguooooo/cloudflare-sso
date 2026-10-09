@@ -26,6 +26,7 @@ import { getDb, getEnv } from './env'
 import { findGlobalAccountById, findTenantUserByGlobalAccount, provisionTenantUserForGlobalAccount } from './identity'
 import { md5Hex } from './md5'
 import { oncePerDb } from './schema-once'
+import { emitTenantEvent } from './webhooks'
 
 export const AFDIAN_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwwdaCg1Bt+UKZKs0R54y
@@ -417,6 +418,11 @@ export const processAfdianOrder = async (
       statements.push(db.prepare(`UPDATE afdian_checkouts SET consumed_order = COALESCE(consumed_order, ?) WHERE id = ?`).bind(outTradeNo, checkoutId))
     }
     await db.batch(statements)
+    await emitTenantEvent(event, {
+      tenantId: plan.tenant_id,
+      type: 'entitlement.changed',
+      data: { global_account_id: account.id, sub: userId, entitlement_key: plan.entitlement_key, active: true, valid_to: validTo, source: 'afdian' },
+    })
     return { status: 'matched', global_account_id: account.id, valid_to: validTo }
   } catch (error) {
     await db
