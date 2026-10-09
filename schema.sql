@@ -421,6 +421,17 @@ CREATE TABLE IF NOT EXISTS identity_mappings (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_mappings_active
   ON identity_mappings (tenant_id, source_system, source_user_id) WHERE status = 'active';
 
+-- Daily pre-SSO auth usage reported by apps (POST /api/metrics/legacy-auth), for fallback sunset decisions
+CREATE TABLE IF NOT EXISTS legacy_auth_daily (
+  tenant_id TEXT NOT NULL,
+  day TEXT NOT NULL, -- UTC yyyy-mm-dd
+  client_id TEXT NOT NULL,
+  path TEXT NOT NULL, -- e.g. header-identity / kv-session
+  legacy_hits INTEGER NOT NULL DEFAULT 0,
+  total_requests INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (tenant_id, day, client_id, path)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

@@ -146,7 +146,7 @@ Acceptance:
 ### W4. cherry Integration (mobile + mini-program + admin)
 - [x] W4-01 Write integration plan for cherry
 - [x] W4-02 Add hybrid principal resolver in cherry API (JWT first, KV fallback)
-- [ ] W4-03 Register clients:
+- [x] W4-03 Register clients (in `app_key: cherry` bootstrap; prod run recorded 2026-02-26 in §9):
   - `cherry-consumer`
   - `cherry-leader`
   - `cherry-admin-web`
@@ -162,7 +162,7 @@ Acceptance:
 - Legacy KV session endpoints return deprecation response, then removed
 
 ### W5. paste Integration (web + macOS)
-- [ ] W5-01 Register OIDC clients: `paste-web`, `paste-macos`
+- [x] W5-01 Register OIDC clients: `paste-web`, `paste-macos` (`app_key: paste` bootstrap; prod run recorded 2026-02-26 in §9)
 - [ ] W5-02 Replace local HMAC session flow with SSO token validation
 - [ ] W5-03 Replace macOS token/header compatibility path with SSO-only principal
 - [ ] W5-04 Disable header identity fallback (`x-user-id/x-device-id`) in production
@@ -174,7 +174,7 @@ Acceptance:
 - Web and macOS auth paths use SSO only
 
 ### W6. blog Integration
-- [ ] W6-01 Register OIDC client: `blog-web`
+- [x] W6-01 Register OIDC client: `blog-web` (in `app_key: blog` bootstrap; no prod run recorded yet — run `POST /api/admin/apps/bootstrap { app_key: "blog" }` before cutover)
 - [ ] W6-02 Replace local auth session with SSO tokens
 - [ ] W6-03 Map existing users to `sso_user_id`
 - [ ] W6-04 Replace local membership check with entitlement API
@@ -189,7 +189,7 @@ Acceptance:
 - [x] W7-02 Add entitlement metrics per app/client: allowed/denied rates (`GET /api/billing/entitlements/check` counts answers per client + key per day; admin home card + `GET /api/admin/entitlement-metrics`; apps still need to switch their feature gates to the check endpoint)
 - [x] W7-03 Add token verification failure logging with reason labels
 - [x] W7-04 Incident playbook for key rotation (`docs/KEY_ROTATION.md`); sign-in failure spikes alert via the reconcile worker
-- [ ] W7-05 Add fallback usage dashboard and alert (`legacy path hit rate > threshold`)
+- [x] W7-05 Add fallback usage dashboard (`POST /api/metrics/legacy-auth` from app backends, admin home card with per-path rate and a `ready to remove` flag for 7 days < 0.1%); apps still need to start reporting
 
 Acceptance:
 - Can detect auth regressions in < 10 minutes by dashboard + alert

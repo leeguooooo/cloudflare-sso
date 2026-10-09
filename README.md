@@ -61,6 +61,10 @@ App 后端验完 access token 后只认这几个 claim：
 | `roles` / `perms` | 该租户里的角色和权限 | 管理功能鉴权 |
 | `sid` | 会话 id | 想立刻感知登出就调 `/userinfo` |
 
+旧登录路径下线（各 App 自己的 header 身份、KV 会话、本地 cookie）：
+- App 后端定期（例如每 5 分钟）汇总上报：`POST /api/metrics/legacy-auth { tenant_id, reports: [{ client_id, path, legacy_hits, total_requests }] }`，次数按 UTC 天累加。服务 token 需 `metrics:legacy.write`
+- 后台首页「Legacy sign-in paths」卡片（`GET /api/admin/legacy-auth?tenant_id=`）显示每条旧路径的占比；连续 7 天都有上报且都低于 0.1% 时标为 `ready to remove`，这时可以删掉那条兼容代码
+
 老用户迁移（把 App 自己的用户表映射到 SSO）：
 - `POST /api/admin/identity-mappings/import { tenant_id, source_system, records, create_missing?, dry_run? }`：每批最多 100 条，幂等。规则：已有映射 → `unchanged`；指定 `global_account_id` → `manual`；源系统**验证过**的邮箱且 SSO 有这个账号 → `linked`；验证过但没账号且 `create_missing` → `created`（无密码，用户用第三方登录或「忘记密码」设密码）；其余（邮箱没验证、找不到账号、账号停用）→ `needs_review`，不写任何东西。没验证的邮箱一律不自动关联，避免别人在旧 App 里填了你的邮箱就拿到你的 SSO 账号。租户管理员，或带 `identity:mappings.write` 的服务 token
 - `GET /api/admin/identity-mappings?tenant_id=&source_system=&source_user_id=`：查映射，App 后端用老 id 换新 `sub`（服务 token 需 `identity:mappings.read`）
