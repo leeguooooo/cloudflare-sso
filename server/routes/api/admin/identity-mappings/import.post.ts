@@ -48,17 +48,23 @@ export default defineEventHandler(async (event) => {
       continue
     }
     seen.add(id)
-    results.push(
-      await mapLegacyUser(event, {
-        tenantId,
-        sourceSystem,
-        record: record || {},
-        createMissing: body.create_missing === true,
-        dryRun,
-        actor: principal.sub,
-        runId,
-      }),
-    )
+    try {
+      results.push(
+        await mapLegacyUser(event, {
+          tenantId,
+          sourceSystem,
+          record: record || {},
+          createMissing: body.create_missing === true,
+          dryRun,
+          actor: principal.sub,
+          runId,
+        }),
+      )
+    } catch (error) {
+      // One bad row must not abort the batch: report it and carry on (re-runs stay idempotent).
+      const reason = (error as { statusMessage?: string })?.statusMessage || (error instanceof Error ? error.message : String(error))
+      results.push({ source_user_id: id, outcome: 'invalid', reason: reason.slice(0, 200) })
+    }
   }
 
   const summary: Record<string, number> = {}
@@ -68,7 +74,13 @@ export default defineEventHandler(async (event) => {
       tenantId,
       userId: principal.clientOnly ? null : principal.sub,
       action: 'admin.identity_mappings.import',
-      payload: { run_id: runId, source_system: sourceSystem, summary, actor: principal.clientOnly ? principal.sub : undefined },
+      payload: {
+        run_id: runId,
+        source_system: sourceSystem,
+        summary,
+        actor: principal.clientOnly ? principal.sub : undefined,
+        mapped_global_account_ids: results.filter((r) => r.mapping_id && r.outcome !== 'unchanged').map((r) => r.global_account_id),
+      },
     })
   }
   return { run_id: runId, dry_run: dryRun, summary, results }

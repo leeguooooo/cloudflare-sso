@@ -32,7 +32,11 @@ export default defineEventHandler(async (event) => {
   } catch {
     trial = false
   }
-  await recordEntitlementCheck(event, { tenantId, clientId, entitlementKey: key, allowed: Boolean(row) })
+  // Counted after the response when the runtime allows it; the write never delays the answer.
+  const metric = recordEntitlementCheck(event, { tenantId, clientId, entitlementKey: key, allowed: Boolean(row) })
+  const waitUntil = (event as { waitUntil?: (task: Promise<unknown>) => void }).waitUntil
+  if (typeof waitUntil === 'function') waitUntil.call(event, metric)
+  else await metric
   return {
     allowed: Boolean(row),
     entitlement_key: key,

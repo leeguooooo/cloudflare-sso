@@ -145,12 +145,19 @@ export const mapLegacyUser = async (
     })
     accountEmail = email
   }
-  const provisioned = await provisionTenantUserForGlobalAccount(event, {
-    tenantId: input.tenantId,
-    globalAccountId,
-    email: accountEmail,
-    locale: account?.locale || 'en',
-  })
+  let provisioned: Awaited<ReturnType<typeof provisionTenantUserForGlobalAccount>>
+  try {
+    // Adopts an unbound legacy row of the tenant with the same email; refuses one bound elsewhere.
+    provisioned = await provisionTenantUserForGlobalAccount(event, {
+      tenantId: input.tenantId,
+      globalAccountId,
+      email: accountEmail,
+      locale: account?.locale || 'en',
+    })
+  } catch (error) {
+    if (!account) await getDb(event).prepare(`DELETE FROM global_accounts WHERE id = ?`).bind(globalAccountId).run()
+    throw error
+  }
 
   const id = crypto.randomUUID()
   const inserted = await getDb(event)

@@ -254,6 +254,12 @@ Acceptance:
 - [x] N-05 Register first batch clients: `cherry-admin-web`, `paste-web`, `paste-macos`
 
 ## 9. Execution Records
+- 2026-10-09 (account center platform pass)
+  - Shipped W8-01..07: platform admins administer every tenant; tenant picker, global account directory/detail/actions, audit log explorer; account center split into section components; two-step verification (TOTP + recovery codes) with admin reset.
+  - Shipped W7-02: `GET /api/billing/entitlements/check` with per-app allow/deny counters and an admin home card.
+  - Shipped W3-01..05: canonical principal claims documented; identity mapping import (dry run, verified-email-only rule), lookup, revert, `/admin/migrations`.
+  - Tests: 177 route-level tests (`pnpm test`); admin console, 2FA sign-in and migrations clicked through on a local Pages + D1 stack.
+  - Remaining work is outside this repo: W4/W5/W6 are the cherry / paste / blog cutovers that consume these APIs; W7-05 needs those apps to report fallback hits; W0 is a review ritual.
 - 2026-10-02 (security + completion pass)
   - Rotated the JWT signing key (`primary` was in public git history) → `k2026-10`, moved secrets out of toml.
   - Fixed: XSS in OAuth bridge page, cross-tenant admin escalation via app bootstrap, pre-registration takeover via email auto-link, bearer tokens accepted at `/authorize`, optional PKCE, code/refresh race conditions, disabled users refreshing, admin APIs accepting any client's token.

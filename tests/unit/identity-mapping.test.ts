@@ -127,6 +127,33 @@ describe('identity mapping import', () => {
     expect(redo.summary.linked).toBe(2) // bob's account exists now
   })
 
+  it('adopts a legacy tenant row and reports conflicts per record instead of failing the batch', async () => {
+    h.db.sqlite.exec(`
+      INSERT INTO users (id, tenant_id, global_account_id, email) VALUES ('u-legacy', 't-paste', NULL, 'legacy@example.com');
+      INSERT INTO users (id, tenant_id, global_account_id, email) VALUES ('u-taken', 't-paste', 'ga-admin', 'taken@example.com');
+    `)
+    const response = await h.request('/api/admin/identity-mappings/import', {
+      method: 'POST',
+      bearer: admin,
+      json: {
+        tenant_id: 't-paste',
+        source_system: 'paste',
+        create_missing: true,
+        records: [
+          { source_user_id: 'L1', email: 'legacy@example.com', email_verified: true },
+          { source_user_id: 'L2', email: 'taken@example.com', email_verified: true },
+          { source_user_id: 'L3', email: 'fresh@example.com', email_verified: true },
+        ],
+      },
+    })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as ImportResponse
+    expect(body.results.map((r) => r.outcome)).toEqual(['created', 'invalid', 'created'])
+    expect(body.results[0].user_id).toBe('u-legacy')
+    // The failed row left no orphan account behind.
+    expect(h.db.sqlite.prepare(`SELECT count(*) AS n FROM global_accounts WHERE email = 'taken@example.com'`).get()).toEqual({ n: 0 })
+  })
+
   it('rejects bad input and unknown tenants', async () => {
     const bad = await h.request('/api/admin/identity-mappings/import', { method: 'POST', bearer: admin, json: { tenant_id: 't-paste', source_system: 'Paste!', records: RECORDS } })
     expect(bad.status).toBe(400)
