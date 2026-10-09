@@ -215,6 +215,7 @@ Account center (C 端):
   - Covered by `tests/unit/mfa.test.ts` (RFC 6238 vector, replay, recovery single-use, rate limit, suspended account) and a manual run through the hosted login page
 
 - [x] W8-09 Passkeys (WebAuthn): passwordless sign-in on the hosted login page, add / delete in the account center's security section; RP ID = account host
+- [x] W8-13 Tenant users CSV export (admin Users page) and a public integration guide at `/developers`
 - [x] W8-12 Per-app user growth on the admin home (total, new per day, DAU / WAU / MAU from sessions; `GET /api/admin/growth`)
 - [x] W8-11 Account center in English and Chinese (`中文 / English` switch; browser language by default; Chinese rendering verified pixel-identical)
 - [x] W8-10 New-device sign-in alert emails (all sign-in methods), switchable in the account center

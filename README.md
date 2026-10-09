@@ -51,6 +51,8 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - 签名 key 用 `kid` 区分，验签方请按 `kid` 从 `/jwks.json` 取 key，并在遇到未知 `kid` 时重新拉取 JWKS。
 
 ## 接入方的用户标识（canonical principal）
+面向接入方的精简版接入文档在线上 `/developers`（`pages/developers.vue`），改接口时一起更新。
+
 App 后端验完 access token 后只认这几个 claim：
 
 | claim | 含义 | 用法 |
@@ -108,6 +110,7 @@ App 后端验完 access token 后只认这几个 claim：
   - `POST /api/admin/accounts/:id { action }`（仅平台管理员）：`suspend` / `restore`（停用期间不能登录任何 App，停用时立即登出所有会话）、`revoke_sessions`、`grant_entitlement { tenant_id, entitlement_key, valid_to?, note? }` / `revoke_entitlement { tenant_id, entitlement_key }`。手动权益写成 `provider = manual` 的账单事件，收回只影响手动发放的权益
   - `GET /api/admin/audit?tenant_id=&action=&account=&before=&limit=`：审计日志，`action` 按前缀匹配，`account`（全局账号 id，仅平台管理员）查这个人在所有 App 的记录，用返回的 `next_before` 翻页
 - `GET /api/admin/growth?tenant_id=&days=30`（租户管理员）：用户总数、每天新增、日 / 周 / 月活跃（当天登录或刷新过会话），后台首页「Users」卡片
+- `GET /api/admin/users/export?tenant_id=`（租户管理员）：该租户全部用户的 CSV（含 `sub`、邮箱、状态、角色、注册和最近活跃时间），带 BOM 方便 Excel 打开，单元格防公式注入；每次导出写审计
 - 管理：`GET/POST /api/admin/users`（禁用/启用/全部登出）、`GET /api/admin/metrics`（登录健康度）、`GET /api/billing/subscriptions`、`GET /api/billing/events`
 - 内部：`POST /api/internal/billing/reconcile`（`RECONCILE_SECRET`，由 `workers/billing-reconcile` 每 30 分钟调用；可配 `ALERT_WEBHOOK_URL` 推送告警到飞书/Discord/Slack）
 

@@ -38,6 +38,10 @@
         <li>导出数据：账号中心 → 数据和隐私设置。</li>
         <li>验证或更改邮箱：账号中心 → 个人信息。</li>
       </ul>
+      <h2>开发者</h2>
+      <ul>
+        <li>要让自己的 App 用 leeguoo 账号登录：看 <NuxtLink to="/developers">接入文档</NuxtLink>。</li>
+      </ul>
       <h2>联系支持</h2>
       <ul>
         <li>邮箱：<a href="mailto:support@misonote.com">support@misonote.com</a></li>

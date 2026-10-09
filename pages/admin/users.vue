@@ -9,6 +9,7 @@
         <AdminTenantPicker v-model="tenantId" class="control-input" @change="loadUsers" />
         <UiInput v-model="search" label="Search email" placeholder="name@example.com" class="search-input" />
         <UiButton type="submit" variant="ghost" :loading="loading">Search</UiButton>
+        <UiButton type="button" variant="ghost" :loading="exporting" :disabled="!tenantId" @click="exportCsv">Export CSV</UiButton>
       </form>
     </div>
 
@@ -136,6 +137,33 @@ const getAuthHeaders = () => {
 
 const errorText = (err: any, fallback: string) =>
   err?.data?.statusMessage || err?.data?.message || err?.message || fallback
+
+const exporting = ref(false)
+
+/** Downloads every user of the tenant (the API needs the bearer token, so fetch, then save). */
+const exportCsv = async () => {
+  exporting.value = true
+  error.value = ''
+  try {
+    const blob = await $fetch<Blob>(`${config.public.apiBase}/admin/users/export`, {
+      query: { tenant_id: tenantId.value.trim() },
+      headers: getAuthHeaders(),
+      responseType: 'blob',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `users-${tenantId.value.trim()}-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch (err: any) {
+    error.value = errorText(err, 'Export failed')
+  } finally {
+    exporting.value = false
+  }
+}
 
 const loadUsers = async () => {
   if (!tenantId.value.trim()) return
