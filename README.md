@@ -33,6 +33,8 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - Billing 五表已落地：`products`、`plans`、`subscriptions`、`entitlements`、`subscription_events`
 
 ## 体验目标（已锁定）
+- 账号中心支持中文和英文：页脚切换，选择存在浏览器里（`sso_account_lang`）；没选过时按浏览器语言，中文浏览器看中文，其他看英文
+
 - 统一登录与账户中心的产品目标对标 `https://account.google.com/`
 - 第一阶段重点模仿两块体验：`Choose an account` 登录选择页、账号中心导航与信息架构
 - 保持 Cloudflare SSO 自有品牌与资产，不复制 Google 品牌素材
