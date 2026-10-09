@@ -391,6 +391,17 @@ CREATE TABLE IF NOT EXISTS account_mfa (
   updated_at INTEGER NOT NULL
 );
 
+-- Daily allow/deny counts of GET /api/billing/entitlements/check, per app and key (admin metrics)
+CREATE TABLE IF NOT EXISTS entitlement_check_daily (
+  day TEXT NOT NULL, -- UTC yyyy-mm-dd
+  tenant_id TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  entitlement_key TEXT NOT NULL,
+  result TEXT NOT NULL CHECK (result IN ('allowed', 'denied')),
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (tenant_id, day, client_id, entitlement_key, result)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

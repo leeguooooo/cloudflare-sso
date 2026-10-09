@@ -223,6 +223,10 @@ JRKAN 客户端约定（tvOS / iOS / Mac，bundle id 都是 `com.leeguoo.jrskan.
   - 入参：可选 `tenant_id`, `user_id`, `as_of`, `include_inactive=true`
   - 鉴权：Bearer Access Token（同 tenant；跨用户查询需 admin），或带 `billing:entitlements.read` 的 service token（必须传 `user_id`）
   - 行为：返回用户当前有效 entitlement 列表与 `active_entitlement_keys`
+- `GET /api/billing/entitlements/check?entitlement_key=`（可选 `user_id` / `tenant_id` / `as_of`）
+  - 鉴权：同 `GET /api/billing/entitlements`
+  - 行为：返回 `{ allowed, entitlement_key, source, trial, valid_to }`，并按 App（token 的 client）和权益 key 记每天的放行 / 拒绝次数。**App 判断付费功能请走这个接口**，后台首页才能看到各 App 的拒绝率
+  - 管理：`GET /api/admin/entitlement-metrics?tenant_id=&days=7`（租户管理员，最多 90 天）→ 按 App + key 的 `allowed` / `denied` / `deny_rate` 和按天汇总
 - `POST /api/billing/subscriptions/transition`
   - 入参：`tenant_id`, `subscription_id`, `status`，可选 `current_period_start`, `current_period_end`, `cancel_at_period_end`, `canceled_at`
   - 鉴权：Bearer Access Token（tenant admin）

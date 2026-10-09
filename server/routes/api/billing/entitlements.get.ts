@@ -1,7 +1,6 @@
-import { createError, defineEventHandler, getQuery } from 'h3'
+import { defineEventHandler } from 'h3'
 import { getDb } from '../../../utils/env'
-import { ensureBillingSchema } from '../../../utils/billing'
-import { requireUserOrServiceScope } from '../../../utils/guard'
+import { resolveEntitlementTarget } from '../../../utils/entitlement-access'
 
 type EntitlementRow = {
   id: string
@@ -27,49 +26,10 @@ const parseMeta = (raw: string | null | undefined): Record<string, unknown> => {
   }
 }
 
-const isAdminPrincipal = (principal: { roles: string[]; perms: string[] }) => {
-  return (
-    principal.roles.includes('admin') ||
-    principal.perms.includes('manage:users') ||
-    principal.perms.includes('manage:admin')
-  )
-}
-
 export default defineEventHandler(async (event) => {
-  await ensureBillingSchema(event)
-  const principal = await requireUserOrServiceScope(event, 'billing:entitlements.read')
-  const query = getQuery(event)
-
-  const tenantId = String(query.tenant_id || principal.tid)
-  // A service token has no user of its own, so it must name one.
-  const targetUserId = String(query.user_id || (principal.clientOnly ? '' : principal.sub))
-  const asOf = query.as_of ? Number(query.as_of) : Math.floor(Date.now() / 1000)
+  const { tenantId, targetUserId, asOf, query } = await resolveEntitlementTarget(event)
   const includeInactive = String(query.include_inactive || '') === 'true'
-
-  if (!tenantId) {
-    throw createError({ statusCode: 400, statusMessage: 'tenant_id required' })
-  }
-  if (!targetUserId) {
-    throw createError({ statusCode: 400, statusMessage: 'user_id required' })
-  }
-  if (!Number.isFinite(asOf) || asOf <= 0) {
-    throw createError({ statusCode: 400, statusMessage: 'as_of must be a unix timestamp' })
-  }
-  if (tenantId !== principal.tid) {
-    throw createError({ statusCode: 403, statusMessage: 'Tenant mismatch' })
-  }
-  if (targetUserId !== principal.sub && !principal.clientOnly && !isAdminPrincipal(principal)) {
-    throw createError({ statusCode: 403, statusMessage: 'Admin required for cross-user entitlement query' })
-  }
-
   const db = getDb(event)
-  const user = await db
-    .prepare(`SELECT id FROM users WHERE id = ? AND tenant_id = ?`)
-    .bind(targetUserId, tenantId)
-    .first<{ id: string }>()
-  if (!user) {
-    throw createError({ statusCode: 404, statusMessage: 'User not found in tenant' })
-  }
 
   const entitlements = await db
     .prepare(

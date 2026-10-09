@@ -67,6 +67,8 @@
       </div>
     </UiCard>
 
+    <AdminEntitlementMetricsCard :tenant-id="tenantId" />
+
     <div class="management-grid">
       <UiCard class="management-card">
         <div class="card-title">

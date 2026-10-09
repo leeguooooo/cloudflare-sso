@@ -186,7 +186,7 @@ Acceptance:
 
 ### W7. Observability and Safety
 - [x] W7-01 Add auth metrics per app/client (`GET /api/admin/metrics` + admin home card, from audit logs)
-- [ ] W7-02 Add entitlement metrics per app/client: allowed/denied rates
+- [x] W7-02 Add entitlement metrics per app/client: allowed/denied rates (`GET /api/billing/entitlements/check` counts answers per client + key per day; admin home card + `GET /api/admin/entitlement-metrics`; apps still need to switch their feature gates to the check endpoint)
 - [x] W7-03 Add token verification failure logging with reason labels
 - [x] W7-04 Incident playbook for key rotation (`docs/KEY_ROTATION.md`); sign-in failure spikes alert via the reconcile worker
 - [ ] W7-05 Add fallback usage dashboard and alert (`legacy path hit rate > threshold`)
