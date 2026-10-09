@@ -267,6 +267,8 @@ Acceptance:
   - Shipped W3-01..05: canonical principal claims documented; identity mapping import (dry run, verified-email-only rule), lookup, revert, `/admin/migrations`.
   - Tests: 177 route-level tests (`pnpm test`); admin console, 2FA sign-in and migrations clicked through on a local Pages + D1 stack.
   - Second pass the same day: W8-08 event webhooks, W8-09 passkeys, W8-10 new-device sign-in alerts, W7-05 legacy-path usage dashboard, W3 import made per-record fault tolerant. 196 tests; passkeys run end to end in Chrome with a virtual authenticator.
+  - Third pass: W8-11 bilingual account center (Chinese rendering verified pixel-identical), W8-12 per-app user growth, W8-13 users CSV export + public `/developers` guide. 199 tests.
+  - Type check (`nuxi typecheck` with vue-tsc + TypeScript 5.9, not in the pipeline): 310 errors, mostly pre-existing missing Node/D1 type definitions and strict index access; the ones in this pass's files were reviewed and are type-only (no runtime bugs). Adding typecheck to CI is a separate cleanup.
   - Remaining work is outside this repo: W4/W5/W6 are the cherry / paste / blog cutovers that consume these APIs; W7-05 needs those apps to report fallback hits; W0 is a review ritual.
 - 2026-10-02 (security + completion pass)
   - Rotated the JWT signing key (`primary` was in public git history) → `k2026-10`, moved secrets out of toml.
