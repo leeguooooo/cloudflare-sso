@@ -104,6 +104,7 @@ export const buildIssuerMergeStatements = (input: {
       push('email_tokens', `DELETE FROM email_tokens WHERE user_id = ?`, [u.id])
       push('credentials', `DELETE FROM credentials WHERE user_id = ?`, [u.id])
       push('audit_logs', `UPDATE audit_logs SET user_id = ? WHERE user_id = ?`, [v.id, u.id])
+      push('identity_mappings', `UPDATE identity_mappings SET user_id = ? WHERE user_id = ?`, [v.id, u.id])
       push('users', `DELETE FROM users WHERE id = ?`, [u.id])
     } else {
       push('sessions', `UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, [nowSeconds, u.id])
@@ -113,6 +114,8 @@ export const buildIssuerMergeStatements = (input: {
 
   push('global_external_identities', `UPDATE global_external_identities SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   push('api_keys', `UPDATE api_keys SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
+  // Legacy app ids keep resolving: they now point at the kept account.
+  push('identity_mappings', `UPDATE identity_mappings SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   // Trials already used by either account stay used: a merge must not open a second one.
   push('trial_grants', `UPDATE OR IGNORE trial_grants SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   push('trial_grants', `DELETE FROM trial_grants WHERE global_account_id = ?`, [from.id])

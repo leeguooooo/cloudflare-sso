@@ -402,6 +402,25 @@ CREATE TABLE IF NOT EXISTS entitlement_check_daily (
   PRIMARY KEY (tenant_id, day, client_id, entitlement_key, result)
 ) WITHOUT ROWID;
 
+-- Legacy app user -> SSO account mappings (migrating an app's existing users), reversible
+CREATE TABLE IF NOT EXISTS identity_mappings (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  source_system TEXT NOT NULL, -- e.g. paste / blog / cherry
+  source_user_id TEXT NOT NULL,
+  global_account_id TEXT NOT NULL,
+  user_id TEXT NOT NULL, -- the tenant user: the app's `sub` from now on
+  outcome TEXT NOT NULL CHECK (outcome IN ('linked', 'created', 'manual')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'reverted')),
+  run_id TEXT,
+  mapped_by TEXT NOT NULL,
+  mapped_at INTEGER NOT NULL,
+  reverted_by TEXT,
+  reverted_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_mappings_active
+  ON identity_mappings (tenant_id, source_system, source_user_id) WHERE status = 'active';
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

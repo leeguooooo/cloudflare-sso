@@ -78,6 +78,17 @@
           </div>
           Billing
         </NuxtLink>
+        <NuxtLink to="/admin/migrations" class="nav-item" active-class="active">
+          <div class="nav-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="17 1 21 5 17 9" />
+              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <polyline points="7 23 3 19 7 15" />
+              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+          </div>
+          Migrations
+        </NuxtLink>
         <NuxtLink to="/admin/audit" class="nav-item" active-class="active">
           <div class="nav-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -114,6 +125,7 @@ const pageTitle = computed(() => {
   if (route.path.startsWith('/admin/users')) return 'Admin - Users'
   if (route.path.startsWith('/admin/accounts')) return 'Admin - Accounts'
   if (route.path.startsWith('/admin/audit')) return 'Admin - Audit log'
+  if (route.path.startsWith('/admin/migrations')) return 'Admin - User migration'
   if (route.path.startsWith('/admin/apps')) return 'Admin - Applications'
   if (route.path.startsWith('/admin/billing')) return 'Admin - Billing'
   if (route.path.startsWith('/admin')) return 'Admin Console'

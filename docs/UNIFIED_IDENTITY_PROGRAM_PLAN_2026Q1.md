@@ -133,11 +133,11 @@ Acceptance:
 - Entitlement query is deterministic for a user at time T
 
 ### W3. Identity Mapping and Migration Safety (Cross-Repo)
-- [ ] W3-01 Define canonical principal fields (`iss`, `sub`, `tenant`, `app`, `roles`)
-- [ ] W3-02 Define user linking policy per repo (`blog`, `paste`, `cherry`) with conflict rules
-- [ ] W3-03 Add idempotent mapping migration scripts + dry-run report
-- [ ] W3-04 Add rollback scripts for wrong user linking
-- [ ] W3-05 Add migration audit table (`source_user_id`, `sso_user_id`, `mapped_at`, `mapped_by`)
+- [x] W3-01 Define canonical principal fields (`iss`, `sub`, `tid`, `gaid`, `aud`, `roles`/`perms`, `sid` — README「接入方的用户标识」)
+- [x] W3-02 Define user linking policy with conflict rules (one policy for every app: verified email or explicit admin mapping only; unverified → needs_review; see `server/utils/identity-mapping.ts`)
+- [x] W3-03 Add idempotent mapping migration + dry-run report (`POST /api/admin/identity-mappings/import`, `/admin/migrations`)
+- [x] W3-04 Add rollback for wrong user linking (`POST /api/admin/identity-mappings/revert`, per mapping or per run)
+- [x] W3-05 Add migration audit table (`identity_mappings`: source ids, `user_id` = SSO sub, `mapped_at`, `mapped_by`, run id, revert trail)
 
 Acceptance:
 - Mapping can be replayed safely (idempotent)

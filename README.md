@@ -48,6 +48,25 @@ Nuxt 4 + Cloudflare Pages + D1/KV/Workers 的单仓 SSO。提供 OAuth2/OIDC Pro
 - `/userinfo` 会检查会话是否仍有效：用户登出或会话被吊销后，用 `/userinfo` 校验的应用立刻感知。
 - 签名 key 用 `kid` 区分，验签方请按 `kid` 从 `/jwks.json` 取 key，并在遇到未知 `kid` 时重新拉取 JWKS。
 
+## 接入方的用户标识（canonical principal）
+App 后端验完 access token 后只认这几个 claim：
+
+| claim | 含义 | 用法 |
+| --- | --- | --- |
+| `iss` | `https://account.leeguoo.com` | 必须校验 |
+| `sub` | 这个人在**该 App 租户**里的用户 id | App 自己表里的用户主键就存它；同一个人在不同 App 的 `sub` 不同 |
+| `tid` | 租户 id | 必须等于本 App 的租户 |
+| `gaid` | 全局账号 id，同一个人在所有 App 都相同 | 只用于跨 App 关联（例如统一会员），不要当本 App 主键 |
+| `aud` | 签发给哪个 client | 必须是本 App 的 client |
+| `roles` / `perms` | 该租户里的角色和权限 | 管理功能鉴权 |
+| `sid` | 会话 id | 想立刻感知登出就调 `/userinfo` |
+
+老用户迁移（把 App 自己的用户表映射到 SSO）：
+- `POST /api/admin/identity-mappings/import { tenant_id, source_system, records, create_missing?, dry_run? }`：每批最多 100 条，幂等。规则：已有映射 → `unchanged`；指定 `global_account_id` → `manual`；源系统**验证过**的邮箱且 SSO 有这个账号 → `linked`；验证过但没账号且 `create_missing` → `created`（无密码，用户用第三方登录或「忘记密码」设密码）；其余（邮箱没验证、找不到账号、账号停用）→ `needs_review`，不写任何东西。没验证的邮箱一律不自动关联，避免别人在旧 App 里填了你的邮箱就拿到你的 SSO 账号。租户管理员，或带 `identity:mappings.write` 的服务 token
+- `GET /api/admin/identity-mappings?tenant_id=&source_system=&source_user_id=`：查映射，App 后端用老 id 换新 `sub`（服务 token 需 `identity:mappings.read`）
+- `POST /api/admin/identity-mappings/revert { tenant_id, mapping_id | run_id }`：撤销错误映射（只有租户管理员），不删账号，返回这次导入新建的账号供人工核对
+- 后台页面：`/admin/migrations`（先 Dry run，再导入；可整批撤销）。账号合并时映射跟着转到保留的账号，删号时一起删除
+
 ## 账号与登录接口（补充）
 - `POST /api/auth/password/forgot { email, client_id? }`：发送 30 分钟有效的重置链接；不论邮箱是否存在都返回 `{ ok: true }`；按 IP 与邮箱限流
 - `POST /api/auth/password/reset { token, password }`：一次性令牌；成功后吊销该账号所有会话，并视为邮箱已验证
