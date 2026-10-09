@@ -6,6 +6,13 @@ import { platformTenantId, requireAccessPrincipal, requireTenantAdmin, type Acce
 const adminConsoleSchema = oncePerDb(async (db) => {
   // The account detail view reads one account's audit trail; without this it scans the table.
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs (user_id, created_at DESC)`).run()
+  // Admin actions on an account are logged under the admin; partial, so only those rows pay for it.
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_logs (json_extract(payload_json, '$.target_global_account_id'))
+       WHERE json_extract(payload_json, '$.target_global_account_id') IS NOT NULL`,
+    )
+    .run()
 })
 
 export const ensureAdminConsoleSchema = (event: H3Event) => adminConsoleSchema(getDb(event))

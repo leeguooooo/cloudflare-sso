@@ -50,7 +50,7 @@
           </div>
           Users
         </NuxtLink>
-        <NuxtLink to="/admin/accounts" class="nav-item" active-class="active">
+        <NuxtLink v-if="adminTenants.platform" to="/admin/accounts" class="nav-item" active-class="active">
           <div class="nav-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="8" r="4" />
@@ -103,6 +103,11 @@
 
 <script setup lang="ts">
 const route = useRoute()
+// Accounts spans every app, so only platform admins get the link.
+const { state: adminTenants, load: loadAdminTenants } = useAdminTenants()
+onMounted(() => {
+  if (route.path.startsWith('/admin') && localStorage.getItem('sso_access_token')) void loadAdminTenants().catch(() => {})
+})
 
 const pageTitle = computed(() => {
   if (route.path.startsWith('/admin/access')) return 'Admin - Access Control'
