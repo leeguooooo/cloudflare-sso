@@ -17,6 +17,7 @@
  */
 import { createError, deleteCookie, getRequestHeader, getRequestURL, H3Event, sendRedirect, setCookie } from 'h3'
 import { getUserRolesForClient } from './access'
+import { alertIfNewDevice } from './sign-in-alerts'
 import { syntheticAppleEmail } from './apple'
 import { syntheticWechatEmail } from './wechat'
 import { writeAuditLog } from './audit'
@@ -334,6 +335,7 @@ export const signInAccount = async (
 
   const roles = await getUserRolesForClient(event, provisioned.user.id, provisioned.user.tenant_id, client.id)
   const tokens = await issueTokens(event, provisioned.user, client, client.scope || 'openid profile email', { roles })
+  await alertIfNewDevice(event, { globalAccountId: account.id, email: account.email, appName: client.name || client.client_id })
   return { provisioned, tokens }
 }
 

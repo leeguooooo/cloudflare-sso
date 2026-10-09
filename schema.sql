@@ -486,6 +486,13 @@ CREATE TABLE IF NOT EXISTS webauthn_challenges (
   used_at INTEGER
 );
 
+-- Per-account settings (today: new-device sign-in alert emails, on by default)
+CREATE TABLE IF NOT EXISTS account_preferences (
+  global_account_id TEXT PRIMARY KEY REFERENCES global_accounts(id) ON DELETE CASCADE,
+  sign_in_alerts INTEGER NOT NULL DEFAULT 1,
+  updated_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

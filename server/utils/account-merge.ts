@@ -117,6 +117,7 @@ export const buildIssuerMergeStatements = (input: {
   push('api_keys', `UPDATE api_keys SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   // The other account's passkeys keep working: they now sign in to the kept account.
   push('passkeys', `UPDATE passkeys SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
+  push('account_preferences', `DELETE FROM account_preferences WHERE global_account_id = ?`, [from.id])
   // Legacy app ids keep resolving: they now point at the kept account.
   push('identity_mappings', `UPDATE identity_mappings SET global_account_id = ? WHERE global_account_id = ?`, [to.id, from.id])
   // Trials already used by either account stay used: a merge must not open a second one.

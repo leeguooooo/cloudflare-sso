@@ -8,6 +8,7 @@ export type ClientRecord = {
   tenant_id: string
   scope: string
   status?: string | null
+  name?: string | null
 }
 
 export type GlobalAccountRecord = {
@@ -236,7 +237,7 @@ export const getClientByPublicId = async (event: H3Event, clientPublicId: string
   await ensureClientManagementSchema(event)
   const db = getDb(event)
   const client = await db
-    .prepare(`SELECT id, client_id, tenant_id, scope, status FROM clients WHERE client_id = ?`)
+    .prepare(`SELECT id, client_id, tenant_id, scope, status, name FROM clients WHERE client_id = ?`)
     .bind(clientPublicId)
     .first<ClientRecord>()
   if (!client) {

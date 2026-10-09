@@ -3,6 +3,7 @@ import { issueTokens } from './auth'
 import { getUserRolesForClient } from './access'
 import { writeAuditLog } from './audit'
 import { clearLoginFailures } from './rate-limit'
+import { alertIfNewDevice } from './sign-in-alerts'
 import { getClientByPublicId, provisionTenantUserForGlobalAccount, type GlobalAccountRecord } from './identity'
 
 type Client = Awaited<ReturnType<typeof getClientByPublicId>>
@@ -57,6 +58,8 @@ export const completePasswordSignIn = async (
       ...(secondFactor ? { second_factor: secondFactor } : {}),
     },
   })
+
+  await alertIfNewDevice(event, { globalAccountId: globalAccount.id, email: globalAccount.email, appName: client.name || client.client_id })
 
   return {
     token_type: 'Bearer',

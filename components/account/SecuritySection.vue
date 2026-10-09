@@ -2,6 +2,7 @@
   <div class="section-stack">
     <AccountPasskeysBlock v-if="!activePanel" />
     <AccountTwoStepBlock v-if="!activePanel" />
+    <AccountSignInAlertsBlock v-if="!activePanel && center?.email_enabled" />
     <div v-if="activePanel !== 'activity'" class="stack-block">
       <h3>设备与会话</h3>
       <p class="block-hint">可撤销异常设备会话，保护账号安全。</p>

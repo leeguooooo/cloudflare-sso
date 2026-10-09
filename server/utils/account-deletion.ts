@@ -110,6 +110,7 @@ export const buildAccountDeletionStatements = (
     push('trial_grants', `DELETE FROM trial_grants WHERE global_account_id = ?`, [globalAccountId])
     push('account_mfa', `DELETE FROM account_mfa WHERE global_account_id = ?`, [globalAccountId])
     push('passkeys', `DELETE FROM passkeys WHERE global_account_id = ?`, [globalAccountId])
+    push('account_preferences', `DELETE FROM account_preferences WHERE global_account_id = ?`, [globalAccountId])
     push('identity_mappings', `DELETE FROM identity_mappings WHERE global_account_id = ?`, [globalAccountId])
     push('global_accounts', `DELETE FROM global_accounts WHERE id = ?`, [globalAccountId])
   }
