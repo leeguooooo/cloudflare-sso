@@ -107,6 +107,7 @@ App 后端验完 access token 后只认这几个 claim：
   - `GET /api/admin/accounts?q=&status=`、`GET /api/admin/accounts/:id`（仅平台管理员）：全局账号目录与详情，详情包括各 App 的租户用户、登录方式、会话、权益、订阅、最近活动；不返回密码哈希和第三方 refresh token
   - `POST /api/admin/accounts/:id { action }`（仅平台管理员）：`suspend` / `restore`（停用期间不能登录任何 App，停用时立即登出所有会话）、`revoke_sessions`、`grant_entitlement { tenant_id, entitlement_key, valid_to?, note? }` / `revoke_entitlement { tenant_id, entitlement_key }`。手动权益写成 `provider = manual` 的账单事件，收回只影响手动发放的权益
   - `GET /api/admin/audit?tenant_id=&action=&account=&before=&limit=`：审计日志，`action` 按前缀匹配，`account`（全局账号 id，仅平台管理员）查这个人在所有 App 的记录，用返回的 `next_before` 翻页
+- `GET /api/admin/growth?tenant_id=&days=30`（租户管理员）：用户总数、每天新增、日 / 周 / 月活跃（当天登录或刷新过会话），后台首页「Users」卡片
 - 管理：`GET/POST /api/admin/users`（禁用/启用/全部登出）、`GET /api/admin/metrics`（登录健康度）、`GET /api/billing/subscriptions`、`GET /api/billing/events`
 - 内部：`POST /api/internal/billing/reconcile`（`RECONCILE_SECRET`，由 `workers/billing-reconcile` 每 30 分钟调用；可配 `ALERT_WEBHOOK_URL` 推送告警到飞书/Discord/Slack）
 

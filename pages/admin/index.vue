@@ -24,6 +24,8 @@
       </UiCard>
     </div>
 
+    <AdminGrowthCard :tenant-id="tenantId" />
+
     <UiCard class="metrics-card">
       <template #header>
         <div class="metrics-header">
