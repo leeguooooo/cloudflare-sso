@@ -4,7 +4,8 @@ import { clampLimit, ensureAdminConsoleSchema, parseJsonObject, requireAdminScop
 
 /**
  * GET /api/admin/audit?tenant_id=&action=&user_id=&account=&before=&limit= — audit log, newest first.
- * `account` (a global account id, platform admins only) covers that person's users in every app.
+ * `account` (a global account id, platform admins only) covers that person's users in every app
+ * and admin actions taken on the account.
  * `action` matches a prefix (`admin.` finds every admin action). Page by passing the response's
  * `next_before` back as `before`. Platform admins may omit tenant_id.
  */
@@ -39,8 +40,9 @@ export default defineEventHandler(async (event) => {
     binds.push(userId)
   }
   if (accountId) {
-    where.push('a.user_id IN (SELECT id FROM users WHERE global_account_id = ?)')
-    binds.push(accountId)
+    // What the person did, plus what admins did to them (logged under the admin's user id).
+    where.push(`(a.user_id IN (SELECT id FROM users WHERE global_account_id = ?) OR json_extract(a.payload_json, '$.target_global_account_id') = ?)`)
+    binds.push(accountId, accountId)
   }
   if (Number.isFinite(before) && before > 0) {
     where.push('(a.created_at < ? OR (a.created_at = ? AND a.id < ?))')

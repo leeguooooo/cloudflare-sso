@@ -128,6 +128,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  flex-wrap: wrap;
   gap: 16px;
 }
 

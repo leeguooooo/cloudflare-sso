@@ -146,6 +146,8 @@ describe('admin global accounts', () => {
     const revoke = await h.request('/api/admin/accounts/ga-buyer', { method: 'POST', bearer: root, json: { action: 'revoke_entitlement', tenant_id: 't-app', entitlement_key: 'app.pro' } })
     expect(revoke.status).toBe(200)
     const after = h.db.sqlite.prepare(`SELECT status FROM entitlements WHERE user_id = 'u-buyer'`).get() as { status: string }
+    const trail = (await (await h.request('/api/admin/audit?account=ga-buyer', { bearer: root })).json()) as { entries: { action: string }[] }
+    expect(trail.entries.map((e) => e.action)).toEqual(expect.arrayContaining(['admin.account.grant_entitlement', 'admin.account.revoke_entitlement']))
     expect(after.status).toBe('revoked')
 
     const past = await h.request('/api/admin/accounts/ga-buyer', { method: 'POST', bearer: root, json: { action: 'grant_entitlement', tenant_id: 't-app', entitlement_key: 'app.pro', valid_to: 1 } })

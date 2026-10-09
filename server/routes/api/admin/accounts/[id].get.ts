@@ -79,9 +79,10 @@ export default defineEventHandler(async (event) => {
         `SELECT a.id, a.tenant_id, a.action, a.ip, a.payload_json, a.created_at
          FROM audit_logs a
          WHERE a.user_id IN (SELECT u.id FROM users u WHERE u.global_account_id = ?)
+            OR json_extract(a.payload_json, '$.target_global_account_id') = ?
          ORDER BY a.created_at DESC LIMIT 50`,
       )
-      .bind(id)
+      .bind(id, id)
       .all<Row>(),
   ])
 

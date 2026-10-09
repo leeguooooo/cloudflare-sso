@@ -63,7 +63,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.tenant-select {
+.tenant-picker {
   min-width: 220px;
+}
+
+.tenant-select {
+  width: 100%;
 }
 </style>
