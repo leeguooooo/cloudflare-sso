@@ -133,6 +133,16 @@
         </button>
       </form>
 
+      <button
+        v-if="!mfaChallenge && passkeyReady"
+        type="button"
+        class="passkey-btn doodle-box"
+        :disabled="loading"
+        @click="handlePasskey"
+      >
+        🔑 {{ t.passkey }}
+      </button>
+
       <p v-if="!mfaChallenge" class="signup">{{ t.noAccount }} <NuxtLink :to="registerPath" class="signup-link">{{ t.createOne }}</NuxtLink></p>
     </div>
 
@@ -145,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import { getPasskey, hostFitsRpId, isPasskeyCancel, passkeysSupported } from '~/utils/webauthn-client'
 definePageMeta({
   layout: false,
 })
@@ -335,6 +346,35 @@ const handleSubmit = async () => {
   }
 }
 
+const passkeyReady = ref(false)
+
+const handlePasskey = async () => {
+  loading.value = true
+  message.value = ''
+  success.value = false
+  try {
+    const options = await $fetch<{ challenge_id: string; publicKey: { challenge: string; rpId: string } }>(`${config.public.apiBase}/auth/passkey/options`, {
+      method: 'POST',
+      body: {},
+    })
+    if (!hostFitsRpId(options.publicKey.rpId)) {
+      message.value = t.value.passkeyFailed
+      return
+    }
+    const credential = await getPasskey(options.publicKey)
+    const data = await $fetch<{ access_token?: string; user?: { email?: string } }>(`${config.public.apiBase}/auth/passkey/verify`, {
+      method: 'POST',
+      body: { challenge_id: options.challenge_id, client_id: resolveClientId(), credential },
+    })
+    if (data.user?.email) form.email = data.user.email
+    await finishLogin(data)
+  } catch (err) {
+    if (!isPasskeyCancel(err)) message.value = t.value.passkeyFailed
+  } finally {
+    loading.value = false
+  }
+}
+
 const mfaChallenge = ref('')
 const mfaCode = ref('')
 const mfaInput = ref<HTMLInputElement | null>(null)
@@ -479,6 +519,7 @@ const startSocialLogin = (provider: SocialProvider) => {
 }
 
 onMounted(() => {
+  passkeyReady.value = passkeysSupported()
   if (!process.client) return
   inApp.value = isInAppBrowser()
   inAppLabel.value = getInAppBrowserLabel()
@@ -746,6 +787,21 @@ onMounted(() => {
   font-size: 0.875rem;
   opacity: 0.75;
   margin: 0 0 4px;
+}
+
+.passkey-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  font: inherit;
+  font-weight: 600;
+  background: #fff;
+  cursor: pointer;
+}
+
+.passkey-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .mfa-back {

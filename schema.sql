@@ -464,6 +464,28 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries (endpoint_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_due ON webhook_deliveries (next_attempt_at) WHERE status = 'pending';
 
+-- Passkeys (WebAuthn) per global account, and one-time ceremony challenges
+CREATE TABLE IF NOT EXISTS passkeys (
+  id TEXT PRIMARY KEY, -- credential id (base64url)
+  global_account_id TEXT NOT NULL REFERENCES global_accounts(id) ON DELETE CASCADE,
+  public_key_json TEXT NOT NULL, -- { alg, jwk }
+  sign_count INTEGER NOT NULL DEFAULT 0,
+  name TEXT,
+  transports TEXT,
+  backed_up INTEGER,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_passkeys_account ON passkeys (global_account_id);
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+  id TEXT PRIMARY KEY,
+  challenge TEXT NOT NULL,
+  purpose TEXT NOT NULL CHECK (purpose IN ('register', 'login')),
+  global_account_id TEXT,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS trial_grants (
   global_account_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,

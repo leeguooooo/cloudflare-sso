@@ -201,6 +201,7 @@ const createAccountCenter = () => {
     { label: '我的密码', section: 'password' },
     { label: '设备', section: 'security', panel: 'sessions' },
     { label: '我的活动记录', section: 'security', panel: 'activity' },
+    { label: '通行密钥', section: 'security' },
     { label: '两步验证', section: 'security' },
   ]
 
@@ -254,7 +255,7 @@ const createAccountCenter = () => {
 
   const sectionDesc = computed(() => {
     if (activeNav.value === 'profile') return '管理显示名称、邮箱和区域设置。'
-    if (activeNav.value === 'security') return '两步验证、设备会话与近期账号活动。'
+    if (activeNav.value === 'security') return '通行密钥、两步验证、设备会话与近期账号活动。'
     if (activeNav.value === 'password') return '修改密码并管理密码安全策略。'
     if (activeNav.value === 'linked') return '绑定 Apple、Google、GitHub 或设置密码；把重复的账号合并成一个。'
     if (activeNav.value === 'privacy') return '下载账号信息，或永久删除账号。'

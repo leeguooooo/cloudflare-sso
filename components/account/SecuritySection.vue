@@ -1,5 +1,6 @@
 <template>
   <div class="section-stack">
+    <AccountPasskeysBlock v-if="!activePanel" />
     <AccountTwoStepBlock v-if="!activePanel" />
     <div v-if="activePanel !== 'activity'" class="stack-block">
       <h3>设备与会话</h3>

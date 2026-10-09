@@ -10,14 +10,14 @@ type Client = Awaited<ReturnType<typeof getClientByPublicId>>
 /**
  * Last step of an email + password sign-in, once every factor has been checked: provisions
  * the client's tenant user, opens the session (refresh cookie + tokens) and audits it.
- * Shared by /api/auth/login and, for accounts with two-step verification, /api/auth/mfa/verify.
+ * Shared by /api/auth/login, /api/auth/mfa/verify (two-step accounts) and /api/auth/passkey/verify.
  */
 export const completePasswordSignIn = async (
   event: H3Event,
   client: Client,
   globalAccount: GlobalAccountRecord,
   loginEmail: string,
-  secondFactor?: 'totp' | 'recovery',
+  secondFactor?: 'totp' | 'recovery' | 'passkey',
 ) => {
   if (globalAccount.status !== 'active') {
     throw createError({ statusCode: 403, statusMessage: 'Global account disabled or locked' })

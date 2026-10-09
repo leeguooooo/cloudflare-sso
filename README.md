@@ -83,6 +83,11 @@ App 后端验完 access token 后只认这几个 claim：
 - `POST /api/auth/password/reset { token, password }`：一次性令牌；成功后吊销该账号所有会话，并视为邮箱已验证
 - `POST /api/account/email/verify`：给当前邮箱发验证链接；`POST /api/account/email/change { new_email }`：需近期登录，向新邮箱发确认链接，点开后才生效
 - `GET /api/auth/email/verify?token=`：邮件链接落地，回跳账号中心
+- 通行密钥（passkey / WebAuthn）：
+  - 登录：`POST /api/auth/passkey/options` → `{ challenge_id, publicKey }` 给 `navigator.credentials.get()`；`POST /api/auth/passkey/verify { challenge_id, client_id?, credential }`（二进制字段 base64url），成功响应与 `/api/auth/login` 相同，不再要两步验证码。按凭据和 IP 限流
+  - 管理：`GET /api/account/passkeys`；`POST /api/account/passkeys { action: register_options | register | rename | delete }`，添加和删除要求 15 分钟内登录过；每个账号最多 10 个
+  - RP ID 是 `WEBAUTHN_RP_ID`，默认取 `JWT_ISSUER` 的主机名（`account.leeguoo.com`）：只能在账号域名上用，其他 leeguoo.com 子站拿不到。只支持 ES256 / RS256，不校验 attestation；签名计数不前进视为克隆，拒绝登录
+  - 账号合并时通行密钥转到保留的账号，删号时一起删除
 - 两步验证（TOTP + 备用码，只保护邮箱密码登录；Apple / Google / GitHub / 微信登录不受影响）：
   - `POST /api/auth/login` 对开启了两步验证的账号不发 token，返回 `{ mfa_required: true, challenge, methods: ["totp", "recovery"] }`；`challenge` 5 分钟有效
   - `POST /api/auth/mfa/verify { challenge, code }`：`code` 是 6 位验证码或备用码，成功响应与 `/api/auth/login` 相同（用了备用码时多一个 `recovery_codes_remaining`）。错误码 `401 invalid_code` / `401 mfa_challenge_expired`；输错计入该邮箱的登录失败次数（15 分钟 10 次后 `429`）。每个 30 秒的验证码只能用一次
