@@ -2,6 +2,11 @@ name = "cloudflare-sso"
 compatibility_date = "2024-12-01"
 pages_build_output_dir = ".output/public"
 
+# Run Functions next to the D1 primary (Tokyo), not next to the user: a sign-in makes dozens of sequential D1
+# queries, and from a US colo each one crosses the Pacific (App Review's Sign in with Apple took 12.9 s, 2026-10-17).
+[placement]
+mode = "smart"
+
 [vars]
 # Secrets live in `wrangler pages secret`, never here: JWT_PRIVATE_KEY, OAUTH_GOOGLE_CLIENT_SECRET,
 # OAUTH_GITHUB_CLIENT_SECRET, APPLE_*, ACCOUNT_HOOK_SECRET.
