@@ -222,6 +222,8 @@ Paste 客户端约定（统一账号）：
 JRKAN 客户端约定（tvOS / iOS / Mac，bundle id 都是 `com.leeguoo.jrskan.tv`，租户 `tenant-jrkan`，只走内部 TestFlight，不是商店客户端）：
 - `leeguoo-jrkan-tv`：Apple TV，设备授权（`refresh_token` + `urn:ietf:params:oauth:grant-type:device_code`），没有 redirect URI；也可以用 `/api/auth/apple/native`
 - `leeguoo-jrkan-ios`：iPhone / iPad / Mac，授权码 + PKCE，`redirect_uri` 为 `com.leeguoo.jrskan.tv:/oauth/callback`；也可以用 `/api/auth/apple/native`
+- `leeguoo-sports-web`：网页版 sports.leeguoo.com，授权码 + PKCE，由 Worker 在服务端换 token，`redirect_uri` 为 `https://sports.leeguoo.com/auth/callback`
+- 2026-10 起产品改名 leeguoo sports，只改显示名（租户、client 名称、`CLIENT_APP_NAMES`），id 不变；存量库执行 `scripts/sql/jrkan-rename-2026-10.sql`
 - 生产注册：`POST /api/admin/apps/bootstrap { "app_key": "jrkan" }`，或执行 `scripts/sql/jrkan-clients.sql`（幂等，效果相同，只是不会把调用者设为租户 admin）
 
 钓鱼 App 客户端约定（iOS，bundle id `com.leeguoo.fishing`，租户 `tenant-fishing`，App Store 客户端）：

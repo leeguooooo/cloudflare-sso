@@ -126,18 +126,24 @@ const APP_SEEDS: Record<string, AppSeed> = {
   },
   jrkan: {
     tenantId: 'tenant-jrkan',
-    tenantName: 'JRKAN',
+    tenantName: 'leeguoo sports',
     clients: [
       {
         client_id: 'leeguoo-jrkan-tv',
-        name: 'JRKAN Apple TV',
+        name: 'leeguoo sports Apple TV',
         redirect_uris: [],
         grant_types: `refresh_token ${DEVICE_CODE_GRANT}`,
       },
       {
         client_id: 'leeguoo-jrkan-ios',
-        name: 'JRKAN iOS/Mac',
+        name: 'leeguoo sports iOS/Mac',
         redirect_uris: ['com.leeguoo.jrskan.tv:/oauth/callback'],
+      },
+      {
+        // Web version: the sports.leeguoo.com Worker is the (public, PKCE) client.
+        client_id: 'leeguoo-sports-web',
+        name: 'leeguoo sports 网页版',
+        redirect_uris: ['https://sports.leeguoo.com/auth/callback'],
       },
     ],
   },

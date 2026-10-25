@@ -22,8 +22,9 @@ export const NATIVE_STORE_CLIENT_IDS: ReadonlySet<string> = new Set([
 export const CLIENT_APP_NAMES: Readonly<Record<string, string>> = {
   'leeguoo-pastyx-ios': 'Pastyx',
   'misonote-paste-macos': 'Pastyx',
-  'leeguoo-jrkan-tv': 'JRKAN',
-  'leeguoo-jrkan-ios': 'JRKAN',
+  'leeguoo-jrkan-tv': 'leeguoo sports',
+  'leeguoo-jrkan-ios': 'leeguoo sports',
+  'leeguoo-sports-web': 'leeguoo sports',
   'leeguoo-fishing-ios': 'Haul',
 }
 

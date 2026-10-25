@@ -116,7 +116,7 @@ describe('device authorization grant', () => {
     // Lowercase without the dash is the same code.
     const approved = await decide(cookie, String(body.user_code).replace('-', '').toLowerCase(), 'approve')
     expect(approved.status).toBe(200)
-    expect(await approved.json()).toMatchObject({ ok: true, status: 'approved', client_id: 'leeguoo-jrkan-tv', client_name: 'JRKAN', device_name: 'Apple TV' })
+    expect(await approved.json()).toMatchObject({ ok: true, status: 'approved', client_id: 'leeguoo-jrkan-tv', client_name: 'leeguoo sports', device_name: 'Apple TV' })
 
     const tokens = await poll(code)
     expect(tokens.status).toBe(200)
@@ -173,7 +173,7 @@ describe('device authorization grant', () => {
   it('lookup tells the page who is signed in and which app asks', async () => {
     const { body } = await startDevice()
     const anonymous = (await (await h.request(`/api/auth/device/lookup?user_code=${body.user_code}`)).json()) as Record<string, unknown>
-    expect(anonymous).toMatchObject({ signed_in: false, email: null, client_id: 'leeguoo-jrkan-tv', client_name: 'JRKAN', status: 'pending' })
+    expect(anonymous).toMatchObject({ signed_in: false, email: null, client_id: 'leeguoo-jrkan-tv', client_name: 'leeguoo sports', status: 'pending' })
 
     const cookie = await browserCookie()
     const signedIn = (await (await h.request('/api/auth/device/lookup', { cookie })).json()) as Record<string, unknown>
@@ -200,6 +200,7 @@ describe('JRKAN clients', () => {
     expect(clients).toEqual([
       { client_id: 'leeguoo-jrkan-ios', tenant_id: 'tenant-jrkan', redirect_uris: '["com.leeguoo.jrskan.tv:/oauth/callback"]', grant_types: 'authorization_code pkce refresh_token', client_secret: null },
       { client_id: 'leeguoo-jrkan-tv', tenant_id: 'tenant-jrkan', redirect_uris: '[]', grant_types: `refresh_token ${DEVICE_CODE_GRANT}`, client_secret: null },
+      { client_id: 'leeguoo-sports-web', tenant_id: 'tenant-jrkan', redirect_uris: '["https://sports.leeguoo.com/auth/callback"]', grant_types: 'authorization_code pkce refresh_token', client_secret: null },
     ])
     const counts = h.db.sqlite
       .prepare(
@@ -208,7 +209,7 @@ describe('JRKAN clients', () => {
                 (SELECT count(*) FROM client_roles cr JOIN clients c ON c.id = cr.client_id WHERE c.tenant_id = 'tenant-jrkan') AS client_roles`,
       )
       .get()
-    expect(counts).toEqual({ roles: 2, perms: 3, client_roles: 4 })
+    expect(counts).toEqual({ roles: 2, perms: 3, client_roles: 6 })
   })
 
   it('the iOS/Mac client completes PKCE through its custom-scheme redirect', async () => {
@@ -230,6 +231,29 @@ describe('JRKAN clients', () => {
     const exchanged = await h.request('/token', {
       method: 'POST',
       form: { grant_type: 'authorization_code', client_id: 'leeguoo-jrkan-ios', code, redirect_uri: redirectUri, code_verifier: pkce.verifier },
+    })
+    expect(exchanged.status).toBe(200)
+  })
+
+  it('the web client completes PKCE through its https redirect', async () => {
+    const cookie = await browserCookie()
+    const pkce = await pkcePair()
+    const redirectUri = 'https://sports.leeguoo.com/auth/callback'
+    const query = new URLSearchParams({
+      response_type: 'code', client_id: 'leeguoo-sports-web', redirect_uri: redirectUri, scope: 'openid profile email',
+      code_challenge: pkce.challenge, code_challenge_method: 'S256', state: 's',
+    })
+    const response = await h.request(`/authorize?${query}`, { cookie })
+    // The browser session belongs to another tenant: sign in again for this client.
+    expect(response.status).toBe(302)
+    const login = await h.request('/api/auth/login', { method: 'POST', json: { email: 'user@example.com', password: PASSWORD, client_id: 'leeguoo-sports-web' } })
+    const authorized = await h.request(`/authorize?${query}`, { cookie: cookieFrom(login, 'sso_refresh_token') })
+    const location = authorized.headers.get('location') || ''
+    expect(location.startsWith(`${redirectUri}?code=`)).toBe(true)
+    const code = new URL(location).searchParams.get('code')!
+    const exchanged = await h.request('/token', {
+      method: 'POST',
+      form: { grant_type: 'authorization_code', client_id: 'leeguoo-sports-web', code, redirect_uri: redirectUri, code_verifier: pkce.verifier },
     })
     expect(exchanged.status).toBe(200)
   })
