@@ -191,6 +191,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at INTEGER DEFAULT (strftime('%s', 'now')) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_tenant_action ON audit_logs (tenant_id, action, created_at DESC);
+-- Cross-tenant scans by action (reconcile cron's failed-login spike check).
+CREATE INDEX IF NOT EXISTS idx_audit_action_created ON audit_logs (action, created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs (user_id, created_at DESC);
 -- Admin actions on an account (logged under the admin's user id); partial, so other rows cost nothing.
 CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_logs (json_extract(payload_json, '$.target_global_account_id'))
